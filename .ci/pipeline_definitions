@@ -1,0 +1,36 @@
+machine-controller-manager-provider-openstack:
+  template: 'default'
+  base_definition:
+    repo: ~
+    traits:
+      version:
+        preprocess: 'inject-commit-hash'
+        inject_effective_version: true
+      publish:
+        dockerimages:
+          machine-controller-manager-provider-openstack:
+            dockerfile: 'Dockerfile'
+            registry: 'gcr-readwrite'
+            image: 'eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack'
+            target: machine-controller
+  jobs:
+    head-update:
+      traits:
+        draft_release: ~
+    pull-request:
+      traits:
+        pull-request: ~
+      steps:
+        verify:
+          image: 'eu.gcr.io/gardener-project/3rd/golang:1.15.5'
+    release:
+      traits:
+        version:
+          preprocess: 'finalize'
+        release:
+          nextversion: 'bump_minor'
+        component_descriptor: ~
+        publish:
+          dockerimages:
+            machine-controller-manager-provider-openstack:
+              tag_as_latest: true
