@@ -59,8 +59,11 @@ import (
 //
 func (p *Provider) CreateMachine(ctx context.Context, req *driver.CreateMachineRequest) (*driver.CreateMachineResponse, error) {
 	// Log messages to track request
-	klog.V(2).Infof("Machine creation request has been recieved for %q", req.Machine.Name)
+	klog.V(2).Infof("Machine creation request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("Machine creation request has been processed for %q", req.Machine.Name)
+
+	// providerConfig := req.MachineClass.Provid
+
 
 	return &driver.CreateMachineResponse{}, status.Error(codes.Unimplemented, "")
 }

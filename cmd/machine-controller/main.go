@@ -25,16 +25,19 @@ import (
 	"fmt"
 	"os"
 
-	cp "github.com/gardener/machine-controller-manager-provider-openstack/pkg/provider"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/spi"
 	_ "github.com/gardener/machine-controller-manager/pkg/util/client/metrics/prometheus" // for client metric registration
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/app"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/app/options"
 	_ "github.com/gardener/machine-controller-manager/pkg/util/reflector/prometheus" // for reflector metric registration
 	_ "github.com/gardener/machine-controller-manager/pkg/util/workqueue/prometheus" // for workqueue metric registration
 	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/install"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/provider"
 )
 
 func main() {
@@ -46,11 +49,20 @@ func main() {
 	logs.InitLogs()
 	defer logs.FlushLogs()
 
-	provider := cp.NewProvider(&spi.PluginSPIImpl{})
-
-	if err := app.Run(s, provider); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
+	scheme := runtime.NewScheme()
+	if err := install.AddToScheme(scheme); err != nil {
+		fatal(err, "failed to install scheme")
 	}
 
+	provider := provider.NewProvider(serializer.NewCodecFactory(scheme).UniversalDecoder())
+
+	if err := app.Run(s, provider); err != nil {
+		fatal(err, "failed to run application")
+	}
+}
+
+
+func fatal(err error, msg string) {
+	fmt.Fprintf(os.Stderr, "[FATAL] %s: %v", msg, err)
+	os.Exit(1)
 }

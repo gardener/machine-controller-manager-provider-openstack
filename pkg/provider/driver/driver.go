@@ -74,6 +74,8 @@ corev1 "k8s.io/api/core/v1"
 "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 "github.com/gophercloud/gophercloud/pagination"
 "github.com/gophercloud/utils/client"
+
+g
 "github.com/gophercloud/utils/openstack/clientconfig"
 )
 

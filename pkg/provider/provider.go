@@ -19,19 +19,18 @@ package provider
 
 import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
-
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Provider is the struct that implements the driver interface
 // It is used to implement the basic driver functionalities
 type Provider struct {
-	SPI openstack.SessionProviderInterface
+	decoder runtime.Decoder
 }
 
 // NewProvider returns an empty provider object
-func NewProvider(spi openstack.SessionProviderInterface) driver.Driver {
+func NewProvider(decoder runtime.Decoder) driver.Driver {
 	return &Provider{
-		SPI: spi,
+		decoder: decoder,
 	}
 }
