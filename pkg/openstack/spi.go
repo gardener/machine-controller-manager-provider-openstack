@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package spi
+package openstack
 
 // SessionProviderInterface provides an interface to deal with cloud provider session
 // Example interfaces are listed below.

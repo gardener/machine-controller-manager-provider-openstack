@@ -18,18 +18,19 @@ limitations under the License.
 package provider
 
 import (
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/spi"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 )
 
 // Provider is the struct that implements the driver interface
 // It is used to implement the basic driver functionalities
 type Provider struct {
-	SPI spi.SessionProviderInterface
+	SPI openstack.SessionProviderInterface
 }
 
 // NewProvider returns an empty provider object
-func NewProvider(spi spi.SessionProviderInterface) driver.Driver {
+func NewProvider(spi openstack.SessionProviderInterface) driver.Driver {
 	return &Provider{
 		SPI: spi,
 	}

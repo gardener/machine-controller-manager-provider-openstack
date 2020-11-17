@@ -13,22 +13,15 @@
 # limitations under the License.
 
 BINARY_PATH         := bin/
+REPO_ROOT 			:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 COVERPROFILE        := test/output/coverprofile.out
 IMAGE_REPOSITORY    := <link-to-image-repo>
 IMAGE_TAG           := $(shell cat VERSION)
 PROVIDER_NAME       := SampleProvider
 PROJECT_NAME        := gardener
-CONTROL_NAMESPACE  := default
-CONTROL_KUBECONFIG := dev/target-kubeconfig.yaml
-TARGET_KUBECONFIG  := dev/target-kubeconfig.yaml
-
-#########################################
-# Rules for running helper scripts
-#########################################
-
-.PHONY: rename-project
-rename-project:
-	@./hack/rename-project ${PROJECT_NAME} ${PROVIDER_NAME}
+CONTROL_NAMESPACE  	:= default
+CONTROL_KUBECONFIG 	:= dev/target-kubeconfig.yaml
+TARGET_KUBECONFIG  	:= dev/target-kubeconfig.yaml
 
 #########################################
 # Rules for starting machine-controller locally
@@ -51,6 +44,52 @@ start:
 			--machine-safety-orphan-vms-period=30m \
 			--v=3
 
+#####################################################################
+# Rules for verification, formatting, linting, testing and cleaning #
+#####################################################################
+
+.PHONY: install-requirements
+install-requirements:
+	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/ahmetb/gen-crd-api-reference-docs
+	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/golang/mock/mockgen
+	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/onsi/ginkgo/ginkgo
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/install-requirements.sh
+
+.PHONY: check-generate
+check-generate:
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-generate.sh $(REPO_ROOT)
+
+.PHONY: check
+check:
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-charts.sh ./charts
+
+.PHONY: generate
+generate:
+	@env GOMODULE111=on go generate -mod=vendor ./pkg/...
+
+.PHONY: format
+format:
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/format.sh ./cmd ./pkg ./test
+
+.PHONY: test
+test:
+	@SKIP_FETCH_TOOLS=1 $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/test.sh ./cmd/... ./pkg/...
+
+.PHONY: test-cov
+test-cov:
+	@SKIP_FETCH_TOOLS=1 $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/test-cover.sh ./cmd/... ./pkg/...
+
+.PHONY: test-clean
+test-clean:
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/test-cover-clean.sh
+
+.PHONY: verify
+verify: check format test
+
+.PHONY: verify-extended
+verify-extended: install-requirements check-generate check format test-cov test-clean
+
 #########################################
 # Rules for re-vendoring
 #########################################
@@ -59,6 +98,8 @@ start:
 revendor:
 	@env GO111MODULE=on go mod vendor -v
 	@env GO111MODULE=on go mod tidy -v
+	@chmod +x $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/*
+	@chmod +x $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/.ci/*
 
 .PHONY: update-dependencies
 update-dependencies:
@@ -107,6 +148,7 @@ rename-binaries:
 
 .PHONY: clean
 clean:
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/clean.sh ./cmd/... ./pkg/... ./test/...
 	@rm -rf bin/
 	@rm -f *linux-amd64
 	@rm -f *darwin-amd64
