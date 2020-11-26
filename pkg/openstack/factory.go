@@ -32,15 +32,24 @@ import (
 	"k8s.io/klog"
 )
 
-func NewClientFactoryFromSecret(secret *corev1.Secret) (ServiceClientFactory, error) {
-	creds, err := extractCredentials(secret.Data)
-	if err != nil {
-		return nil, fmt.Errorf("error extracting credentials from secret: %v", err)
+
+func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
+	if secret.Data == nil {
+		return nil, fmt.Errorf("secret does not contain any data")
 	}
-	return newClientFactoryFromCredentials(creds)
+
+	creds := ExtractCredentials(secret)
+	provider, err := newAuthenticatedProviderClientFromCredentials(creds)
+	if err != nil {
+		return nil, fmt. Errorf("error creating OpenStack client from Credentials: %v", err)
+	}
+
+	return &ClientFactory{
+		providerClient: provider,
+	}, nil
 }
 
-func newClientFactoryFromCredentials(credentials *credentials) (ServiceClientFactory, error){
+func newAuthenticatedProviderClientFromCredentials(credentials *Credentials) (*gophercloud.ProviderClient, error){
 	config := &tls.Config{}
 
 	if credentials.CACert != nil {
@@ -106,27 +115,9 @@ func newClientFactoryFromCredentials(credentials *credentials) (ServiceClientFac
 		return nil, err
 	}
 
-	return &ServiceClientFactoryImpl{
-		providerClient: provider,
-	}, nil
+	return provider, nil
 }
 
-// IsNotFoundError checks if an error returned by OpenStack is caused by HTTP 404 status code.
-func IsNotFoundError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	if _, ok := err.(gophercloud.ErrDefault404); ok {
-		return true
-	}
-
-	if _, ok := err.(gophercloud.Err404er); ok {
-		return true
-	}
-
-	return false
-}
 
 type logger struct{}
 
@@ -155,4 +146,12 @@ func (l logger) Printf(format string, args ...interface{}) {
 			klog.InfoDepth(skip, v)
 		}
 	}
+}
+
+func (f *ClientFactory) Compute() (Compute, error){
+	return newNovaV2(f.providerClient, gophercloud.EndpointOpts{})
+}
+
+func (f *ClientFactory) Network() (Network, error){
+	return newNeutronV2(f.providerClient, gophercloud.EndpointOpts{})
 }

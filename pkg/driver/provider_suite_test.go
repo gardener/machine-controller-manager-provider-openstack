@@ -10,7 +10,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package provider
+package driver
 
 import (
 	"testing"
@@ -21,5 +21,5 @@ import (
 
 func TestProvider(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Provider Suite")
+	RunSpecs(t, "OpenstackDriver Suite")
 }

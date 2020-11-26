@@ -14,10 +14,30 @@
  * limitations under the License.
  */
 
-package apis
+package openstack
 
-// ProviderSpec is the spec to be used while parsing the calls.
-type ProviderSpec struct {
-	// APIVersion        string                      `json:"apiVersion,omitempty"`
-	// AMI               string                      `json:"ami,omitempty"`
+import (
+	"github.com/gophercloud/gophercloud"
+)
+
+// IsNotFoundError checks if an error returned by OpenStack is caused by HTTP 404 status code.
+func IsNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if _, ok := err.(gophercloud.ErrDefault404); ok {
+		return true
+	}
+
+	if _, ok := err.(gophercloud.Err404er); ok {
+		return true
+	}
+
+	if _, ok := err.(gophercloud.ErrResourceNotFound); ok {
+		return true
+	}
+
+	return false
 }
+

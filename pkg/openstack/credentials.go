@@ -17,40 +17,14 @@
 package openstack
 
 import (
-	"fmt"
 	"strings"
+
+	corev1 "k8s.io/api/core/v1"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 )
 
-const (
-	// OpenStackAuthURL is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackAuthURL string = "authURL"
-	// OpenStackCACert is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackCACert string = "caCert"
-	// OpenStackInsecure is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackInsecure string = "insecure"
-	// OpenStackDomainName is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackDomainName string = "domainName"
-	// OpenStackDomainID is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackDomainID string = "domainID"
-	// OpenStackTenantName is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackTenantName string = "tenantName"
-	// OpenStackTenantID is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackTenantID string = "tenantID"
-	// OpenStackUserDomainName is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackUserDomainName string = "userDomainName"
-	// OpenStackUserDomainID is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackUserDomainID string = "userDomainID"
-	// OpenStackUsername is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackUsername string = "username"
-	// OpenStackPassword is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackPassword string = "password"
-	// OpenStackClientCert is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackClientCert string = "clientCert"
-	// OpenStackClientKey is a constant for a key name that is part of the OpenStack cloud credentials.
-	OpenStackClientKey string = "clientKey"
-)
-
-type credentials struct {
+type Credentials struct {
 	DomainName     string
 	DomainID       string
 	UserDomainName string
@@ -70,64 +44,39 @@ type credentials struct {
 	AuthURL  string
 }
 
-func extractCredentials(data map[string][]byte) (*credentials, error) {
-	authURL, ok := data[OpenStackAuthURL]
-	if !ok {
-		return nil, fmt.Errorf("missing %s in secret", OpenStackAuthURL)
-	}
-	username, ok := data[OpenStackUsername]
-	if !ok {
-		return nil, fmt.Errorf("missing %s in secret", OpenStackUsername)
-	}
-	password, ok := data[OpenStackPassword]
-	if !ok {
-		return nil, fmt.Errorf("missing %s in secret", OpenStackPassword)
-	}
+func ExtractCredentials(secret *corev1.Secret) *Credentials {
+	data := secret.Data
+
+	authURL := data[cloudprovider.OpenStackAuthURL]
+	username := data[cloudprovider.OpenStackUsername]
+	password := data[cloudprovider.OpenStackPassword]
 
 	// optional OS_USER_DOMAIN_NAME
-	userDomainName := data[OpenStackUserDomainName]
+	userDomainName := data[cloudprovider.OpenStackUserDomainName]
 	// optional OS_USER_DOMAIN_ID
-	userDomainID := data[OpenStackUserDomainID]
+	userDomainID := data[cloudprovider.OpenStackUserDomainID]
 
-	domainName, ok := data[OpenStackDomainName]
-	domainID, ok2 := data[OpenStackDomainID]
-	if !ok && !ok2 {
-		return nil, fmt.Errorf("missing %s or %s in secret", OpenStackDomainName, OpenStackDomainID)
-	}
+	domainName := data[cloudprovider.OpenStackDomainName]
+	domainID := data[cloudprovider.OpenStackDomainID]
 
-	tenantName, ok := data[OpenStackTenantName]
-	tenantID, ok2 := data[OpenStackTenantID]
-	if !ok && !ok2 {
-		return nil, fmt.Errorf("missing %s or %s in secret", OpenStackTenantName, OpenStackTenantID)
-	}
+	tenantName := data[cloudprovider.OpenStackTenantName]
+	tenantID := data[cloudprovider.OpenStackTenantID]
 
 	var caCert, clientCert, clientKey []byte
-	if caCert, ok = data[OpenStackCACert]; !ok {
+	var ok bool
+	if caCert, ok = data[cloudprovider.OpenStackCACert]; !ok {
 		caCert = nil
 	}
-	if clientCert, ok = data[OpenStackClientCert]; !ok {
+	if clientCert, ok = data[cloudprovider.OpenStackClientCert]; !ok {
 		clientCert = nil
 	}
-	if clientKey, ok = data[OpenStackClientKey]; !ok {
+	if clientKey, ok = data[cloudprovider.OpenStackClientKey]; !ok {
 		clientKey = nil
 	}
 
-	if len(clientCert) != 0 && len(clientKey) == 0 {
-		return nil, fmt.Errorf("%s missing in secret", OpenStackClientKey)
-	}
+	insecure := strings.TrimSpace(string(data[cloudprovider.OpenStackInsecure])) == "true"
 
-	var insecure bool
-	if insecureStr, ok := data[OpenStackInsecure]; ok {
-		switch string(insecureStr) {
-		case "true":
-			insecure = true
-		case "false":
-		default:
-			return nil, fmt.Errorf("invalid value for boolean field %s: %s ", OpenStackInsecure, string(insecureStr))
-		}
-	}
-
-	return &credentials{
+	return &Credentials{
 		DomainName:     strings.TrimSpace(string(domainName)),
 		DomainID:       strings.TrimSpace(string(domainID)),
 		UserDomainName: strings.TrimSpace(string(userDomainName)),
@@ -141,5 +90,5 @@ func extractCredentials(data map[string][]byte) (*credentials, error) {
 		ClientKey:      clientKey,
 		CACert:         caCert,
 		Insecure:       insecure,
-	}, nil
+	}
 }

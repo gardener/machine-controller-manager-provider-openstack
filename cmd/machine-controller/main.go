@@ -37,7 +37,8 @@ import (
 	"k8s.io/component-base/logs"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/install"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/provider"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"
 )
 
 func main() {
@@ -54,7 +55,7 @@ func main() {
 		fatal(err, "failed to install scheme")
 	}
 
-	provider := provider.NewProvider(serializer.NewCodecFactory(scheme).UniversalDecoder())
+	provider := driver.NewOpenstackDriver(serializer.NewCodecFactory(scheme).UniversalDecoder(), openstack.NewClientFactoryFromSecret)
 
 	if err := app.Run(s, provider); err != nil {
 		fatal(err, "failed to run application")

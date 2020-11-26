@@ -15,22 +15,33 @@ limitations under the License.
 */
 
 // Package provider contains the cloud provider specific implementations to manage machines
-package provider
+package driver
 
 import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 )
 
-// Provider is the struct that implements the driver interface
+// OpenstackDriver is the struct that implements the driver interface
 // It is used to implement the basic driver functionalities
-type Provider struct {
+type OpenstackDriver struct {
 	decoder runtime.Decoder
+	clientConstructor openstack.ClientConstructor
 }
 
-// NewProvider returns an empty provider object
-func NewProvider(decoder runtime.Decoder) driver.Driver {
-	return &Provider{
+// NewOpenstackDriver returns an empty provider object
+func NewOpenstackDriver(decoder runtime.Decoder, constructor openstack.ClientConstructor) driver.Driver {
+	return &OpenstackDriver{
 		decoder: decoder,
+		clientConstructor: constructor,
 	}
+}
+
+type executor struct {
+	compute openstack.Compute
+	network openstack.Network
+	cfg *api.MachineProviderConfig
 }

@@ -21,15 +21,15 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type MachineClassProviderConfig struct{
+type MachineProviderConfig struct{
 	// +optional
 	metav1.TypeMeta `json:",inline"`
 
 	// +optional
-	Spec MachineClassSpec `json:"spec,omitempty"`
+	Spec MachineProviderConfigSpec `json:"spec,omitempty"`
 }
 
-type MachineClassSpec struct {
+type MachineProviderConfigSpec struct {
 	ImageID          string                  `json:"imageID"`
 	ImageName        string                  `json:"imageName"`
 	Region           string                  `json:"region"`
@@ -44,5 +44,12 @@ type MachineClassSpec struct {
 	RootDiskSize     int                     `json:"rootDiskSize,omitempty"` // in GB
 	UseConfigDrive   *bool                   `json:"useConfigDrive,omitempty"`
 	ServerGroupID    *string                 `json:"serverGroupID,omitempty"`
+	Networks         []OpenStackNetwork      `json:"networks,omitempty"`
 }
 
+
+type OpenStackNetwork struct {
+	Id         string `json:"id,omitempty"` // takes priority before name
+	Name       string `json:"name,omitempty"`
+	PodNetwork bool   `json:"podNetwork,omitempty"`
+}

@@ -21,13 +21,13 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type MachineClassProviderConfig struct {
+type MachineProviderConfig struct {
 	metav1.TypeMeta
 
-	Spec MachineClassSpec
+	Spec MachineProviderConfigSpec
 }
 
-type MachineClassSpec struct {
+type MachineProviderConfigSpec struct {
 	ImageID          string
 	ImageName        string
 	Region           string
@@ -42,4 +42,11 @@ type MachineClassSpec struct {
 	RootDiskSize     int
 	UseConfigDrive   *bool
 	ServerGroupID    *string
+	Networks         []OpenStackNetwork
+}
+
+type OpenStackNetwork struct {
+	Id         string
+	Name       string
+	PodNetwork bool
 }
