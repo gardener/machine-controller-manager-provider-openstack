@@ -31,10 +31,7 @@ import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
@@ -75,7 +72,7 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 	klog.V(2).Infof("Machine creation request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("Machine creation request has been processed for %q", req.Machine.Name)
 
-	providerConfig, err := p.decodeProviderSpec(&req.MachineClass.ProviderSpec)
+	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -96,190 +93,20 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	keyName := providerConfig.Spec.KeyName
-	imageName := providerConfig.Spec.ImageName
-	imageID := providerConfig.Spec.ImageID
-	networkID := providerConfig.Spec.NetworkID
-	subnetID := providerConfig.Spec.SubnetID
-	specNetworks := providerConfig.Spec.Networks
-	securityGroups := providerConfig.Spec.SecurityGroups
-	availabilityZone := providerConfig.Spec.AvailabilityZone
-	metadata := providerConfig.Spec.Tags
-	podNetworkCidr := providerConfig.Spec.PodNetworkCidr
-	rootDiskSize := providerConfig.Spec.RootDiskSize
-	useConfigDrive := providerConfig.Spec.UseConfigDrive
-	flavorName := providerConfig.Spec.FlavorName
-
-	userData := req.Secret.Data[cloudprovider.UserData]
-
-	//todo check if existing
-
-	var createOpts servers.CreateOptsBuilder
-	var imageRef string
-
-	// use imageID if provided, otherwise try to resolve the imageName to an imageID
-	if imageID != "" {
-		imageRef = imageID
-	} else {
-		imageRef, err = computeClient.ImageIDFromName(imageName)
-		if err != nil {
-			return nil, status.Error(codes.NotFound, err.Error())
-		}
+	ex := executor{
+		compute: computeClient,
+		network: networkClient,
+		cfg:     *providerConfig,
 	}
 
-	var serverNetworks []servers.Network
-	var podNetworkIds = make(map[string]struct{})
-	// networkClient port allocation in existing networkClient if a networkID is specified
-	if len(networkID) > 0 {
-		klog.V(3).Infof("existing networkClient %q specified, need to pre-allocate ports ", networkID)
-
-		// create port in given subnet
-		if subnetID != nil && len(*subnetID) > 0 {
-			if _, err := networkClient.GetSubnet(*subnetID); err != nil {
-				return nil, status.Error(codes.NotFound, err.Error())
-			}
-
-			klog.V(3).Infof("creating port in subnet %s", *subnetID)
-
-			var securityGroupIDs []string
-			for _, securityGroup := range securityGroups {
-				securityGroupID, err := networkClient.GroupIDFromName(securityGroup)
-				if err != nil {
-					return nil, status.Error(codes.NotFound, err.Error())
-				}
-				securityGroupIDs = append(securityGroupIDs, securityGroupID)
-			}
-
-			port, err := networkClient.CreatePort(&ports.CreateOpts{
-				Name:                req.Machine.Name,
-				NetworkID:           networkID,
-				FixedIPs:            []ports.IP{{SubnetID: *subnetID}},
-				AllowedAddressPairs: []ports.AddressPair{{IPAddress: podNetworkCidr}},
-				SecurityGroups:      &securityGroupIDs,
-			})
-			if err != nil {
-				return nil, errorWrap(codes.Aborted, err, "failed to create port in subnet with subnetID %s", *subnetID)
-			}
-			klog.V(3).Infof("port with ID %s successfully created", port.ID)
-			serverNetworks = append(serverNetworks, servers.Network{UUID: networkID, Port: port.ID})
-		} else {
-			serverNetworks = append(serverNetworks, servers.Network{UUID: networkID})
-		}
-		podNetworkIds[networkID] = struct{}{}
-	} else {
-		for _, network := range specNetworks {
-			var resolvedNetworkID string
-			if len(network.Id) > 0 {
-				resolvedNetworkID = networkID
-			} else {
-				resolvedNetworkID, err = networkClient.NetworkIDFromName(network.Name)
-				if err != nil {
-					return nil, errorWrap(codes.Aborted, err, "failed to resolve network ID from name %s", network.Name)
-				}
-			}
-			serverNetworks = append(serverNetworks, servers.Network{UUID: resolvedNetworkID})
-			if network.PodNetwork {
-				podNetworkIds[resolvedNetworkID] = struct{}{}
-			}
-		}
-	}
-
-	createOpts = &servers.CreateOpts{
-		ServiceClient:    computeClient.ServiceClient(),
-		Name:             req.Machine.Name,
-		FlavorName:       flavorName,
-		ImageRef:         imageRef,
-		Networks:         serverNetworks,
-		SecurityGroups:   securityGroups,
-		Metadata:         metadata,
-		UserData:         userData,
-		AvailabilityZone: availabilityZone,
-		ConfigDrive:      useConfigDrive,
-	}
-
-	createOpts = &keypairs.CreateOptsExt{
-		CreateOptsBuilder: createOpts,
-		KeyName:           keyName,
-	}
-
-	if providerConfig.Spec.ServerGroupID != nil {
-		hints := schedulerhints.SchedulerHints{
-			Group: *providerConfig.Spec.ServerGroupID,
-		}
-		createOpts = schedulerhints.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			SchedulerHints:    hints,
-		}
-	}
-
-	if rootDiskSize > 0 {
-		blockDevices, err := resourceInstanceBlockDevicesV2(rootDiskSize, imageRef)
-		if err != nil {
-			return nil, err
-		}
-
-		createOpts = &bootfromvolume.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			BlockDevice:       blockDevices,
-		}
-	}
-
-	klog.V(3).Infof("creating machine")
-
-	var server *servers.Server
-	// If a custom block_device (root disk size is provided) we need to boot from volume
-	if rootDiskSize > 0 {
-		server, err = computeClient.BootFromVolume(createOpts)
-	} else {
-		server, err = computeClient.CreateServer(createOpts)
-	}
-
+	machID, nodeName, err := ex.createMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
 	if err != nil {
-		return nil, fmt.Errorf("error creating the server: %s", err)
-	}
-
-	machineID := p.encodeProviderID(providerConfig.Spec.Region, server.ID)
-	deleteOnFail := func(err error) error {
-		if errIn := p.deleteMachine(ctx, machineID); errIn != nil {
-			return fmt.Errorf("Error deleting machine %s (%s) after unsuccessful create attempt: %s", machineID, errIn.Error(), err.Error())
-		}
-		return err
-	}
-
-	err = waitForStatus(computeClient, server.ID, []string{"BUILD"}, []string{"ACTIVE"}, 600)
-	if err != nil {
-		return nil, deleteOnFail(fmt.Errorf("error waiting for the %q server status: %s", server.ID, err))
-	}
-
-	listOpts := &ports.ListOpts{
-		DeviceID: server.ID,
-	}
-
-	allPorts, err := networkClient.ListPorts(listOpts)
-	if err != nil {
-		return nil, deleteOnFail(fmt.Errorf("failed to get ports: %s", err))
-	}
-
-	if len(allPorts) == 0 {
-		return nil, deleteOnFail(fmt.Errorf("got an empty port list for server ID %s", server.ID))
-	}
-
-	for _, port := range allPorts {
-		for id := range podNetworkIds {
-			if port.NetworkID == id {
-				if err := networkClient.UpdatePort(port.ID, ports.UpdateOpts{
-
-					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podNetworkCidr}},
-				}); err != nil {
-					return nil, deleteOnFail(fmt.Errorf("failed to update allowed address pair for port ID %s: %s", port.ID, err))
-				}
-			}
-		}
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &driver.CreateMachineResponse{
-		ProviderID: machineID,
-		NodeName:   req.Machine.Name,
+		ProviderID: machID,
+		NodeName:   nodeName,
 	}, nil
 }
 
@@ -536,7 +363,7 @@ func (p *OpenstackDriver) getVMs(ctx context.Context, machineID string, provider
 }
 
 func (p *OpenstackDriver) deletePort(machineName string, provider *api.MachineProviderConfig, nwClient openstack.Network) error {
-	if provider.Spec.SubnetID == nil || len(*provider.Spec.SubnetID) == 0{
+	if provider.Spec.SubnetID == nil || len(*provider.Spec.SubnetID) == 0 {
 		return nil
 	}
 

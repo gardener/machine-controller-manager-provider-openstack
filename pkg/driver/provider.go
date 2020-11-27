@@ -43,5 +43,5 @@ func NewOpenstackDriver(decoder runtime.Decoder, constructor openstack.ClientCon
 type executor struct {
 	compute openstack.Compute
 	network openstack.Network
-	cfg *api.MachineProviderConfig
+	cfg api.MachineProviderConfig
 }

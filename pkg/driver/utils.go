@@ -29,7 +29,7 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
 )
 
-func (p *OpenstackDriver) decodeProviderSpec(raw *runtime.RawExtension) (cfg *openstack.MachineProviderConfig, err error) {
+func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (cfg *openstack.MachineProviderConfig, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("failed to decode provider spec: %v", err)
@@ -58,15 +58,6 @@ func (p *OpenstackDriver) validateRequest(config *openstack.MachineProviderConfi
 	return validation.ValidateSecret(secret)
 }
 
-func (p *OpenstackDriver) encodeProviderID(region string, machineID string) string {
-	return fmt.Sprintf("openstack:///%s/%s", region, machineID)
-}
-
-func (p *OpenstackDriver) decodeProviderID(id string) string {
-	splitProviderID := strings.Split(id, "/")
-	return splitProviderID[len(splitProviderID)-1]
-}
-
 func errorWrap(code codes.Code, err error, message string, args ...interface{}) error {
 	args = append(args, err)
 	return status.Error(code, fmt.Sprintf(message+": %v", args...))
@@ -80,3 +71,29 @@ func strSliceContains(haystack []string, needle string) bool {
 	}
 	return false
 }
+
+func isEmptyStringPtr(ptr *string) bool {
+	if ptr == nil {
+		return true
+	}
+
+	if len(strings.TrimSpace(*ptr)) == 0 {
+		return true
+	}
+
+	return false
+}
+
+func isEmptyString(str string) bool {
+	return len(strings.TrimSpace(str)) == 0
+}
+
+func encodeProviderID(region string, machineID string) string {
+	return fmt.Sprintf("openstack:///%s/%s", region, machineID)
+}
+
+func decodeProviderID(id string) string {
+	splitProviderID := strings.Split(id, "/")
+	return splitProviderID[len(splitProviderID)-1]
+}
+
