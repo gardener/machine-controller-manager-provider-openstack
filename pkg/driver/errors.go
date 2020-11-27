@@ -16,3 +16,10 @@
 
 package driver
 
+import (
+	"fmt"
+)
+
+var (
+	ErrNotFound = fmt.Errorf("")
+)

@@ -19,21 +19,15 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
-	"time"
 
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
-	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 )
 
 // NOTE
@@ -99,14 +93,14 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		cfg:     *providerConfig,
 	}
 
-	machID, nodeName, err := ex.createMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
+	providerID, err := ex.createMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &driver.CreateMachineResponse{
-		ProviderID: machID,
-		NodeName:   nodeName,
+		ProviderID: providerID,
+		NodeName:   req.Machine.Name,
 	}, nil
 }
 
@@ -126,7 +120,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 	klog.V(2).Infof("Machine deletion request has been recieved for %q", req.Machine.Name)
 	defer klog.V(2).Infof("Machine deletion request has been processed for %q", req.Machine.Name)
 
-	providerConfig, err := p.decodeProviderSpec(&req.MachineClass.ProviderSpec)
+	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -134,11 +128,30 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	err = p.deleteMachine(ctx, "")
+	factory, err := p.clientConstructor(req.Secret)
 	if err != nil {
-		return nil, errorWrap(codes.Aborted, err, "")
+		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return &driver.DeleteMachineResponse{}, status.Error(codes.Unimplemented, "")
+	computeClient, err := factory.Compute()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	networkClient, err := factory.Network()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	ex := executor{
+		compute: computeClient,
+		network: networkClient,
+		cfg:     *providerConfig,
+	}
+
+	err = ex.deleteMachine(ctx, req.Machine.Name, req.Machine.Spec.ProviderID)
+	if err != nil {
+		return nil, errorWrap(codes.Internal, err, "")
+	}
+	return &driver.DeleteMachineResponse{}, nil
 }
 
 // GetMachineStatus handles a machine get status request
@@ -159,13 +172,54 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 // The request should return a NOT_FOUND (5) status error code if the machine is not existing
 func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
 	// Log messages to track start and end of request
-	klog.V(2).Infof("Get request has been recieved for %q", req.Machine.Name)
-	defer klog.V(2).Infof("Machine get request has been processed successfully for %q", req.Machine.Name)
+	klog.V(2).Infof("Get request has been received for %q", req.Machine.Name)
+	defer klog.V(2).Infof("Machine get request has been processed for %q", req.Machine.Name)
 
-	return &driver.GetMachineStatusResponse{}, status.Error(codes.Unimplemented, "")
+	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// TODO(KA): We can actually extrapolate the serverID for machine by doing a reverse name search and matching metadata tags with MachineClass.
+	if isEmptyString(req.Machine.Spec.ProviderID) {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("missing providerID from machine spec"))
+	}
+
+	factory, err := p.clientConstructor(req.Secret)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	computeClient, err := factory.Compute()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	networkClient, err := factory.Network()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	ex := executor{
+		compute: computeClient,
+		network: networkClient,
+		cfg:     *providerConfig,
+	}
+
+	if err := ex.getMachineStatus(ctx, req.Machine.Name, req.Machine.Spec.ProviderID); err != nil {
+		if errors.Is(ErrNotFound, err) {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &driver.GetMachineStatusResponse{
+		ProviderID: req.Machine.Spec.ProviderID,
+		NodeName:   req.Machine.Name,
+	}, nil
 }
 
-// ListMachines lists all the machines possibilly created by a providerSpec
+// ListMachines lists all the machines possibly created by a providerSpec
 // Identifying machines created by a given providerSpec depends on the OPTIONAL IMPLEMENTATION LOGIC
 // you have used to identify machines created by a providerSpec. It could be tags/resource-groups etc
 // OPTIONAL METHOD
@@ -183,7 +237,41 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 	klog.V(2).Infof("List machines request has been recieved for %q", req.MachineClass.Name)
 	defer klog.V(2).Infof("List machines request has been recieved for %q", req.MachineClass.Name)
 
-	return &driver.ListMachinesResponse{}, status.Error(codes.Unimplemented, "")
+	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	factory, err := p.clientConstructor(req.Secret)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	computeClient, err := factory.Compute()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	networkClient, err := factory.Network()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	ex := executor{
+		compute: computeClient,
+		network: networkClient,
+		cfg:     *providerConfig,
+	}
+
+	machines, err := ex.listMachines(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &driver.ListMachinesResponse{
+		MachineList: machines,
+	}, nil
 }
 
 // GetVolumeIDs returns a list of Volume IDs for all PV Specs for whom an provider volume was found
@@ -197,9 +285,19 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 func (p *OpenstackDriver) GetVolumeIDs(ctx context.Context, req *driver.GetVolumeIDsRequest) (*driver.GetVolumeIDsResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("GetVolumeIDs request has been recieved for %q", req.PVSpecs)
-	defer klog.V(2).Infof("GetVolumeIDs request has been processed successfully for %q", req.PVSpecs)
+	defer klog.V(2).Infof("GetVolumeIDs request has been processed for %q", req.PVSpecs)
 
-	return &driver.GetVolumeIDsResponse{}, status.Error(codes.Unimplemented, "")
+	names := []string{}
+	for _, spec := range req.PVSpecs {
+		if spec.Cinder != nil {
+			name := spec.Cinder.VolumeID
+			names = append(names, name)
+		} else if spec.CSI != nil && spec.CSI.Driver == cinderDriverName && spec.CSI.VolumeHandle != "" {
+			name := spec.CSI.VolumeHandle
+			names = append(names, name)
+		}
+	}
+	return &driver.GetVolumeIDsResponse{VolumeIDs: names}, nil
 }
 
 // GenerateMachineClassForMigration helps in migration of one kind of machineClass CR to another kind.
@@ -227,164 +325,4 @@ func (p *OpenstackDriver) GenerateMachineClassForMigration(ctx context.Context, 
 	defer klog.V(2).Infof("MigrateMachineClass request has been processed successfully for %q", req.ClassSpec)
 
 	return &driver.GenerateMachineClassForMigrationResponse{}, status.Error(codes.Unimplemented, "")
-}
-
-func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfromvolume.BlockDevice, error) {
-	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
-	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
-		UUID:                imageID,
-		VolumeSize:          rootDiskSize,
-		BootIndex:           0,
-		DeleteOnTermination: true,
-		SourceType:          "image",
-		DestinationType:     "volume",
-	}
-	klog.V(2).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
-	return blockDeviceOpts, nil
-}
-
-func waitForStatus(c openstack.Compute, id string, pending []string, target []string, secs int) error {
-	return wait.Poll(time.Second, 600*time.Second, func() (done bool, err error) {
-		current, err := c.GetServer(id)
-		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); ok && strSliceContains(target, "DELETED") {
-				return true, nil
-			}
-			return false, err
-		}
-
-		if strSliceContains(target, current.Status) {
-			return true, nil
-		}
-
-		// if there is no pending statuses defined or current status is in the pending list, then continue polling
-		if len(pending) == 0 || strSliceContains(pending, current.Status) {
-			return false, nil
-		}
-
-		retErr := fmt.Errorf("unexpected status %q, wanted target %q", current.Status, strings.Join(target, ", "))
-		if current.Status == "ERROR" {
-			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Fault)
-		}
-
-		return false, retErr
-	})
-}
-
-func (p *OpenstackDriver) deleteMachine(ctx context.Context, machineID string) error {
-	return nil
-}
-
-func (p *OpenstackDriver) deleteMachine2(ctx context.Context, machineName, machineID string, providerSpec *api.MachineProviderConfig, compute openstack.Compute, network openstack.Network) error {
-	res, err := p.getVMs(ctx, machineID, providerSpec, compute)
-	if err != nil {
-		return err
-	} else if len(res) > 0 {
-		instanceID := p.decodeProviderID(machineID)
-
-		err = compute.DeleteServer(instanceID)
-		//todo handleisnotfound
-		if err != nil {
-			klog.Errorf("Failed to delete machine with ID: %s", machineID)
-			return err
-		}
-
-		// waiting for the machine to be deleted to release consumed quota resources, 5 minutes should be enough
-		err = waitForStatus(compute, machineID, nil, []string{"DELETED", "SOFT_DELETED"}, 300)
-		if err != nil {
-			return fmt.Errorf("error waiting for the %q server to be deleted: %s", machineID, err)
-		}
-		klog.V(3).Infof("Deleted machine with ID: %s", machineID)
-
-	} else {
-		// No running instance exists with the given machine-ID
-		klog.V(2).Infof("No VM matching the machine-ID found on the provider %q", machineID)
-	}
-
-	if err = p.deletePort(machineName, providerSpec, network); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *OpenstackDriver) getVMs(ctx context.Context, machineID string, providerSpec *api.MachineProviderConfig, compute openstack.Compute) (map[string]string, error) {
-	listOfVMs := map[string]string{}
-
-	searchClusterName := ""
-	searchNodeRole := ""
-
-	for key := range providerSpec.Spec.Tags {
-		if strings.Contains(key, "kubernetes.io-cluster-") {
-			searchClusterName = key
-		} else if strings.Contains(key, "kubernetes.io-role-") {
-			searchNodeRole = key
-		}
-	}
-
-	if searchClusterName == "" || searchNodeRole == "" {
-		return listOfVMs, nil
-	}
-
-	servers, err := compute.ListServers(servers.ListOpts{})
-	if err != nil {
-		klog.Errorf("Could not list instances. Error Message - %s", err)
-		return nil, err
-	}
-
-	for _, server := range servers {
-		clusterName := ""
-		nodeRole := ""
-
-		for key := range server.Metadata {
-			if strings.Contains(key, "kubernetes.io-cluster-") {
-				clusterName = key
-			} else if strings.Contains(key, "kubernetes.io-role-") {
-				nodeRole = key
-			}
-		}
-
-		if clusterName == searchClusterName && nodeRole == searchNodeRole {
-			instanceID := p.encodeProviderID(providerSpec.Spec.Region, server.ID)
-
-			if machineID == "" {
-				listOfVMs[instanceID] = server.Name
-			} else if machineID == instanceID {
-				listOfVMs[instanceID] = server.Name
-				klog.V(3).Infof("Found machine with name: %q", server.Name)
-				break
-			}
-		}
-
-	}
-
-	// Define an anonymous function to be executed on each page's iteration
-	return listOfVMs, err
-}
-
-func (p *OpenstackDriver) deletePort(machineName string, provider *api.MachineProviderConfig, nwClient openstack.Network) error {
-	if provider.Spec.SubnetID == nil || len(*provider.Spec.SubnetID) == 0 {
-		return nil
-	}
-
-	portID, err := nwClient.PortIDFromName(machineName)
-	if err != nil {
-		if openstack.IsNotFoundError(err) {
-			klog.V(3).Infof("port with name %q was not found", machineName)
-			return nil
-		}
-
-		return fmt.Errorf("error deleting port with name %q: %s", machineName, err)
-	}
-
-	klog.V(3).Infof("deleting port with ID %s", portID)
-	err = nwClient.DeletePort(portID)
-	if err != nil {
-		klog.Errorf("Failed to delete port with ID: %s", portID)
-		return err
-	}
-
-	klog.V(3).Infof("Deleted port with ID: %s", portID)
-
-	return nil
 }

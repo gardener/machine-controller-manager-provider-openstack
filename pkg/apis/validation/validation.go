@@ -96,18 +96,18 @@ func validateOSClassSpecTags(tags map[string]string, fldPath *field.Path) field.
 	nodeRole := ""
 
 	for key := range tags {
-		if strings.Contains(key, "kubernetes.io-cluster-") {
+		if strings.Contains(key, ServerTagClusterPrefix) {
 			clusterName = key
-		} else if strings.Contains(key, "kubernetes.io-role-") {
+		} else if strings.Contains(key, ServerTagRolePrefix) {
 			nodeRole = key
 		}
 	}
 
 	if clusterName == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("kubernetes.io-cluster-"), "Tag required of the form kubernetes.io-cluster-****"))
+		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagClusterPrefix), fmt.Sprintf("Tag required of the form %s-****", ServerTagClusterPrefix)))
 	}
 	if nodeRole == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("kubernetes.io-role-"), "Tag required of the form kubernetes.io-role-****"))
+		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagRolePrefix), fmt.Sprintf("Tag required of the form %s-****", ServerTagRolePrefix)))
 	}
 
 	return allErrs

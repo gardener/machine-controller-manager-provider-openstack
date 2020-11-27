@@ -18,71 +18,55 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/gophercloud/gophercloud"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
 
-func (ex *executor) createMachine(ctx context.Context, machineName string, userData []byte) (string, string, error) {
+const(
+	cinderDriverName = "cinder.csi.openstack.org"
+)
+
+func (ex *executor) createMachine(ctx context.Context, machineName string, userData []byte) (string, error) {
 	serverNetworks, podNetworkIDs, err := ex.resolveServerNetworks(machineName)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to resolve server networks: %v", err)
+		return "", fmt.Errorf("failed to resolve server networks: %v", err)
 	}
 
 	server, err := ex.deployServer(machineName, userData, serverNetworks)
 	if err != nil {
-		return "", "", fmt.Errorf("error deploying server: %w", err)
+		return "", fmt.Errorf("error deploying server: %w", err)
 	}
 
-	machineID := encodeProviderID(ex.cfg.Spec.Region, server.ID)
+	providerID := encodeProviderID(ex.cfg.Spec.Region, server.ID)
 	deleteOnFail := func(err error) error {
-		if errIn := ex.deleteMachine(ctx, machineID); errIn != nil {
-			return fmt.Errorf("error deleting machine %q after unsuccessful creation attempt: %s. Original error: %s", machineID, errIn.Error(), err.Error())
+		if errIn := ex.deleteMachine(ctx, machineName, providerID); errIn != nil {
+			return fmt.Errorf("error deleting machine %q after unsuccessful creation attempt: %s. Original error: %s", providerID, errIn.Error(), err.Error())
 		}
 		return err
 	}
 
 	err = ex.waitForStatus(server.ID, []string{"BUILD"}, []string{"ACTIVE"}, 600)
 	if err != nil {
-		return "", "", deleteOnFail(fmt.Errorf("error waiting for the %q server status: %s", server.ID, err))
-	}
-
-	allPorts, err := ex.network.ListPorts(&ports.ListOpts{
-		DeviceID: server.ID,
-	})
-	if err != nil {
-		return "", "", deleteOnFail(fmt.Errorf("failed to get ports: %s", err))
-	}
-
-	if len(allPorts) == 0 {
-		return "", "", deleteOnFail(fmt.Errorf("got an empty port list for server ID %s", server.ID))
-	}
-
-	for _, port := range allPorts {
-		for id := range podNetworkIDs {
-			if port.NetworkID == id {
-				if err := ex.network.UpdatePort(port.ID, ports.UpdateOpts{
-
-					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: id}},
-				}); err != nil {
-					return "", "", deleteOnFail(fmt.Errorf("failed to update allowed address pair for port ID %s: %s", port.ID, err))
-				}
-			}
-		}
+		return "", deleteOnFail(fmt.Errorf("error waiting for the %q server status: %s", server.ID, err))
 	}
 
 	if err := ex.patchServerPortsForPodNetwork(server.ID, podNetworkIDs); err != nil {
-		return "", "", deleteOnFail(fmt.Errorf("failed to patch server ports for server %s: %s", server.ID, err))
+		return "", deleteOnFail(fmt.Errorf("failed to patch server ports for server %s: %s", server.ID, err))
 	}
-	return machineID, machineName, nil
+	return providerID, nil
 }
 
 // resolveServerNetworks processes the networks for the server.
@@ -100,17 +84,16 @@ func (ex *executor) resolveServerNetworks(machineName string) ([]servers.Network
 	// If NetworkID is specified in the spec, we deploy the VMs in an existing Network.
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
 	if !isEmptyString(networkID) {
-		// if no SubnetID is specified, use only the NetworkID.
+		klog.V(3).Infof("deploying in existing network [ID=%q]", networkID)
 		if isEmptyStringPtr(ex.cfg.Spec.SubnetID) {
-			klog.V(3).Infof("deploying in existing network [ID=%q]", networkID)
+			// if no SubnetID is specified, use only the NetworkID.
 			serverNetworks = append(serverNetworks, servers.Network{UUID: ex.cfg.Spec.NetworkID})
 		} else {
-			klog.V(3).Infof("deploying in existing network [ID=%q] and subnet [ID=%q]. Pre-allocating Neutron Port... ", networkID, *subnetID)
+			klog.V(3).Infof("deploying in existing subnet [ID=%q]. Pre-allocating Neutron Port... ", *subnetID)
 			if _, err := ex.network.GetSubnet(*subnetID); err != nil {
 				return nil, nil, err
 			}
 
-			klog.V(3).Infof("creating port in subnet %s", *ex.cfg.Spec.SubnetID)
 			var securityGroupIDs []string
 			for _, securityGroup := range ex.cfg.Spec.SecurityGroups {
 				securityGroupID, err := ex.network.GroupIDFromName(securityGroup)
@@ -157,11 +140,11 @@ func (ex *executor) resolveServerNetworks(machineName string) ([]servers.Network
 	return serverNetworks, podNetworkIDs, nil
 }
 
-func (ex *executor) waitForStatus(id string, pending []string, target []string, secs int) error {
+func (ex *executor) waitForStatus(serverID string, pending []string, target []string, secs int) error {
 	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
-		current, err := ex.compute.GetServer(id)
+		current, err := ex.compute.GetServer(serverID)
 		if err != nil {
-			if _, ok := err.(gophercloud.ErrDefault404); ok && strSliceContains(target, "DELETED") {
+			if openstack.IsNotFoundError(err) && strSliceContains(target, openstack.StatusDeleted) {
 				return true, nil
 			}
 			return false, err
@@ -177,7 +160,7 @@ func (ex *executor) waitForStatus(id string, pending []string, target []string, 
 		}
 
 		retErr := fmt.Errorf("unexpected status %q, wanted target %q", current.Status, strings.Join(target, ", "))
-		if current.Status == "ERROR" {
+		if current.Status == openstack.StatusError {
 			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Fault)
 		}
 
@@ -262,6 +245,15 @@ func (ex *executor) deployServer(machineName string, userData []byte, nws []serv
 	var server *servers.Server
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
+		blockDevices, err := resourceInstanceBlockDevicesV2(rootDiskSize, imageRef)
+		if err != nil {
+			return nil, err
+		}
+
+		createOpts = &bootfromvolume.CreateOptsExt{
+			CreateOptsBuilder: createOpts,
+			BlockDevice:       blockDevices,
+		}
 		server, err = ex.compute.BootFromVolume(createOpts)
 	} else {
 		server, err = ex.compute.CreateServer(createOpts)
@@ -271,6 +263,20 @@ func (ex *executor) deployServer(machineName string, userData []byte, nws []serv
 	}
 
 	return server, err
+}
+
+func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfromvolume.BlockDevice, error) {
+	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
+	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+		UUID:                imageID,
+		VolumeSize:          rootDiskSize,
+		BootIndex:           0,
+		DeleteOnTermination: true,
+		SourceType:          "image",
+		DestinationType:     "volume",
+	}
+	klog.V(2).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
+	return blockDeviceOpts, nil
 }
 
 func (ex *executor) patchServerPortsForPodNetwork(serverID string, podNetworkIDs map[string]struct{}) error {
@@ -299,6 +305,133 @@ func (ex *executor) patchServerPortsForPodNetwork(serverID string, podNetworkIDs
 	return nil
 }
 
-func (ex *executor) deleteMachine(ctx context.Context, machineID string) error {
+func (ex *executor) deleteMachine(ctx context.Context, machineName, providerID string) error {
+	serverID := decodeProviderID(providerID)
+
+	_, err := ex.getVM(ctx, serverID)
+	if err != nil {
+		if errors.Is(ErrNotFound, err) {
+			return nil
+		}
+	}
+
+	if err := ex.compute.DeleteServer(providerID); err != nil {
+		return err
+	}
+
+	if err = ex.waitForStatus(serverID, nil, []string{openstack.StatusDeleted}, 300); err != nil {
+		return fmt.Errorf("error waiting for server [ID=%q] to be deleted: %v", serverID, err)
+	}
+
+	//
+	if !isEmptyStringPtr(ex.cfg.Spec.SubnetID) {
+		return ex.deletePort(ctx, machineName)
+	}
+
 	return nil
 }
+
+func (ex *executor) getVM(ctx context.Context, serverID string) (*servers.Server, error) {
+	server, err := ex.compute.GetServer(serverID)
+	if err != nil {
+		// mask NotFound errors
+		if openstack.IsNotFoundError(err) {
+			return nil, fmt.Errorf("%s%w", err, ErrNotFound)
+		}
+		return nil, err
+	}
+
+	// TODO(KA): is it necessary to scan for tags if we know the serverID ?
+	var (
+		searchClusterName string
+		searchNodeRole    string
+	)
+	for key := range ex.cfg.Spec.Tags {
+		if strings.Contains(key, cloudprovider.ServerTagClusterPrefix) {
+			searchClusterName = key
+		} else if strings.Contains(key, cloudprovider.ServerTagRolePrefix) {
+			searchNodeRole = key
+		}
+	}
+
+	if _, ok := server.Metadata[searchClusterName]; ok {
+		if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
+			return server, nil
+		}
+	}
+
+	return nil, fmt.Errorf("server [ID=%q] found, but cluster/role tags are missing%w", serverID, ErrNotFound)
+
+}
+
+func (ex *executor) deletePort(ctx context.Context, machineName string) error {
+	portID, err := ex.network.PortIDFromName(machineName)
+	if err != nil {
+		if openstack.IsNotFoundError(err) {
+			klog.V(3).Infof("port with name %q was not found", machineName)
+			return nil
+		}
+		return fmt.Errorf("error deleting port with name %q: %s", machineName, err)
+	}
+
+	klog.V(3).Infof("deleting port with ID %s", portID)
+
+	err = ex.network.DeletePort(portID)
+	if err != nil {
+		klog.Errorf("failed to delete port with ID: %s", portID)
+		return err
+	}
+	klog.V(3).Infof("deleted port with ID: %s", portID)
+
+	return nil
+}
+
+func (ex *executor) getMachineStatus(ctx context.Context, machineName, providerID string) error {
+	serverID := decodeProviderID(providerID)
+
+	server, err := ex.getVM(ctx, serverID)
+	if err != nil {
+		return err
+	}
+
+	if server.Name != machineName {
+		return fmt.Errorf("server with ID %q found, but server name %q does not match expected name %q%w", serverID, server.Name, machineName, ErrNotFound)
+	}
+
+	return nil
+}
+
+func (ex *executor) listMachines(ctx context.Context)(map[string]string, error){
+	servers, err := ex.compute.ListServers(&servers.ListOpts{})
+	if err != nil {
+		return nil, err
+	}
+	searchClusterName := ""
+	searchNodeRole := ""
+
+	for key := range ex.cfg.Spec.Tags {
+		if strings.Contains(key, cloudprovider.ServerTagClusterPrefix) {
+			searchClusterName = key
+		} else if strings.Contains(key, cloudprovider.ServerTagRolePrefix) {
+			searchNodeRole = key
+		}
+	}
+
+	// TODO(KA) better tag handling ?
+	if searchClusterName == "" || searchNodeRole == "" {
+		return nil, nil
+	}
+
+	result := map[string]string{}
+	for _, server := range servers {
+		if _, ok := server.Metadata[searchClusterName]; ok {
+			if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
+				providerID := encodeProviderID(ex.cfg.Spec.Region, server.ID)
+				result[providerID] = server.Name
+			}
+		}
+	}
+
+	return result, nil
+}
+

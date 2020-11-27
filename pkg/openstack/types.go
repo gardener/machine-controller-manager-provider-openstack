@@ -24,6 +24,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const (
+	StatusDeleted = "DELETED"
+	StatesSoftDeleted = "SOFT_DELETED"
+	StatusBuild = "BUILD"
+	StatusActive = "ACTIVE"
+	StatusError = "ERROR"
+)
+
 type ClientConstructor func (secret *corev1.Secret) (Factory, error)
 
 type Factory interface {
