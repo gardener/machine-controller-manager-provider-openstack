@@ -149,7 +149,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 
 	err = ex.deleteMachine(ctx, req.Machine.Name, req.Machine.Spec.ProviderID)
 	if err != nil {
-		return nil, errorWrap(codes.Internal, err, "")
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &driver.DeleteMachineResponse{}, nil
 }

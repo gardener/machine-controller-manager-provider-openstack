@@ -30,12 +30,11 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
 )
 
-const(
+const (
 	cinderDriverName = "cinder.csi.openstack.org"
 )
 
@@ -308,6 +307,7 @@ func (ex *executor) patchServerPortsForPodNetwork(serverID string, podNetworkIDs
 func (ex *executor) deleteMachine(ctx context.Context, machineName, providerID string) error {
 	serverID := decodeProviderID(providerID)
 
+	klog.V(1).Infof("finding server with id %s", serverID)
 	_, err := ex.getVM(ctx, serverID)
 	if err != nil {
 		if errors.Is(ErrNotFound, err) {
@@ -315,7 +315,8 @@ func (ex *executor) deleteMachine(ctx context.Context, machineName, providerID s
 		}
 	}
 
-	if err := ex.compute.DeleteServer(providerID); err != nil {
+	klog.V(1).Infof("deleting server with id %s", serverID)
+	if err := ex.compute.DeleteServer(serverID); err != nil {
 		return err
 	}
 
@@ -401,7 +402,7 @@ func (ex *executor) getMachineStatus(ctx context.Context, machineName, providerI
 	return nil
 }
 
-func (ex *executor) listMachines(ctx context.Context)(map[string]string, error){
+func (ex *executor) listMachines(ctx context.Context) (map[string]string, error) {
 	servers, err := ex.compute.ListServers(&servers.ListOpts{})
 	if err != nil {
 		return nil, err
@@ -434,4 +435,3 @@ func (ex *executor) listMachines(ctx context.Context)(map[string]string, error){
 
 	return result, nil
 }
-

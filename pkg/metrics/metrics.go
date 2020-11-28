@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	namespace         = "mcm"
+	namespace         = "openstack"
 	cloudAPISubsystem = "cloud_api"
 )
 
