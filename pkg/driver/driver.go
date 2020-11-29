@@ -21,15 +21,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
 	"k8s.io/klog"
-
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 )
 
+const (
+	openStackMachineClassKind = "OpenstackMachineClass"
+)
 // NOTE
 //
 // The basic working of the controller will work with just implementing the CreateMachine() & DeleteMachine() methods.
@@ -322,7 +324,17 @@ func (p *OpenstackDriver) GetVolumeIDs(ctx context.Context, req *driver.GetVolum
 func (p *OpenstackDriver) GenerateMachineClassForMigration(ctx context.Context, req *driver.GenerateMachineClassForMigrationRequest) (*driver.GenerateMachineClassForMigrationResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("MigrateMachineClass request has been recieved for %q", req.ClassSpec)
-	defer klog.V(2).Infof("MigrateMachineClass request has been processed successfully for %q", req.ClassSpec)
+	defer klog.V(2).Infof("MigrateMachineClass request has been processed for %q", req.ClassSpec)
 
-	return &driver.GenerateMachineClassForMigrationResponse{}, status.Error(codes.Unimplemented, "")
+	if req.ClassSpec.Kind != openStackMachineClassKind {
+		return nil, status.Error(codes.Internal, "migration for this machineClass kind is not supported")
+	}
+
+	osMachineClass := req.ProviderSpecificMachineClass.(*v1alpha1.OpenStackMachineClass)
+	err :=  migrateMachineClass(osMachineClass, req.MachineClass)
+	if err != nil {
+		err =  status.Error(codes.Internal, err.Error())
+	}
+	return &driver.GenerateMachineClassForMigrationResponse{}, err
 }
+

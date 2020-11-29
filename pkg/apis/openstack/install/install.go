@@ -17,18 +17,17 @@
 package install
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 var (
 	schemeBuilder = runtime.NewSchemeBuilder(
 		v1alpha1.AddToScheme,
 		openstack.AddToScheme,
-		)
+	)
 
 	AddToScheme = schemeBuilder.AddToScheme
 )

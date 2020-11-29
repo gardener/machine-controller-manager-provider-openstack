@@ -418,7 +418,7 @@ func (ex *executor) listMachines(ctx context.Context) (map[string]string, error)
 		}
 	}
 
-	// TODO(KA) better tag handling ?
+	// TODO(KA) better tag handling ? Should it return nil if no tags are found (should be blocked by validation)
 	if searchClusterName == "" || searchNodeRole == "" {
 		return nil, nil
 	}
