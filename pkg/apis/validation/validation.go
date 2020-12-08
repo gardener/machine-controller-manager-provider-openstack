@@ -104,10 +104,10 @@ func validateOSClassSpecTags(tags map[string]string, fldPath *field.Path) field.
 	}
 
 	if clusterName == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagClusterPrefix), fmt.Sprintf("Tag required of the form %s-****", ServerTagClusterPrefix)))
+		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagClusterPrefix), fmt.Sprintf("Tag required of the form %s****", ServerTagClusterPrefix)))
 	}
 	if nodeRole == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagRolePrefix), fmt.Sprintf("Tag required of the form %s-****", ServerTagRolePrefix)))
+		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagRolePrefix), fmt.Sprintf("Tag required of the form %s****", ServerTagRolePrefix)))
 	}
 
 	return allErrs

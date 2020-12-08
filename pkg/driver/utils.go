@@ -20,36 +20,32 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
 	mcmv1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
 )
 
 const (
 	openstackProvider = "openstack"
 )
 
-func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (cfg *openstack.MachineProviderConfig, err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("failed to decode provider spec: %v", err)
-		}
-	}()
-
+func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*openstack.MachineProviderConfig, error) {
 	json, err := raw.MarshalJSON()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode provider spec: %v", err)
 	}
 
-	cfg = &openstack.MachineProviderConfig{}
+	cfg := &openstack.MachineProviderConfig{}
 	_, _, err = p.decoder.Decode(json, nil, cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode provider spec: %v", err)
 	}
 
 	return cfg, nil
@@ -113,6 +109,10 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 	}
 
 	cfg := &v1alpha1.MachineProviderConfig{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "MachineProviderConfig",
+			APIVersion: v1alpha1.SchemeGroupVersion.String(),
+		},
 		Spec: v1alpha1.MachineProviderConfigSpec{
 			ImageID:          os.Spec.ImageID,
 			ImageName:        os.Spec.ImageName,

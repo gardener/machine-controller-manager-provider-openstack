@@ -20,17 +20,18 @@ package driver
 import (
 	"context"
 	"errors"
-	"fmt"
+
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
 	"k8s.io/klog"
+
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
-	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 )
 
 const (
-	openStackMachineClassKind = "OpenstackMachineClass"
+	openStackMachineClassKind = "OpenStackMachineClass"
 )
 // NOTE
 //
@@ -65,15 +66,25 @@ const (
 //
 func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateMachineRequest) (*driver.CreateMachineResponse, error) {
 	// Log messages to track request
-	klog.V(2).Infof("Machine creation request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("Machine creation request has been processed for %q", req.Machine.Name)
+	klog.V(2).Infof("machine creation request has been received for %q", req.Machine.Name)
+	defer klog.V(2).Infof("machine creation request has been processed for %q", req.Machine.Name)
 
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
+		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if !isEmptyString(req.Machine.Spec.ProviderID) {
+		klog.V(1).Infof("AAAAAAAAAAAAAAAAAAAA create with providerID: %q", req.Machine.Spec.ProviderID)
+		return &driver.CreateMachineResponse{
+			ProviderID:     req.Machine.Spec.ProviderID,
+			NodeName:       req.Machine.Name,
+		}, nil
 	}
 
 	factory, err := p.clientConstructor(req.Secret)
@@ -85,9 +96,6 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	networkClient, err := factory.Network()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
 
 	ex := executor{
 		compute: computeClient,
@@ -97,6 +105,7 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 
 	providerID, err := ex.createMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
 	if err != nil {
+		klog.V(2).Infof("machine creation for %q failed with: %v", req.Machine.Name, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
@@ -124,9 +133,11 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
+		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -175,21 +186,18 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("Get request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("Machine get request has been processed for %q", req.Machine.Name)
 
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
+		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// TODO(KA): We can actually extrapolate the serverID for machine by doing a reverse name search and matching metadata tags with MachineClass.
-	if isEmptyString(req.Machine.Spec.ProviderID) {
-		return nil, status.Error(codes.NotFound, fmt.Sprintf("missing providerID from machine spec"))
-	}
 
 	factory, err := p.clientConstructor(req.Secret)
 	if err != nil {
@@ -209,12 +217,34 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 		cfg:     *providerConfig,
 	}
 
+	// TODO(KA): We can could extrapolate the serverID for machine by doing a reverse name search and matching metadata tags with MachineClass.
+	if isEmptyString(req.Machine.Spec.ProviderID) {
+		klog.V(2).Infof("AAAAAAAAAAAAAAAAAAAAAa missing providerID from machine spec %v", req.Machine.Spec)
+		prov, err := ex.getNoProvider(ctx, req.Machine.Name)
+		if err != nil {
+			if errors.Is(err, ErrNotFound) {
+				return nil, status.Error(codes.NotFound, err.Error())
+			} else {
+				return nil, status.Error(codes.Internal, err.Error())
+			}
+		}
+		return &driver.GetMachineStatusResponse{
+			ProviderID: prov,
+			NodeName:   req.Machine.Name,
+		}, nil
+		// return nil, status.Error(codes.NotFound, fmt.Sprintf("missing providerID from machine spec"))
+	}
+
 	if err := ex.getMachineStatus(ctx, req.Machine.Name, req.Machine.Spec.ProviderID); err != nil {
-		if errors.Is(ErrNotFound, err) {
+		if errors.Is(err, ErrNotFound) {
+			klog.V(2).Infof("machine %q not found: %v", req.Machine.Name, err)
 			return nil, status.Error(codes.NotFound, err.Error())
 		}
+		klog.V(2).Infof("getMachineStatus request for %q failed with: %v", req.Machine.Name, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	klog.V(2).Infof("Machine get request has been processed for %q: %v", req.Machine.Name, err)
 	return &driver.GetMachineStatusResponse{
 		ProviderID: req.Machine.Spec.ProviderID,
 		NodeName:   req.Machine.Name,
@@ -236,15 +266,17 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 //
 func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMachinesRequest) (*driver.ListMachinesResponse, error) {
 	// Log messages to track start and end of request
-	klog.V(2).Infof("List machines request has been recieved for %q", req.MachineClass.Name)
-	defer klog.V(2).Infof("List machines request has been recieved for %q", req.MachineClass.Name)
+	klog.V(2).Infof("list machines request has been received for %q", req.MachineClass.Name)
+	defer klog.V(2).Infof("list machines request has been processed for %q", req.MachineClass.Name)
 
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
+		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -269,6 +301,9 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 	machines, err := ex.listMachines(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if len(machines) == 0 {
+		klog.V(2).Infof("no machines found for machine class: %q", req.MachineClass.Name)
 	}
 
 	return &driver.ListMachinesResponse{

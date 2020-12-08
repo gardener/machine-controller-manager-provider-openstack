@@ -13,15 +13,16 @@
 # limitations under the License.
 
 BINARY_PATH         := bin/
-REPO_ROOT 			:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+REPO_ROOT 			    := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 COVERPROFILE        := test/output/coverprofile.out
-IMAGE_REPOSITORY    := <link-to-image-repo>
-IMAGE_TAG           := $(shell cat VERSION)
-PROVIDER_NAME       := SampleProvider
-PROJECT_NAME        := gardener
-CONTROL_NAMESPACE  	:= default
-CONTROL_KUBECONFIG 	:= dev/target-kubeconfig.yaml
-TARGET_KUBECONFIG  	:= dev/target-kubeconfig.yaml
+REGISTRY            := eu.gcr.io/gardener-project/gardener
+IMAGE_PREFIX        := $(REGISTRY)/extensions
+NAME                := machine-controller-manager-provider-openstack
+IMAGE_NAME          := $(IMAGE_PREFIX)/$(NAME)
+VERSION             := $(shell cat VERSION)
+CONTROL_NAMESPACE  	?= default
+CONTROL_KUBECONFIG 	?= dev/target-kubeconfig.yaml
+TARGET_KUBECONFIG  	?= dev/target-kubeconfig.yaml
 
 #########################################
 # Rules for starting machine-controller locally
@@ -55,6 +56,10 @@ install-requirements:
 	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/onsi/ginkgo/ginkgo
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/install-requirements.sh
 
+.PHONY: generate
+generate:
+	@env GOMODULE111=on go generate -mod=vendor ./pkg/...
+
 .PHONY: check-generate
 check-generate:
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-generate.sh $(REPO_ROOT)
@@ -63,10 +68,6 @@ check-generate:
 check:
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-charts.sh ./charts
-
-.PHONY: generate
-generate:
-	@env GOMODULE111=on go generate -mod=vendor ./pkg/...
 
 .PHONY: format
 format:
@@ -111,26 +112,27 @@ update-dependencies:
 
 .PHONY: test-unit
 test-unit:
-	.ci/test
+	pass
+
+.PHONY: test-integration
+test-integration:
+	pass
 
 #########################################
 # Rules for build/release
 #########################################
 
 .PHONY: release
-release: build-local build docker-image docker-login docker-push rename-binaries
+release: build docker-image docker-login docker-push
 
-.PHONY: build-local
-build-local:
-	@env LOCAL_BUILD=1 .ci/build
-
-.PHONY: build
-build:
-	@.ci/build
+.PHONY: install
+install:
+	@LD_FLAGS="-w -X github.com/gardener/$(EXTENSION_PREFIX)-$(NAME)/pkg/version.Version=$(VERSION)" \
+	$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/install.sh ./...
 
 .PHONY: docker-image
 docker-image:
-	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) .
+	docker image build -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
 
 .PHONY: docker-login
 docker-login:
@@ -138,17 +140,9 @@ docker-login:
 
 .PHONY: docker-push
 docker-push:
-	@if ! docker images $(IMAGE_REPOSITORY) | awk '{ print $$2 }' | grep -q -F $(IMAGE_TAG); then echo "$(IMAGE_REPOSITORY) version $(IMAGE_TAG) is not yet built. Please run 'make docker-images'"; false; fi
-	@gcloud docker -- push $(IMAGE_REPOSITORY):$(IMAGE_TAG)
-
-.PHONY: rename-binaries
-rename-binaries:
-	@if [[ -f bin/machine-controller ]]; then cp bin/machine-controller machine-controller-darwin-amd64; fi
-	@if [[ -f bin/rel/machine-controller ]]; then cp bin/rel/machine-controller machine-controller-linux-amd64; fi
+	@if ! docker images $(IMAGE_NAME) | awk '{ print $$2 }' | grep -q -F $(VERSION); then echo "$(IMAGE_NAME)/$(VERSION) is not yet built. Please run 'make docker-images'"; false; fi
+	# @gcloud docker -- push $(IMAGE_REPOSITORY):$(IMAGE_TAG)
 
 .PHONY: clean
 clean:
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/clean.sh ./cmd/... ./pkg/... ./test/...
-	@rm -rf bin/
-	@rm -f *linux-amd64
-	@rm -f *darwin-amd64

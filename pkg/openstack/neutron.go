@@ -19,7 +19,7 @@ package openstack
 import (
 	"fmt"
 
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/metrics"
+	"github.com/gardener/machine-controller-manager/pkg/util/provider/metrics"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"

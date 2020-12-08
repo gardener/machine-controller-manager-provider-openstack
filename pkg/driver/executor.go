@@ -336,6 +336,7 @@ func (ex *executor) getVM(ctx context.Context, serverID string) (*servers.Server
 	server, err := ex.compute.GetServer(serverID)
 	if err != nil {
 		// mask NotFound errors
+		klog.V(2).Infof("error fetching server %q: %v", serverID, err)
 		if openstack.IsNotFoundError(err) {
 			return nil, fmt.Errorf("%s%w", err, ErrNotFound)
 		}
@@ -360,6 +361,7 @@ func (ex *executor) getVM(ctx context.Context, serverID string) (*servers.Server
 			return server, nil
 		}
 	}
+	klog.V(1).Infof("AAAAA Server found %q, but no matching tags %v", serverID, server.Metadata)
 
 	return nil, fmt.Errorf("server [ID=%q] found, but cluster/role tags are missing%w", serverID, ErrNotFound)
 
@@ -387,6 +389,30 @@ func (ex *executor) deletePort(ctx context.Context, machineName string) error {
 	return nil
 }
 
+func (ex *executor) getNoProvider(ctx context.Context, machineName string) (string, error) {
+	vms, err := ex.listMachines(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	result := []string{}
+	for key, val := range vms {
+		if val == machineName {
+			klog.V(1).Infof("BBBBBBBBBBBBBBB no providerID but server found %q", machineName)
+			result = append(result, key)
+		}
+	}
+
+	if len(result) > 1 {
+		klog.V(1).Infof("BBBBBBBBBBBBBB a lot of providerIDs found for name %q: %v", machineName, result)
+		return "", fmt.Errorf("JPDSAJOJDSJDJDAS")
+	} else if len(result) == 0 {
+		return "", fmt.Errorf("fdasfdsfdsda %w", ErrNotFound)
+	}
+
+	return result[0], nil
+}
+
 func (ex *executor) getMachineStatus(ctx context.Context, machineName, providerID string) error {
 	serverID := decodeProviderID(providerID)
 
@@ -403,10 +429,6 @@ func (ex *executor) getMachineStatus(ctx context.Context, machineName, providerI
 }
 
 func (ex *executor) listMachines(ctx context.Context) (map[string]string, error) {
-	servers, err := ex.compute.ListServers(&servers.ListOpts{})
-	if err != nil {
-		return nil, err
-	}
 	searchClusterName := ""
 	searchNodeRole := ""
 
@@ -420,7 +442,13 @@ func (ex *executor) listMachines(ctx context.Context) (map[string]string, error)
 
 	// TODO(KA) better tag handling ? Should it return nil if no tags are found (should be blocked by validation)
 	if searchClusterName == "" || searchNodeRole == "" {
+		klog.V(1).Infof("AAAAAAAAAAAAAAAAA No cluster tag keys found: %q, %q", searchClusterName, searchNodeRole)
 		return nil, nil
+	}
+
+	servers, err := ex.compute.ListServers(&servers.ListOpts{})
+	if err != nil {
+		return nil, err
 	}
 
 	result := map[string]string{}

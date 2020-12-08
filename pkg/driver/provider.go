@@ -18,24 +18,27 @@ limitations under the License.
 package driver
 
 import (
-	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
+	"k8s.io/apimachinery/pkg/runtime"
+)
+
+var (
+	_ driver.Driver = &OpenstackDriver{}
 )
 
 // OpenstackDriver is the struct that implements the driver interface
 // It is used to implement the basic driver functionalities
 type OpenstackDriver struct {
-	decoder runtime.Decoder
+	decoder           runtime.Decoder
 	clientConstructor openstack.ClientConstructor
 }
 
 // NewOpenstackDriver returns an empty provider object
 func NewOpenstackDriver(decoder runtime.Decoder, constructor openstack.ClientConstructor) driver.Driver {
 	return &OpenstackDriver{
-		decoder: decoder,
+		decoder:           decoder,
 		clientConstructor: constructor,
 	}
 }
@@ -43,5 +46,5 @@ func NewOpenstackDriver(decoder runtime.Decoder, constructor openstack.ClientCon
 type executor struct {
 	compute openstack.Compute
 	network openstack.Network
-	cfg api.MachineProviderConfig
+	cfg     api.MachineProviderConfig
 }

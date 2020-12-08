@@ -19,6 +19,7 @@ package openstack
 import (
 	"fmt"
 
+	"github.com/gardener/machine-controller-manager/pkg/util/provider/metrics"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
@@ -26,8 +27,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/metrics"
 )
 
 func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.EndpointOpts) (*novaV2, error) {

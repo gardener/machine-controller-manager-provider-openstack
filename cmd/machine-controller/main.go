@@ -22,9 +22,9 @@ Modifications Copyright (c) 2017 SAP SE or an SAP affiliate company. All rights 
 package main
 
 import (
-	"fmt"
-	"os"
-
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/install"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 	_ "github.com/gardener/machine-controller-manager/pkg/util/client/metrics/prometheus" // for client metric registration
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/app"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/app/options"
@@ -35,14 +35,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
-
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/install"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"
+	"k8s.io/klog"
 )
 
 func main() {
-
 	s := options.NewMCServer()
 	s.AddFlags(pflag.CommandLine)
 
@@ -52,18 +48,12 @@ func main() {
 
 	scheme := runtime.NewScheme()
 	if err := install.AddToScheme(scheme); err != nil {
-		fatal(err, "failed to install scheme")
+		klog.Fatalf("failed to install scheme: %v", err)
 	}
 
 	provider := driver.NewOpenstackDriver(serializer.NewCodecFactory(scheme).UniversalDecoder(), openstack.NewClientFactoryFromSecret)
 
 	if err := app.Run(s, provider); err != nil {
-		fatal(err, "failed to run application")
+		klog.Fatalf("failed to run application: %v", err)
 	}
-}
-
-
-func fatal(err error, msg string) {
-	fmt.Fprintf(os.Stderr, "[FATAL] %s: %v", msg, err)
-	os.Exit(1)
 }
