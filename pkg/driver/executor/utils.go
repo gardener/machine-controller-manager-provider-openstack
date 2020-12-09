@@ -14,12 +14,39 @@
  * limitations under the License.
  */
 
-package driver
+package executor
 
 import (
 	"fmt"
+	"strings"
 )
 
-var (
-	ErrNotFound = fmt.Errorf("")
-)
+func encodeProviderID(region string, machineID string) string {
+	return fmt.Sprintf("openstack:///%s/%s", region, machineID)
+}
+
+func decodeProviderID(id string) string {
+	splitProviderID := strings.Split(id, "/")
+	return splitProviderID[len(splitProviderID)-1]
+}
+
+func strSliceContains(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
+}
+
+func isEmptyString(ptr *string) bool {
+	if ptr == nil {
+		return true
+	}
+
+	if len(strings.TrimSpace(*ptr)) == 0 {
+		return true
+	}
+
+	return false
+}

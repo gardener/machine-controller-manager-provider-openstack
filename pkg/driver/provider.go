@@ -18,10 +18,10 @@ limitations under the License.
 package driver
 
 import (
-	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 )
 
 var (
@@ -43,8 +43,3 @@ func NewOpenstackDriver(decoder runtime.Decoder, constructor openstack.ClientCon
 	}
 }
 
-type executor struct {
-	compute openstack.Compute
-	network openstack.Network
-	cfg     api.MachineProviderConfig
-}

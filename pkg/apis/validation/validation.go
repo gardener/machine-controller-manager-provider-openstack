@@ -65,13 +65,13 @@ func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 		allErrs = append(allErrs, field.Required(fldPath.Child("rootDiskSize"), "RootDiskSize can not be negative"))
 	}
 
-	allErrs = append(allErrs, validateOsNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, field.NewPath("spec.networks"))...)
-	allErrs = append(allErrs, validateOSClassSpecTags(providerConfig.Spec.Tags, field.NewPath("spec.tags"))...)
+	allErrs = append(allErrs, validateNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, field.NewPath("spec.networks"))...)
+	allErrs = append(allErrs, validateClassSpecTags(providerConfig.Spec.Tags, field.NewPath("spec.tags"))...)
 
 	return allErrs.ToAggregate()
 }
 
-func validateOsNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr string, fldPath *field.Path) field.ErrorList {
+func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for index, network := range networks {
@@ -90,7 +90,7 @@ func validateOsNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr st
 	return allErrs
 }
 
-func validateOSClassSpecTags(tags map[string]string, fldPath *field.Path) field.ErrorList {
+func validateClassSpecTags(tags map[string]string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	clusterName := ""
 	nodeRole := ""
@@ -119,25 +119,25 @@ func ValidateSecret(secret *corev1.Secret) error {
 		ok, ok2 bool
 	)
 	data := secret.Data
-	if b, ok := data[OpenStackAuthURL]; !ok || missingString(b) {
+	if b, ok := data[OpenStackAuthURL]; !ok || isEmptySlice(b) {
 		return fmt.Errorf("missing %s in secret", OpenStackAuthURL)
 	}
-	if b, ok := data[OpenStackUsername]; !ok || missingString(b){
+	if b, ok := data[OpenStackUsername]; !ok || isEmptySlice(b){
 		return fmt.Errorf("missing %s in secret", OpenStackUsername)
 	}
-	if b, ok := data[OpenStackPassword]; !ok || missingString(b){
+	if b, ok := data[OpenStackPassword]; !ok || isEmptySlice(b){
 		return fmt.Errorf("missing %s in secret", OpenStackPassword)
 	}
 
 	domainName, ok := data[OpenStackDomainName]
 	domainID, ok2 := data[OpenStackDomainID]
-	if (!ok || missingString(domainName)) && (!ok2 || missingString(domainID)) {
+	if (!ok || isEmptySlice(domainName)) && (!ok2 || isEmptySlice(domainID)) {
 		return fmt.Errorf("missing %s or %s in secret", OpenStackDomainName, OpenStackDomainID)
 	}
 
 	tenantName, ok := data[OpenStackTenantName]
 	tenantID, ok2 := data[OpenStackTenantID]
-	if (!ok || missingString(tenantName)) && (!ok2 || missingString(tenantID)) {
+	if (!ok || isEmptySlice(tenantName)) && (!ok2 || isEmptySlice(tenantID)) {
 		return fmt.Errorf("missing %s or %s in secret", OpenStackTenantName, OpenStackTenantID)
 	}
 
@@ -162,14 +162,14 @@ func ValidateSecret(secret *corev1.Secret) error {
 		}
 	}
 
-	if b, ok := data[UserData]; !ok || missingString(b){
+	if b, ok := data[UserData]; !ok || isEmptySlice(b){
 		return fmt.Errorf("missing %s in secret", UserData)
 	}
 
 	return nil
 }
 
-func missingString(b []byte) bool {
+func isEmptySlice(b []byte) bool {
 	if len(b) == 0{
 		return true
 	}

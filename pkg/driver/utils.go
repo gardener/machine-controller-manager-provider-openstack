@@ -17,12 +17,11 @@
 package driver
 
 import (
+	"errors"
 	"fmt"
-	"strings"
 
 	mcmv1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
-	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,6 +29,7 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
 const (
@@ -57,45 +57,6 @@ func (p *OpenstackDriver) validateRequest(config *openstack.MachineProviderConfi
 	}
 
 	return validation.ValidateSecret(secret)
-}
-
-func errorWrap(code codes.Code, err error, message string, args ...interface{}) error {
-	args = append(args, err)
-	return status.Error(code, fmt.Sprintf(message+": %v", args...))
-}
-
-func strSliceContains(haystack []string, needle string) bool {
-	for _, s := range haystack {
-		if s == needle {
-			return true
-		}
-	}
-	return false
-}
-
-func isEmptyStringPtr(ptr *string) bool {
-	if ptr == nil {
-		return true
-	}
-
-	if len(strings.TrimSpace(*ptr)) == 0 {
-		return true
-	}
-
-	return false
-}
-
-func isEmptyString(str string) bool {
-	return len(strings.TrimSpace(str)) == 0
-}
-
-func encodeProviderID(region string, machineID string) string {
-	return fmt.Sprintf("openstack:///%s/%s", region, machineID)
-}
-
-func decodeProviderID(id string) string {
-	splitProviderID := strings.Split(id, "/")
-	return splitProviderID[len(splitProviderID)-1]
 }
 
 func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mcmv1alpha1.MachineClass) error {
@@ -135,6 +96,7 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 	machineClass.Name = os.Name
 	machineClass.Labels = os.Labels
 	machineClass.Annotations = os.Annotations
+
 	//TODO(KA): finalizers necessary ?
 	machineClass.Finalizers = os.Finalizers
 	machineClass.ProviderSpec = runtime.RawExtension{
@@ -144,4 +106,15 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 	machineClass.Provider = openstackProvider
 
 	return nil
+}
+
+
+func mapErrorToCode(err error) codes.Code {
+	if errors.Is(err, executor.ErrNotFound){
+		return codes.NotFound
+	} else if errors.Is(err, executor.ErrMultipleFound){
+		return codes.OutOfRange
+	}
+
+	return codes.Internal
 }
