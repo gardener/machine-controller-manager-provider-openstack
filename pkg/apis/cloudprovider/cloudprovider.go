@@ -44,11 +44,12 @@ const (
 	// OpenStackClientKey is a constant for a key name that is part of the OpenStack cloud Credentials.
 	OpenStackClientKey string = "clientKey"
 
-	// UserData is a constant for a key name whose value contains data passed to the server e.g. CloudInit scripts.
-	UserData string = "userData"
-
 	// ServerTagClusterPrefix is the prefix used for tags denoting the cluster this server belongs to.
 	ServerTagClusterPrefix = "kubernetes.io-cluster-"
 	// ServerTagRolePrefix is the prefix used for tags denoting the role of the server.
 	ServerTagRolePrefix    = "kubernetes.io-role-"
+
+	// UserData is a constant for a key name whose value contains data passed to the server e.g. CloudInit scripts.
+	UserData string = "userData"
+
 )

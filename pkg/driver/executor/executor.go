@@ -44,7 +44,23 @@ type Executor struct {
 
 
 func NewExecutor(factory openstack.Factory, config api.MachineProviderConfig) (*Executor, error) {
-	return nil, nil
+	computeClient, err := factory.Compute()
+	if err != nil {
+		klog.Errorf("failed to create compute client for executor")
+		return nil, err
+	}
+	networkClient, err := factory.Network()
+	if err != nil {
+		klog.Errorf("failed to create network client for executor")
+		return nil, err
+	}
+
+	ex := &Executor{
+		Compute: computeClient,
+		Network: networkClient,
+		Config:  config,
+	}
+	return ex, nil
 }
 
 func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userData []byte) (string, error) {

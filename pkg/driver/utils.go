@@ -22,13 +22,11 @@ import (
 
 	mcmv1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
@@ -49,14 +47,6 @@ func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*opensta
 	}
 
 	return cfg, nil
-}
-
-func (p *OpenstackDriver) validateRequest(config *openstack.MachineProviderConfig, secret *corev1.Secret) error {
-	if err := validation.ValidateMachineProviderConfig(config); err != nil {
-		return err
-	}
-
-	return validation.ValidateSecret(secret)
 }
 
 func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mcmv1alpha1.MachineClass) error {

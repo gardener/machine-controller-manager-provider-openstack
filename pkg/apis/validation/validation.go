@@ -28,8 +28,18 @@ import (
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 )
 
+func ValidateRequest(providerConfig *openstack.MachineProviderConfig, secret *corev1.Secret) error {
+	allErrs := field.ErrorList{}
+
+	allErrs = append(allErrs, ValidateMachineProviderConfig(providerConfig)...)
+	allErrs = append(allErrs, ValidateSecret(secret)...)
+	allErrs = append(allErrs, ValidateUserData(secret)...)
+
+	return allErrs.ToAggregate()
+}
+
 // ValidateProviderSpecNSecret validates provider spec and secret to check if all fields are present and valid
-func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConfig) error {
+func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	fldPath := field.NewPath("spec")
@@ -47,16 +57,16 @@ func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 		allErrs = append(allErrs, field.Required(fldPath.Child("flavorName"), "Flavor is required"))
 	}
 	if "" == providerConfig.Spec.AvailabilityZone {
-		allErrs = append(allErrs, field.Required(fldPath.Child("availabilityZone"), "AvailabilityZone Name is required"))
+		allErrs = append(allErrs, field.Required(fldPath.Child("availabilityZone"), "AvailabilityZone name is required"))
 	}
 	if "" == providerConfig.Spec.KeyName {
 		allErrs = append(allErrs, field.Required(fldPath.Child("keyName"), "KeyName is required"))
 	}
 	if "" != providerConfig.Spec.NetworkID && len(providerConfig.Spec.Networks) > 0 {
-		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks"), "\"networks\" list should not be providerConfig.Specified along with \"providerConfig.Spec.NetworkID\""))
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks"), "\"networks\" list should not be specified along with \"providerConfig.Spec.NetworkID\""))
 	}
 	if "" == providerConfig.Spec.NetworkID && len(providerConfig.Spec.Networks) == 0 {
-		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks"), "both \"networks\" and \"networkID\" should not be empty"))
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networkID"), "both \"networks\" and \"networkID\" should not be empty"))
 	}
 	if "" == providerConfig.Spec.PodNetworkCidr {
 		allErrs = append(allErrs, field.Required(fldPath.Child("podNetworkCidr"), "PodNetworkCidr is required"))
@@ -68,7 +78,7 @@ func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 	allErrs = append(allErrs, validateNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, field.NewPath("spec.networks"))...)
 	allErrs = append(allErrs, validateClassSpecTags(providerConfig.Spec.Tags, field.NewPath("spec.tags"))...)
 
-	return allErrs.ToAggregate()
+	return allErrs
 }
 
 func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr string, fldPath *field.Path) field.ErrorList {
@@ -104,41 +114,99 @@ func validateClassSpecTags(tags map[string]string, fldPath *field.Path) field.Er
 	}
 
 	if clusterName == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagClusterPrefix), fmt.Sprintf("Tag required of the form %s****", ServerTagClusterPrefix)))
+		allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("Tag required of the form %s****", ServerTagClusterPrefix)))
 	}
 	if nodeRole == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child(ServerTagRolePrefix), fmt.Sprintf("Tag required of the form %s****", ServerTagRolePrefix)))
+		allErrs = append(allErrs, field.Required(fldPath, fmt.Sprintf("Tag required of the form %s****", ServerTagRolePrefix)))
 	}
 
 	return allErrs
 }
 
 
-func ValidateSecret(secret *corev1.Secret) error {
+// func ValidateSecret(secret *corev1.Secret) error {
+// 	var (
+// 		ok, ok2 bool
+// 	)
+// 	data := secret.Data
+// 	if b, ok := data[OpenStackAuthURL]; !ok || isEmptyStringByteSlice(b) {
+// 		return fmt.Errorf("missing %s in secret", OpenStackAuthURL)
+// 	}
+// 	if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b){
+// 		return fmt.Errorf("missing %s in secret", OpenStackUsername)
+// 	}
+// 	if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b){
+// 		return fmt.Errorf("missing %s in secret", OpenStackPassword)
+// 	}
+//
+// 	domainName, ok := data[OpenStackDomainName]
+// 	domainID, ok2 := data[OpenStackDomainID]
+// 	if (!ok || isEmptyStringByteSlice(domainName)) && (!ok2 || isEmptyStringByteSlice(domainID)) {
+// 		return fmt.Errorf("missing %s or %s in secret", OpenStackDomainName, OpenStackDomainID)
+// 	}
+//
+// 	tenantName, ok := data[OpenStackTenantName]
+// 	tenantID, ok2 := data[OpenStackTenantID]
+// 	if (!ok || isEmptyStringByteSlice(tenantName)) && (!ok2 || isEmptyStringByteSlice(tenantID)) {
+// 		return fmt.Errorf("missing %s or %s in secret", OpenStackTenantName, OpenStackTenantID)
+// 	}
+//
+// 	var clientCert, clientKey []byte
+// 	if clientCert, ok = data[OpenStackClientCert]; !ok {
+// 		clientCert = nil
+// 	}
+// 	if clientKey, ok = data[OpenStackClientKey]; !ok {
+// 		clientKey = nil
+// 	}
+//
+// 	if len(clientCert) != 0 && len(clientKey) == 0 {
+// 		return fmt.Errorf("missing %s in secret", OpenStackClientKey)
+// 	}
+//
+// 	if insecureStr, ok := data[OpenStackInsecure]; ok {
+// 		switch string(insecureStr) {
+// 		case "true":
+// 		case "false":
+// 		default:
+// 			return fmt.Errorf("invalid value for boolean field %s: %s ", OpenStackInsecure, string(insecureStr))
+// 		}
+// 	}
+//
+// 	if b, ok := data[UserData]; !ok || isEmptyStringByteSlice(b){
+// 		return fmt.Errorf("missing %s in secret", UserData)
+// 	}
+//
+// 	return nil
+// }
+
+func ValidateSecret(secret *corev1.Secret) field.ErrorList {
 	var (
 		ok, ok2 bool
+		allErrs = field.ErrorList{}
 	)
+
+	root := field.NewPath("data")
 	data := secret.Data
-	if b, ok := data[OpenStackAuthURL]; !ok || isEmptySlice(b) {
-		return fmt.Errorf("missing %s in secret", OpenStackAuthURL)
+	if b, ok := data[OpenStackAuthURL]; !ok || isEmptyStringByteSlice(b) {
+		allErrs = append(allErrs, field.Required(root.Key(OpenStackAuthURL), fmt.Sprintf("%s is required", OpenStackAuthURL)))
 	}
-	if b, ok := data[OpenStackUsername]; !ok || isEmptySlice(b){
-		return fmt.Errorf("missing %s in secret", OpenStackUsername)
+	if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b){
+		allErrs = append(allErrs, field.Required(root.Key(OpenStackUsername), fmt.Sprintf("%s is required", OpenStackUserDomainName)))
 	}
-	if b, ok := data[OpenStackPassword]; !ok || isEmptySlice(b){
-		return fmt.Errorf("missing %s in secret", OpenStackPassword)
+	if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b){
+		allErrs = append(allErrs, field.Required(root.Key(OpenStackPassword), fmt.Sprintf("%s is required", OpenStackPassword)))
 	}
 
 	domainName, ok := data[OpenStackDomainName]
 	domainID, ok2 := data[OpenStackDomainID]
-	if (!ok || isEmptySlice(domainName)) && (!ok2 || isEmptySlice(domainID)) {
-		return fmt.Errorf("missing %s or %s in secret", OpenStackDomainName, OpenStackDomainID)
+	if (!ok || isEmptyStringByteSlice(domainName)) && (!ok2 || isEmptyStringByteSlice(domainID)) {
+		allErrs = append(allErrs, field.Required(root.Key(OpenStackDomainName), fmt.Sprintf("one of the following keys is required [%s|%s]", OpenStackDomainName, OpenStackDomainID)))
 	}
 
 	tenantName, ok := data[OpenStackTenantName]
 	tenantID, ok2 := data[OpenStackTenantID]
-	if (!ok || isEmptySlice(tenantName)) && (!ok2 || isEmptySlice(tenantID)) {
-		return fmt.Errorf("missing %s or %s in secret", OpenStackTenantName, OpenStackTenantID)
+	if (!ok || isEmptyStringByteSlice(tenantName)) && (!ok2 || isEmptyStringByteSlice(tenantID)) {
+		allErrs = append(allErrs, field.Required(root.Key(OpenStackTenantName), fmt.Sprintf("one of the following keys is required [%s|%s]", OpenStackTenantName, OpenStackTenantID)))
 	}
 
 	var clientCert, clientKey []byte
@@ -150,7 +218,7 @@ func ValidateSecret(secret *corev1.Secret) error {
 	}
 
 	if len(clientCert) != 0 && len(clientKey) == 0 {
-		return fmt.Errorf("missing %s in secret", OpenStackClientKey)
+		allErrs = append(allErrs, field.Required(root.Key(OpenStackClientKey), fmt.Sprintf("%s is required, if %s is present", OpenStackClientKey, OpenStackClientCert)))
 	}
 
 	if insecureStr, ok := data[OpenStackInsecure]; ok {
@@ -158,18 +226,25 @@ func ValidateSecret(secret *corev1.Secret) error {
 		case "true":
 		case "false":
 		default:
-			return fmt.Errorf("invalid value for boolean field %s: %s ", OpenStackInsecure, string(insecureStr))
+			allErrs = append(allErrs, field.Invalid(root.Key(OpenStackInsecure), string(insecureStr), "value does not match expected boolean value [\"true\"|\"false\"]"))
 		}
 	}
 
-	if b, ok := data[UserData]; !ok || isEmptySlice(b){
-		return fmt.Errorf("missing %s in secret", UserData)
-	}
-
-	return nil
+	return allErrs
 }
 
-func isEmptySlice(b []byte) bool {
+func ValidateUserData(secret *corev1.Secret) field.ErrorList{
+	allErrs := field.ErrorList{}
+	root := field.NewPath("data")
+	if b, ok := secret.Data[UserData]; !ok || isEmptyStringByteSlice(b){
+		allErrs = append(allErrs, field.Required(root.Key(UserData), fmt.Sprintf("%s is required", UserData)))
+	}
+
+	return allErrs
+}
+
+
+func isEmptyStringByteSlice(b []byte) bool {
 	if len(b) == 0{
 		return true
 	}

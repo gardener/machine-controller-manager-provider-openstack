@@ -27,6 +27,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
@@ -76,7 +77,7 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		klog.Errorf("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
 		klog.Errorf("validating request for machine %q failed with: %v", req.Machine.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -86,21 +87,11 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		klog.Errorf("failed constructing OpenStack client: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	computeClient, err := factory.Compute()
-	if err != nil {
-		klog.Errorf("failed constructing OpenStack compute client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	networkClient, err := factory.Network()
-	if err != nil {
-		klog.Errorf("failed constructing OpenStack network client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
 
-	ex := executor.Executor{
-		Compute: computeClient,
-		Network: networkClient,
-		Config:  *providerConfig,
+	ex, err := executor.NewExecutor(factory, *providerConfig)
+	if err != nil {
+		klog.Errorf("failed to construct context for the request: %v", err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	providerID, err := ex.CreateMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
@@ -136,7 +127,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
 		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -146,21 +137,11 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 		klog.Errorf("failed constructing OpenStack client: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	computeClient, err := factory.Compute()
-	if err != nil {
-		klog.Errorf("failed constructing OpenStack compute client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	networkClient, err := factory.Network()
-	if err != nil {
-		klog.Errorf("failed constructing OpenStack network client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
 
-	ex := executor.Executor{
-		Compute: computeClient,
-		Network: networkClient,
-		Config:  *providerConfig,
+	ex, err := executor.NewExecutor(factory, *providerConfig)
+	if err != nil {
+		klog.Errorf("failed to construct context for the request: %v", err)
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	err = ex.DeleteMachine(ctx, req.Machine.Name, req.Machine.Spec.ProviderID)
@@ -196,7 +177,7 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
 		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -206,20 +187,11 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 		klog.Errorf("failed constructing OpenStack client: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	computeClient, err := factory.Compute()
+
+	ex, err := executor.NewExecutor(factory, *providerConfig)
 	if err != nil {
-		klog.Errorf("failed constructing OpenStack compute client: %v", err)
+		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
-	}
-	networkClient, err := factory.Network()
-	if err != nil {
-		klog.Errorf("failed constructing OpenStack network client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	ex := executor.Executor{
-		Compute: computeClient,
-		Network: networkClient,
-		Config:  *providerConfig,
 	}
 
 	providerID, err := ex.GetMachineStatus(ctx, req.Machine.Name)
@@ -258,7 +230,7 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := p.validateRequest(providerConfig, req.Secret); err != nil {
+	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
 		klog.Errorf("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -268,20 +240,11 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 		klog.Errorf("failed constructing OpenStack client: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	computeClient, err := factory.Compute()
+
+	ex, err := executor.NewExecutor(factory, *providerConfig)
 	if err != nil {
-		klog.Errorf("failed constructing OpenStack compute client: %v", err)
+		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(codes.Internal, err.Error())
-	}
-	networkClient, err := factory.Network()
-	if err != nil {
-		klog.Errorf("failed constructing OpenStack network client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	ex := executor.Executor{
-		Compute: computeClient,
-		Network: networkClient,
-		Config:  *providerConfig,
 	}
 
 	machines, err := ex.ListMachines(ctx)
@@ -305,7 +268,7 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 // RESPONSE PARAMETERS (driver.GetVolumeIDsResponse)
 // VolumeIDs             []string                             VolumeIDs is a repeated list of VolumeIDs.
 //
-func (p *OpenstackDriver) GetVolumeIDs(ctx context.Context, req *driver.GetVolumeIDsRequest) (*driver.GetVolumeIDsResponse, error) {
+func (p *OpenstackDriver) GetVolumeIDs(_ context.Context, req *driver.GetVolumeIDsRequest) (*driver.GetVolumeIDsResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("GetVolumeIDs request has been recieved for %q", req.PVSpecs)
 	defer klog.V(2).Infof("GetVolumeIDs request has been processed for %q", req.PVSpecs)
@@ -342,7 +305,7 @@ func (p *OpenstackDriver) GetVolumeIDs(ctx context.Context, req *driver.GetVolum
 // RESPONSE PARAMETERS (driver.GenerateMachineClassForMigration)
 // NONE
 //
-func (p *OpenstackDriver) GenerateMachineClassForMigration(ctx context.Context, req *driver.GenerateMachineClassForMigrationRequest) (*driver.GenerateMachineClassForMigrationResponse, error) {
+func (p *OpenstackDriver) GenerateMachineClassForMigration(_ context.Context, req *driver.GenerateMachineClassForMigrationRequest) (*driver.GenerateMachineClassForMigrationResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("MigrateMachineClass request has been recieved for %q", req.ClassSpec)
 	defer klog.V(2).Infof("MigrateMachineClass request has been processed for %q", req.ClassSpec)
