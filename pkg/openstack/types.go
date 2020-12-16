@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+//go:generate mockgen -destination=mocks/client_mocks.go -package=mocks . Factory,Compute,Network
 package openstack
 
 import (
@@ -25,8 +26,9 @@ import (
 )
 
 const (
+	// https://docs.openstack.org/api-guide/compute/server_concepts.html
 	StatusDeleted = "DELETED"
-	StatesSoftDeleted = "SOFT_DELETED"
+	StatusSoftDeleted = "SOFT_DELETED"
 	StatusBuild = "BUILD"
 	StatusActive = "ACTIVE"
 	StatusError = "ERROR"

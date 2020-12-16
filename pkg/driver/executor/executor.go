@@ -42,7 +42,6 @@ type Executor struct {
 	Config  api.MachineProviderConfig
 }
 
-
 func NewExecutor(factory openstack.Factory, config api.MachineProviderConfig) (*Executor, error) {
 	computeClient, err := factory.Compute()
 	if err != nil {
@@ -74,7 +73,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return "", fmt.Errorf("failed to deploy server for machine %q: %w", machineName, err)
 	}
 
-	providerID := encodeProviderID(ex.Config.Spec.Region, server.ID)
+	providerID := EncodeProviderID(ex.Config.Spec.Region, server.ID)
 
 	// if we fail in the creation post-processing step we have to delete the server we created
 	deleteOnFail := func(err error) error {
@@ -84,7 +83,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return err
 	}
 
-	err = ex.waitForStatus(server.ID, []string{"BUILD"}, []string{"ACTIVE"}, 600)
+	err = ex.waitForStatus(server.ID, []string{openstack.StatusBuild}, []string{openstack.StatusActive}, 600)
 	if err != nil {
 		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %s", server.ID, err))
 	}
@@ -228,8 +227,8 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 
 	createOpts = &servers.CreateOpts{
 		// ServiceClient:    ex.Compute.ServiceClient(),
-		Name: machineName,
 		// FlavorName:       flavorName,
+		Name:             machineName,
 		FlavorRef:        flavorRef,
 		ImageRef:         imageRef,
 		Networks:         nws,
@@ -240,20 +239,6 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 		ConfigDrive:      useConfigDrive,
 	}
 
-	createOpts = &keypairs.CreateOptsExt{
-		CreateOptsBuilder: createOpts,
-		KeyName:           keyName,
-	}
-
-	if ex.Config.Spec.ServerGroupID != nil {
-		hints := schedulerhints.SchedulerHints{
-			Group: *ex.Config.Spec.ServerGroupID,
-		}
-		createOpts = schedulerhints.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			SchedulerHints:    hints,
-		}
-	}
 	createOpts = &keypairs.CreateOptsExt{
 		CreateOptsBuilder: createOpts,
 		KeyName:           keyName,
@@ -334,7 +319,7 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string, podNetworkIDs
 
 func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID string) error {
 	var (
-		err error
+		err    error
 		server *servers.Server
 	)
 
@@ -366,7 +351,6 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	return nil
 }
 
-
 func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	portID, err := ex.Network.PortIDFromName(machineName)
 	if err != nil {
@@ -390,8 +374,8 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 
 func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, providerID string) (*servers.Server, error) {
 	klog.V(2).Infof("finding server with providerID %s", providerID)
-	serverID := decodeProviderID(providerID)
-	if isEmptyString(pointer.StringPtr(serverID )){
+	serverID := DecodeProviderID(providerID)
+	if isEmptyString(pointer.StringPtr(serverID)) {
 		return nil, fmt.Errorf("could not parse serverID from providerID %q", providerID)
 	}
 
@@ -441,7 +425,7 @@ func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, provi
 func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*servers.Server, error) {
 	var (
 		searchClusterName string
-		searchNodeRole string
+		searchNodeRole    string
 	)
 
 	for key := range ex.Config.Spec.Tags {
@@ -466,9 +450,11 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 
 	matchingServers := []servers.Server{}
 	for _, server := range listedServers {
-		if _, ok := server.Metadata[searchClusterName]; ok {
-			if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
-				matchingServers = append(matchingServers, server)
+		if server.Name == machineName {
+			if _, ok := server.Metadata[searchClusterName]; ok {
+				if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
+					matchingServers = append(matchingServers, server)
+				}
 			}
 		}
 	}
@@ -488,7 +474,7 @@ func (ex *Executor) GetMachineStatus(ctx context.Context, machineName string) (s
 		return "", err
 	}
 
-	return encodeProviderID(ex.Config.Spec.Region, server.ID), nil
+	return EncodeProviderID(ex.Config.Spec.Region, server.ID), nil
 }
 
 func (ex *Executor) ListMachines(_ context.Context) (map[string]string, error) {
@@ -517,7 +503,7 @@ func (ex *Executor) ListMachines(_ context.Context) (map[string]string, error) {
 	for _, server := range servers {
 		if _, ok := server.Metadata[searchClusterName]; ok {
 			if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
-				providerID := encodeProviderID(ex.Config.Spec.Region, server.ID)
+				providerID := EncodeProviderID(ex.Config.Spec.Region, server.ID)
 				result[providerID] = server.Name
 			}
 		}

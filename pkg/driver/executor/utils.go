@@ -21,11 +21,11 @@ import (
 	"strings"
 )
 
-func encodeProviderID(region string, machineID string) string {
+func EncodeProviderID(region string, machineID string) string {
 	return fmt.Sprintf("openstack:///%s/%s", region, machineID)
 }
 
-func decodeProviderID(id string) string {
+func DecodeProviderID(id string) string {
 	splitProviderID := strings.Split(id, "/")
 	return splitProviderID[len(splitProviderID)-1]
 }
