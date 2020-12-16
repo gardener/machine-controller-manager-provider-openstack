@@ -1,18 +1,6 @@
-/*
-Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company and Gardener contributors
+//
+// SPDX-License-Identifier: Apache-2.0
 
 // Package validation - validation is used to validate cloud specific ProviderSpec
 package validation
@@ -122,62 +110,6 @@ func validateClassSpecTags(tags map[string]string, fldPath *field.Path) field.Er
 
 	return allErrs
 }
-
-
-// func ValidateSecret(secret *corev1.Secret) error {
-// 	var (
-// 		ok, ok2 bool
-// 	)
-// 	data := secret.Data
-// 	if b, ok := data[OpenStackAuthURL]; !ok || isEmptyStringByteSlice(b) {
-// 		return fmt.Errorf("missing %s in secret", OpenStackAuthURL)
-// 	}
-// 	if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b){
-// 		return fmt.Errorf("missing %s in secret", OpenStackUsername)
-// 	}
-// 	if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b){
-// 		return fmt.Errorf("missing %s in secret", OpenStackPassword)
-// 	}
-//
-// 	domainName, ok := data[OpenStackDomainName]
-// 	domainID, ok2 := data[OpenStackDomainID]
-// 	if (!ok || isEmptyStringByteSlice(domainName)) && (!ok2 || isEmptyStringByteSlice(domainID)) {
-// 		return fmt.Errorf("missing %s or %s in secret", OpenStackDomainName, OpenStackDomainID)
-// 	}
-//
-// 	tenantName, ok := data[OpenStackTenantName]
-// 	tenantID, ok2 := data[OpenStackTenantID]
-// 	if (!ok || isEmptyStringByteSlice(tenantName)) && (!ok2 || isEmptyStringByteSlice(tenantID)) {
-// 		return fmt.Errorf("missing %s or %s in secret", OpenStackTenantName, OpenStackTenantID)
-// 	}
-//
-// 	var clientCert, clientKey []byte
-// 	if clientCert, ok = data[OpenStackClientCert]; !ok {
-// 		clientCert = nil
-// 	}
-// 	if clientKey, ok = data[OpenStackClientKey]; !ok {
-// 		clientKey = nil
-// 	}
-//
-// 	if len(clientCert) != 0 && len(clientKey) == 0 {
-// 		return fmt.Errorf("missing %s in secret", OpenStackClientKey)
-// 	}
-//
-// 	if insecureStr, ok := data[OpenStackInsecure]; ok {
-// 		switch string(insecureStr) {
-// 		case "true":
-// 		case "false":
-// 		default:
-// 			return fmt.Errorf("invalid value for boolean field %s: %s ", OpenStackInsecure, string(insecureStr))
-// 		}
-// 	}
-//
-// 	if b, ok := data[UserData]; !ok || isEmptyStringByteSlice(b){
-// 		return fmt.Errorf("missing %s in secret", UserData)
-// 	}
-//
-// 	return nil
-// }
 
 func ValidateSecret(secret *corev1.Secret) field.ErrorList {
 	var (

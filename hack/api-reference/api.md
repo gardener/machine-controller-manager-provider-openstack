@@ -10,7 +10,7 @@
 </p>
 Resource Types:
 <ul></ul>
-<h3 id="openstack.machine.gardener.cloud/v1alpha1.MachineClassProviderConfig">MachineClassProviderConfig
+<h3 id="openstack.machine.gardener.cloud/v1alpha1.MachineProviderConfig">MachineProviderConfig
 </h3>
 <p>
 </p>
@@ -26,8 +26,8 @@ Resource Types:
 <td>
 <code>spec</code></br>
 <em>
-<a href="#openstack.machine.gardener.cloud/v1alpha1.MachineClassSpec">
-MachineClassSpec
+<a href="#openstack.machine.gardener.cloud/v1alpha1.MachineProviderConfigSpec">
+MachineProviderConfigSpec
 </a>
 </em>
 </td>
@@ -177,16 +177,28 @@ string
 <td>
 </td>
 </tr>
+<tr>
+<td>
+<code>networks</code></br>
+<em>
+<a href="#openstack.machine.gardener.cloud/v1alpha1.OpenStackNetwork">
+[]OpenStackNetwork
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
 </table>
 </td>
 </tr>
 </tbody>
 </table>
-<h3 id="openstack.machine.gardener.cloud/v1alpha1.MachineClassSpec">MachineClassSpec
+<h3 id="openstack.machine.gardener.cloud/v1alpha1.MachineProviderConfigSpec">MachineProviderConfigSpec
 </h3>
 <p>
 (<em>Appears on:</em>
-<a href="#openstack.machine.gardener.cloud/v1alpha1.MachineClassProviderConfig">MachineClassProviderConfig</a>)
+<a href="#openstack.machine.gardener.cloud/v1alpha1.MachineProviderConfig">MachineProviderConfig</a>)
 </p>
 <p>
 </p>
@@ -334,6 +346,67 @@ bool
 <code>serverGroupID</code></br>
 <em>
 string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>networks</code></br>
+<em>
+<a href="#openstack.machine.gardener.cloud/v1alpha1.OpenStackNetwork">
+[]OpenStackNetwork
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="openstack.machine.gardener.cloud/v1alpha1.OpenStackNetwork">OpenStackNetwork
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#openstack.machine.gardener.cloud/v1alpha1.MachineProviderConfigSpec">MachineProviderConfigSpec</a>)
+</p>
+<p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>id</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>takes priority before name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podNetwork</code></br>
+<em>
+bool
 </em>
 </td>
 <td>

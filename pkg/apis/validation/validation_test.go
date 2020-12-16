@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company and Gardener contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+
 package validation_test
 
 import (
@@ -12,8 +16,6 @@ import (
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
 )
-
-var ()
 
 var _ = Describe("Validation", func() {
 	Describe("#MachineProviderConfig", func() {

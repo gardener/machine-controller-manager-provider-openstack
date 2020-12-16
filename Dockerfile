@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
 #############      builder                                  #############
 FROM eu.gcr.io/gardener-project/3rd/golang:1.15.5 AS builder
 
