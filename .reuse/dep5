@@ -31,6 +31,10 @@ License: CC-BY-4.0
 
 # --------------------------------------------------
 # dependencies
+Files: vendor/github.com/ahmetb/gen-crd-api-reference-docs/*
+Copyright: unknown
+License: Apache-2.0
+
 Files: vendor/github.com/beorn7/perks/*
 Copyright: 2013 Blake Mizerany
 License: MIT
@@ -39,13 +43,55 @@ Files: vendor/github.com/davecgh/go-spew/*
 Copyright: 2012-2016 Dave Collins
 License: ISC
 
+Files: vendor/github.com/emicklei/go-restful/*
+Copyright: 2012,2013 Ernest Micklei
+License: MIT
+
 Files: vendor/github.com/evanphx/json-patch/*
 Copyright: 2014, Evan Phoenix
 License: BSD-3-Clause
 
+Files: vendor/github.com/fatih/color/*
+Copyright: 2013 Fatih Arslan
+License: MIT
+
+Files: vendor/github.com/fsnotify/fsnotify/*
+Copyright: 2012 The Go Authors
+Copyright: 2012-2019 fsnotify Authors
+License: BSD-3-Clause
+
+Files: vendor/github.com/gardener/gardener/*
+Copyright: 2017-2019 SAP SE or an SAP affiliate company
+Copyright: 2017 The Kubernetes Authors
+License: Apache-2.0
+
 Files: vendor/github.com/gardener/machine-controller-manager/*
 Copyright: 2017-2018 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
+
+Files: vendor/github.com/go-logr/logr/*
+Copyright: 2020 The logr Authors
+License: Apache-2.0
+
+Files: vendor/github.com/go-openapi/jsonpointer/*
+Copyright: 2013 sigu-399 https://github.com/sigu-399
+License: Apache-2.0
+
+Files: vendor/github.com/go-openapi/jsonreference/*
+Copyright: 2013 sigu-399 https://github.com/sigu-399
+License: Apache-2.0
+
+Files: vendor/github.com/go-openapi/spec/*
+Copyright: 2015 go-swagger
+License: Apache-2.0
+
+Files: vendor/github.com/go-openapi/swag/*
+Copyright: 2015 go-swagger
+License: Apache-2.0
+
+Files: vendor/github.com/gobuffalo/flect/*
+Copyright: 2019 Mark Bates
+License: MIT
 
 Files: vendor/github.com/gogo/protobuf/*
 Copyright: 2013, The GoGo Authors
@@ -54,6 +100,10 @@ License: BSD-3-Clause
 
 Files: vendor/github.com/golang/groupcache/*
 Copyright: 2013 Google Inc.
+License: Apache-2.0
+
+Files: vendor/github.com/golang/mock/*
+Copyright: 2010 Google Inc.
 License: Apache-2.0
 
 Files: vendor/github.com/golang/protobuf/*
@@ -72,22 +122,41 @@ Files: vendor/github.com/googleapis/gnostic/*
 Copyright: 2017 Google Inc.
 License: Apache-2.0
 
+Files: vendor/github.com/gophercloud/gophercloud/*
+Copyright: 2012-2013 Rackspace, Inc.
+License: Apache-2.0
+
+Files: vendor/github.com/gophercloud/utils/*
+Copyright: unknown
+License: Apache-2.0
+
 Files: vendor/github.com/hashicorp/golang-lru/*
 Copyright: Armon Dadgar, HashiCorp
 License: MPL-2.0
-
-Files: vendor/github.com/hpcloud/tail/*
-Copyright: 2015 Hewlett Packard Enterprise Development LP
-Copyright: 2014 ActiveState
-License: MIT
 
 Files: vendor/github.com/imdario/mergo/*
 Copyright: 2013 Dario Castane
 Copyright: 2012 The Go Authors
 License: BSD-3-Clause
 
+Files: vendor/github.com/inconshreveable/mousetrap/*
+Copyright: 2014 Alan Shreve
+License: Apache-2.0
+
 Files: vendor/github.com/json-iterator/go/*
 Copyright: 2016 json-iterator
+License: MIT
+
+Files: vendor/github.com/mailru/easyjson/*
+Copyright: 2016 Mail.Ru Group
+License: MIT
+
+Files: vendor/github.com/mattn/go-colorable/*
+Copyright: 2016 Yasuhiro Matsumoto
+License: MIT
+
+Files: vendor/github.com/mattn/go-isatty/*
+Copyright: Yasuhiro MATSUMOTO
 License: MIT
 
 Files: vendor/github.com/matttproud/golang_protobuf_extensions/*
@@ -102,6 +171,11 @@ Files: vendor/github.com/modern-go/reflect2/*
 Copyright: 2018 Tao Wen
 License: Apache-2.0
 
+Files: vendor/github.com/nxadm/tail/*
+Copyright: 2015 Hewlett Packard Enterprise Development LP
+Copyright: 2014 ActiveState
+License: MIT
+
 Files: vendor/github.com/onsi/ginkgo/*
 Copyright: 2013-2014 Onsi Fakhouri
 License: MIT
@@ -109,6 +183,10 @@ License: MIT
 Files: vendor/github.com/onsi/gomega/*
 Copyright: 2013-2014 Onsi Fakhouri
 License: MIT
+
+Files: vendor/github.com/pkg/errors/*
+Copyright: 2015, Dave Cheney
+License: BSD-2-Clause
 
 Files: vendor/github.com/prometheus/client_golang/*
 Copyright: 2012-2015 The Prometheus Authors
@@ -129,11 +207,53 @@ Files: vendor/github.com/prometheus/procfs/*
 Copyright: 2014 The Prometheus Authors
 License: Apache-2.0
 
+Files: vendor/github.com/PuerkitoBio/purell/*
+Copyright: 2012, Martin Angers
+License: BSD-3-Clause
+
+Files: vendor/github.com/PuerkitoBio/urlesc/*
+Copyright: 2012 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/github.com/russross/blackfriday/v2/*
+Copyright: 2011 Russ Ross
+License: BSD-2-Clause
+
+Files: vendor/github.com/shurcooL/sanitized_anchor_name/*
+Copyright: 2015 Dmitri Shuralyov
+License: MIT
+
+Files: vendor/github.com/spf13/cobra/*
+Copyright: 2013 Steve Francia
+License: Apache-2.0
+
 Files: vendor/github.com/spf13/pflag/*
+Copyright: 2009 The Go Authors
+Copyright: 2012 Alex Ogier
+Copyright: 2012 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/go.uber.org/atomic/*
+Copyright: 2016 Uber Technologies, Inc.
+License: MIT
+
+Files: vendor/go.uber.org/multierr/*
+Copyright: 2017 Uber Technologies, Inc.
+License: MIT
+
+Files: vendor/go.uber.org/zap/*
+Copyright: 2016-2017 Uber Technologies, Inc.
+License: MIT
+
+Files: vendor/golang.org/x/crypto/*
 Copyright: 2009 The Go Authors
 License: BSD-3-Clause
 
-Files: vendor/golang.org/x/crypto/*
+Files: vendor/golang.org/x/lint/*
+Copyright: 2013 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/mod/*
 Copyright: 2009 The Go Authors
 License: BSD-3-Clause
 
@@ -157,12 +277,28 @@ Files: vendor/golang.org/x/time/*
 Copyright: 2009 The Go Authors
 License: BSD-3-Clause
 
+Files: vendor/golang.org/x/tools/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/xerrors/*
+Copyright: 2019 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/gopkg.in/fsnotify.v1/*
+Copyright: 2010 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/gonum.org/v1/gonum/*
+Copyright: 2013 The Gonum Authors
+License: BSD-3-Clause
+
 Files: vendor/google.golang.org/appengine/*
 Copyright: 2011 Google Inc.
 License: Apache-2.0
 
-Files: vendor/gopkg.in/fsnotify.v1/*
-Copyright: 2010 The Go Authors
+Files: vendor/google.golang.org/protobuf/*
+Copyright: 2018 The Go Authors
 License: BSD-3-Clause
 
 Files: vendor/gopkg.in/inf.v0/*
@@ -179,8 +315,18 @@ Copyright: 2006 Kirill Simonov
 Copyright: 2011-2016 Canonical Ltd.
 License: Apache-2.0 and MIT
 
+Files: vendor/gopkg.in/yaml.v3/*
+Copyright: 2006-2010 Kirill Simonov
+Copyright: 2006-2011 Kirill Simonov
+Copyright: 2011-2019 Canonical Ltd
+License: Apache-2.0 and MIT
+
 Files: vendor/k8s.io/api/*
-Copyright:
+Copyright: 2017 The Kubernetes Authors
+License: Apache-2.0
+
+Files: vendor/k8s.io/apiextensions-apiserver/*
+Copyright: 2017 The Kubernetes Authors
 License: Apache-2.0
 
 Files: vendor/k8s.io/apimachinery/*
@@ -199,11 +345,23 @@ Files: vendor/k8s.io/cluster-bootstrap/*
 Copyright: 2017 The Kubernetes Authors
 License: Apache-2.0
 
+Files: vendor/k8s.io/code-generator/*
+Copyright: 2015 The Kubernetes Authors
+License: Apache-2.0
+
 Files: vendor/k8s.io/component-base/*
 Copyright: 2014 The Kubernetes Authors
 License: Apache-2.0
 
+Files: vendor/k8s.io/gengo/*
+Copyright: 2014 The Kubernetes Authors
+License: Apache-2.0
+
 Files: vendor/k8s.io/klog/*
+Copyright: 2013 Google Inc.
+License: Apache-2.0
+
+Files: vendor/k8s.io/klog/v2/*
 Copyright: 2013 Google Inc.
 License: Apache-2.0
 
@@ -215,15 +373,11 @@ Files: vendor/k8s.io/utils/*
 Copyright: 2015 The Kubernetes Authors
 License: Apache-2.0
 
+Files: vendor/sigs.k8s.io/controller-tools/*
+Copyright: 2018 The Kubernetes Authors
+License: Apache-2.0
+
 Files: vendor/sigs.k8s.io/yaml/*
 Copyright: 2014 Sam Ghods
 Copyright: 2012 The Go Authors
 License: MIT and BSD-3-Clause
-
-Files: vendor/github.com/gophercloud/gophercloud
-Copyright: 2012-2013 Rackspace, Inc.
-License: Apache-2.0
-
-Files: vendor/gonum.org/v1/gonum
-Copyright: 2013 The Gonum Authors
-License: BSD-3-Clause

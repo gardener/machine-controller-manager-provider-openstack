@@ -1,6 +1,10 @@
-// SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company and Gardener contributors
+// SPDX-FileCopyrightText: 2014 The Kubernetes Authors.
+// SPDX-FileCopyrightText: modifications 2020 SAP SE or an SAP affiliate company and Gardener contributors
 //
 // SPDX-License-Identifier: Apache-2.0
+//
+// This file was copied and modified from the kubernetes/kubernetes project
+// https://github.com/kubernetes/kubernetes/release-1.8/cmd/kube-controller-manager/controller_manager.go
 
 package main
 
