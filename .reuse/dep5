@@ -22,6 +22,8 @@ License: Apache-2.0
 Files:
   docs/**
   *.md
+  hack/**
+  kubernetes/**
 Copyright: 2020 SAP SE or an SAP affiliate company and Gardener contributors
 License: CC-BY-4.0
 
@@ -215,3 +217,17 @@ Files: vendor/sigs.k8s.io/yaml/*
 Copyright: 2014 Sam Ghods
 Copyright: 2012 The Go Authors
 License: MIT and BSD-3-Clause
+
+Files: vendor/github.com/gophercloud/gophercloud
+Copyright: 2012-2013 Rackspace, Inc.
+License: Apache-2.0
+
+Files: vendor/gonum.org/v1/gonum
+Copyright: 2013 The Gonum Authors
+License: BSD-3-Clause
+
+Files: vendor/k8s.io/gengo
+License: Apache-2.0
+
+Files: vendor/k8s.io/code-generator
+License: Apache-2.0
