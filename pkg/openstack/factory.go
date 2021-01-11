@@ -136,10 +136,28 @@ func (l logger) Printf(format string, args ...interface{}) {
 	}
 }
 
-func (f *ClientFactory) Compute() (Compute, error){
-	return newNovaV2(f.providerClient, gophercloud.EndpointOpts{})
+// WithRegion returns an Option that can modify the region a client targets.
+func WithRegion(region string) Option {
+	return func(opts gophercloud.EndpointOpts) gophercloud.EndpointOpts {
+		opts.Region = region
+		return opts
+	}
 }
 
-func (f *ClientFactory) Network() (Network, error){
+func (f *ClientFactory) Compute(opts ...Option) (Compute, error){
+	eo := gophercloud.EndpointOpts{}
+	for _, opt := range opts {
+		eo = opt(eo)
+	}
+
+	return newNovaV2(f.providerClient, eo)
+}
+
+func (f *ClientFactory) Network(opts ...Option) (Network, error){
+	eo := gophercloud.EndpointOpts{}
+	for _, opt := range opts {
+		eo = opt(eo)
+	}
+
 	return newNeutronV2(f.providerClient, gophercloud.EndpointOpts{})
 }

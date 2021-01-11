@@ -61,6 +61,10 @@ var _ = Describe("Executor", func() {
 		}
 	})
 
+	AfterEach(func() {
+		ctrl.Finish()
+	})
+
 	Context("Create", func() {
 		var (
 			machineName = "name"
@@ -295,21 +299,29 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should try to find by ProviderID if supplied", func() {
-			compute.EXPECT().DeleteServer("id1").Return(nil)
-			compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.StatusDeleted}, nil)
+			var (
+				id = "id"
+			)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.StatusActive, Metadata: tags}, nil),
+				compute.EXPECT().DeleteServer(id).Return(nil),
+				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.StatusDeleted, Metadata: tags}, nil),
+			)
 			ex := Executor{
 				Compute: compute,
 				Network: network,
 				Config:  *cfg,
 			}
-			err := ex.DeleteMachine(ctx, "", EncodeProviderID(region, "id1"))
+			err := ex.DeleteMachine(ctx, "", EncodeProviderID(region, id))
 			Expect(err).To(BeNil())
 		})
 
 		It("should try to delete the port if we use specific subnetID", func() {
-			subnetID := "subID1"
-			portID := "portID"
-			machineName := "foo"
+			var (
+				subnetID = "subID1"
+				portID = "portID"
+				machineName = "foo"
+			)
 
 			cfg.Spec.SubnetID = pointer.StringPtr(subnetID)
 			gomock.InOrder(

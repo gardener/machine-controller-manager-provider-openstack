@@ -24,9 +24,11 @@ const (
 
 type ClientConstructor func (secret *corev1.Secret) (Factory, error)
 
+type Option func(opts gophercloud.EndpointOpts) gophercloud.EndpointOpts
+
 type Factory interface {
-	Compute() (Compute, error)
-	Network() (Network, error)
+	Compute(...Option) (Compute, error)
+	Network(...Option) (Network, error)
 }
 
 type Compute interface{

@@ -81,6 +81,7 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 		Object: cfg,
 	}
 	machineClass.SecretRef = os.Spec.SecretRef
+	machineClass.CredentialsSecretRef = os.Spec.CredentialsSecretRef
 	machineClass.Provider = openstackProvider
 
 	return nil

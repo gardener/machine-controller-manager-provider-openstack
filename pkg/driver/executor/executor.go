@@ -31,12 +31,12 @@ type Executor struct {
 }
 
 func NewExecutor(factory openstack.Factory, config api.MachineProviderConfig) (*Executor, error) {
-	computeClient, err := factory.Compute()
+	computeClient, err := factory.Compute(openstack.WithRegion(config.Spec.Region))
 	if err != nil {
 		klog.Errorf("failed to create compute client for executor")
 		return nil, err
 	}
-	networkClient, err := factory.Network()
+	networkClient, err := factory.Network(openstack.WithRegion(config.Spec.Region))
 	if err != nil {
 		klog.Errorf("failed to create network client for executor")
 		return nil, err

@@ -39,33 +39,41 @@ func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 }
 
 // Compute mocks base method.
-func (m *MockFactory) Compute() (openstack.Compute, error) {
+func (m *MockFactory) Compute(arg0 ...openstack.Option) (openstack.Compute, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Compute")
+	varargs := []interface{}{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Compute", varargs...)
 	ret0, _ := ret[0].(openstack.Compute)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Compute indicates an expected call of Compute.
-func (mr *MockFactoryMockRecorder) Compute() *gomock.Call {
+func (mr *MockFactoryMockRecorder) Compute(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Compute", reflect.TypeOf((*MockFactory)(nil).Compute))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Compute", reflect.TypeOf((*MockFactory)(nil).Compute), arg0...)
 }
 
 // Network mocks base method.
-func (m *MockFactory) Network() (openstack.Network, error) {
+func (m *MockFactory) Network(arg0 ...openstack.Option) (openstack.Network, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Network")
+	varargs := []interface{}{}
+	for _, a := range arg0 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Network", varargs...)
 	ret0, _ := ret[0].(openstack.Network)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Network indicates an expected call of Network.
-func (mr *MockFactoryMockRecorder) Network() *gomock.Call {
+func (mr *MockFactoryMockRecorder) Network(arg0 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Network", reflect.TypeOf((*MockFactory)(nil).Network))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Network", reflect.TypeOf((*MockFactory)(nil).Network), arg0...)
 }
 
 // MockCompute is a mock of Compute interface.
