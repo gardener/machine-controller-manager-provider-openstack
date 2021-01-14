@@ -22,8 +22,7 @@ machine-controller-manager-provider-openstack:
         pull-request: ~
       steps:
         verify:
-          image: 
-            image: 'eu.gcr.io/gardener-project/3rd/golang:1.15.5'
+          image: 'eu.gcr.io/gardener-project/3rd/golang:1.15.5'
     release:
       traits:
         version:
