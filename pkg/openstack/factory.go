@@ -20,7 +20,6 @@ import (
 	"k8s.io/klog"
 )
 
-
 func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
 	if secret.Data == nil {
 		return nil, fmt.Errorf("secret does not contain any data")
@@ -29,7 +28,7 @@ func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
 	creds := ExtractCredentials(secret)
 	provider, err := newAuthenticatedProviderClientFromCredentials(creds)
 	if err != nil {
-		return nil, fmt. Errorf("error creating OpenStack client from Credentials: %v", err)
+		return nil, fmt.Errorf("error creating OpenStack client from Credentials: %v", err)
 	}
 
 	return &ClientFactory{
@@ -37,7 +36,7 @@ func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
 	}, nil
 }
 
-func newAuthenticatedProviderClientFromCredentials(credentials *Credentials) (*gophercloud.ProviderClient, error){
+func newAuthenticatedProviderClientFromCredentials(credentials *Credentials) (*gophercloud.ProviderClient, error) {
 	config := &tls.Config{}
 
 	if credentials.CACert != nil {
@@ -78,7 +77,7 @@ func newAuthenticatedProviderClientFromCredentials(credentials *Credentials) (*g
 		return nil, fmt.Errorf("failed to create client auth options: %v", err)
 	}
 
-	provider, err :=  openstack.NewClient(ao.IdentityEndpoint)
+	provider, err := openstack.NewClient(ao.IdentityEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create authenticated client: %v", err)
 	}
@@ -105,7 +104,6 @@ func newAuthenticatedProviderClientFromCredentials(credentials *Credentials) (*g
 
 	return provider, nil
 }
-
 
 type logger struct{}
 
@@ -144,7 +142,7 @@ func WithRegion(region string) Option {
 	}
 }
 
-func (f *ClientFactory) Compute(opts ...Option) (Compute, error){
+func (f *ClientFactory) Compute(opts ...Option) (Compute, error) {
 	eo := gophercloud.EndpointOpts{}
 	for _, opt := range opts {
 		eo = opt(eo)
@@ -153,7 +151,7 @@ func (f *ClientFactory) Compute(opts ...Option) (Compute, error){
 	return newNovaV2(f.providerClient, eo)
 }
 
-func (f *ClientFactory) Network(opts ...Option) (Network, error){
+func (f *ClientFactory) Network(opts ...Option) (Network, error) {
 	eo := gophercloud.EndpointOpts{}
 	for _, opt := range opts {
 		eo = opt(eo)

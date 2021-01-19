@@ -12,8 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 )
 
 func ValidateRequest(providerConfig *openstack.MachineProviderConfig, secret *corev1.Secret) error {
@@ -32,7 +32,7 @@ func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 
 	fldPath := field.NewPath("spec")
 
-	if "" == providerConfig.Spec.ImageID{
+	if "" == providerConfig.Spec.ImageID {
 		if "" == providerConfig.Spec.ImageName {
 			allErrs = append(allErrs, field.Required(fldPath.Child("imageName"), "ImageName is required if no ImageID is given"))
 		}
@@ -122,10 +122,10 @@ func ValidateSecret(secret *corev1.Secret) field.ErrorList {
 	if b, ok := data[OpenStackAuthURL]; !ok || isEmptyStringByteSlice(b) {
 		allErrs = append(allErrs, field.Required(root.Key(OpenStackAuthURL), fmt.Sprintf("%s is required", OpenStackAuthURL)))
 	}
-	if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b){
+	if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b) {
 		allErrs = append(allErrs, field.Required(root.Key(OpenStackUsername), fmt.Sprintf("%s is required", OpenStackUserDomainName)))
 	}
-	if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b){
+	if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b) {
 		allErrs = append(allErrs, field.Required(root.Key(OpenStackPassword), fmt.Sprintf("%s is required", OpenStackPassword)))
 	}
 
@@ -165,19 +165,18 @@ func ValidateSecret(secret *corev1.Secret) field.ErrorList {
 	return allErrs
 }
 
-func ValidateUserData(secret *corev1.Secret) field.ErrorList{
+func ValidateUserData(secret *corev1.Secret) field.ErrorList {
 	allErrs := field.ErrorList{}
 	root := field.NewPath("data")
-	if b, ok := secret.Data[UserData]; !ok || isEmptyStringByteSlice(b){
+	if b, ok := secret.Data[UserData]; !ok || isEmptyStringByteSlice(b) {
 		allErrs = append(allErrs, field.Required(root.Key(UserData), fmt.Sprintf("%s is required", UserData)))
 	}
 
 	return allErrs
 }
 
-
 func isEmptyStringByteSlice(b []byte) bool {
-	if len(b) == 0{
+	if len(b) == 0 {
 		return true
 	}
 

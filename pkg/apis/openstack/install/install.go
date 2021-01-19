@@ -15,6 +15,7 @@ var (
 	schemeBuilder = runtime.NewSchemeBuilder(
 		v1alpha1.AddToScheme,
 		openstack.AddToScheme,
+		setVersionPriority,
 	)
 
 	AddToScheme = schemeBuilder.AddToScheme

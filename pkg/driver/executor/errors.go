@@ -9,6 +9,6 @@ import (
 )
 
 var (
-	ErrNotFound = fmt.Errorf("resource not found")
+	ErrNotFound      = fmt.Errorf("resource not found")
 	ErrMultipleFound = fmt.Errorf("multiple resources found")
 )

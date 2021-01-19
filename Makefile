@@ -61,7 +61,7 @@ check:
 
 .PHONY: format
 format:
-	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/format.sh ./cmd ./pkg ./test
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/format.sh ./cmd ./pkg 
 
 .PHONY: test
 test:

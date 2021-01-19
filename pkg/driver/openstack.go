@@ -30,4 +30,3 @@ func NewOpenstackDriver(decoder runtime.Decoder, constructor openstack.ClientCon
 		clientConstructor: constructor,
 	}
 }
-

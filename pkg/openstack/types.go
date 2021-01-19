@@ -15,14 +15,14 @@ import (
 
 const (
 	// https://docs.openstack.org/api-guide/compute/server_concepts.html
-	StatusDeleted = "DELETED"
+	StatusDeleted     = "DELETED"
 	StatusSoftDeleted = "SOFT_DELETED"
-	StatusBuild = "BUILD"
-	StatusActive = "ACTIVE"
-	StatusError = "ERROR"
+	StatusBuild       = "BUILD"
+	StatusActive      = "ACTIVE"
+	StatusError       = "ERROR"
 )
 
-type ClientConstructor func (secret *corev1.Secret) (Factory, error)
+type ClientConstructor func(secret *corev1.Secret) (Factory, error)
 
 type Option func(opts gophercloud.EndpointOpts) gophercloud.EndpointOpts
 
@@ -31,12 +31,12 @@ type Factory interface {
 	Network(...Option) (Network, error)
 }
 
-type Compute interface{
+type Compute interface {
 	ServiceClient() *gophercloud.ServiceClient
 
 	CreateServer(opts servers.CreateOptsBuilder) (*servers.Server, error)
 	BootFromVolume(opts servers.CreateOptsBuilder) (*servers.Server, error)
-	GetServer(id string)(*servers.Server, error)
+	GetServer(id string) (*servers.Server, error)
 	ListServers(opts servers.ListOptsBuilder) ([]servers.Server, error)
 	DeleteServer(id string) error
 
@@ -44,11 +44,11 @@ type Compute interface{
 	ImageIDFromName(name string) (string, error)
 }
 
-type Network interface{
-	GetSubnet(id string)(*subnets.Subnet, error)
+type Network interface {
+	GetSubnet(id string) (*subnets.Subnet, error)
 
 	CreatePort(opts ports.CreateOptsBuilder) (*ports.Port, error)
-	ListPorts(opts ports.ListOptsBuilder)([]ports.Port, error)
+	ListPorts(opts ports.ListOptsBuilder) ([]ports.Port, error)
 	UpdatePort(id string, opts ports.UpdateOptsBuilder) error
 	DeletePort(id string) error
 
@@ -57,16 +57,16 @@ type Network interface{
 	PortIDFromName(name string) (string, error)
 }
 
-type ClientFactory struct{
+type ClientFactory struct {
 	providerClient *gophercloud.ProviderClient
 }
 
 // novaV2 is a Nova client implementing the Compute interface.
-type novaV2 struct{
+type novaV2 struct {
 	serviceClient *gophercloud.ServiceClient
 }
 
 // neutronV2 is a Neutron client implementing the Network interface.
-type neutronV2 struct{
+type neutronV2 struct {
 	serviceClient *gophercloud.ServiceClient
 }

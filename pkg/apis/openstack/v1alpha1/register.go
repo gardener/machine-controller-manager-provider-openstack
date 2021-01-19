@@ -12,7 +12,7 @@ import (
 // GroupName is the group name use in this package
 const (
 	GroupName = "openstack.machine.gardener.cloud"
-	Version = "v1alpha1"
+	Version   = "v1alpha1"
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -45,4 +45,3 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 	)
 	return nil
 }
-

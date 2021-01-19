@@ -90,7 +90,7 @@ func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network
 		networkID      = ex.Config.Spec.NetworkID
 		subnetID       = ex.Config.Spec.SubnetID
 		networks       = ex.Config.Spec.Networks
-		serverNetworks = make([]servers.Network, 0, 0)
+		serverNetworks = make([]servers.Network, 0)
 		podNetworkIDs  = make(map[string]struct{})
 	)
 
@@ -242,7 +242,6 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 		}
 	}
 
-	var server *servers.Server
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
 		blockDevices, err := resourceInstanceBlockDevicesV2(rootDiskSize, imageRef)
@@ -254,15 +253,10 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 			CreateOptsBuilder: createOpts,
 			BlockDevice:       blockDevices,
 		}
-		server, err = ex.Compute.BootFromVolume(createOpts)
-	} else {
-		server, err = ex.Compute.CreateServer(createOpts)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("error creating server: %v", err)
+		return ex.Compute.BootFromVolume(createOpts)
 	}
 
-	return server, err
+	return ex.Compute.CreateServer(createOpts)
 }
 
 func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfromvolume.BlockDevice, error) {

@@ -133,8 +133,8 @@ var _ = Describe("Executor", func() {
 
 			server := &servers.Server{
 				Metadata: tags,
-				ID: serverID,
-				Name: machineName,
+				ID:       serverID,
+				Name:     machineName,
 			}
 
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
@@ -148,7 +148,7 @@ var _ = Describe("Executor", func() {
 				compute.EXPECT().GetServer(serverID).Return(nil, fmt.Errorf("error fetching server")),
 				compute.EXPECT().GetServer(serverID).Return(server, nil),
 				compute.EXPECT().DeleteServer(serverID).Return(nil),
-				compute.EXPECT().GetServer(serverID).Do(func(_ string){server.Status = client.StatusDeleted}).Return(server, nil),
+				compute.EXPECT().GetServer(serverID).Do(func(_ string) { server.Status = client.StatusDeleted }).Return(server, nil),
 			)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
@@ -318,8 +318,8 @@ var _ = Describe("Executor", func() {
 
 		It("should try to delete the port if we use specific subnetID", func() {
 			var (
-				subnetID = "subID1"
-				portID = "portID"
+				subnetID    = "subID1"
+				portID      = "portID"
 				machineName = "foo"
 			)
 

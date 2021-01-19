@@ -87,11 +87,10 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 	return nil
 }
 
-
 func mapErrorToCode(err error) codes.Code {
-	if errors.Is(err, executor.ErrNotFound){
+	if errors.Is(err, executor.ErrNotFound) {
 		return codes.NotFound
-	} else if errors.Is(err, executor.ErrMultipleFound){
+	} else if errors.Is(err, executor.ErrMultipleFound) {
 		return codes.OutOfRange
 	}
 

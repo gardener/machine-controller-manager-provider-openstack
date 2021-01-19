@@ -35,9 +35,8 @@ const (
 	// ServerTagClusterPrefix is the prefix used for tags denoting the cluster this server belongs to.
 	ServerTagClusterPrefix = "kubernetes.io-cluster-"
 	// ServerTagRolePrefix is the prefix used for tags denoting the role of the server.
-	ServerTagRolePrefix    = "kubernetes.io-role-"
+	ServerTagRolePrefix = "kubernetes.io-role-"
 
 	// UserData is a constant for a key name whose value contains data passed to the server e.g. CloudInit scripts.
 	UserData string = "userData"
-
 )
