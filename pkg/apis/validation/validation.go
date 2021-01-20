@@ -9,13 +9,14 @@ import (
 	"fmt"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/validation/field"
-
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
+// ValidateRequest validates a request received by the OpenStack driver.
 func ValidateRequest(providerConfig *openstack.MachineProviderConfig, secret *corev1.Secret) error {
 	allErrs := field.ErrorList{}
 
@@ -26,7 +27,7 @@ func ValidateRequest(providerConfig *openstack.MachineProviderConfig, secret *co
 	return allErrs.ToAggregate()
 }
 
-// ValidateProviderSpecNSecret validates provider spec and secret to check if all fields are present and valid
+// ValidateMachineProviderConfig validates a MachineProviderConfig object.
 func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 
@@ -111,6 +112,7 @@ func validateClassSpecTags(tags map[string]string, fldPath *field.Path) field.Er
 	return allErrs
 }
 
+// ValidateSecret validates that the secret contain data to authenticate with an Openstack provider.
 func ValidateSecret(secret *corev1.Secret) field.ErrorList {
 	var (
 		ok, ok2 bool
@@ -165,6 +167,7 @@ func ValidateSecret(secret *corev1.Secret) field.ErrorList {
 	return allErrs
 }
 
+// ValidateUserData validates that a secret contains user data.
 func ValidateUserData(secret *corev1.Secret) field.ErrorList {
 	allErrs := field.ErrorList{}
 	root := field.NewPath("data")

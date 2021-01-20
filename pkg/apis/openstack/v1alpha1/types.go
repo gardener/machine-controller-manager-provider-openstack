@@ -17,26 +17,49 @@ type MachineProviderConfig struct {
 	Spec MachineProviderConfigSpec `json:"spec,omitempty"`
 }
 
+// MachineProviderConfigSpec contains provider specific configuration for creating and managing machines.
 type MachineProviderConfigSpec struct {
-	ImageID          string             `json:"imageID"`
-	ImageName        string             `json:"imageName"`
-	Region           string             `json:"region"`
-	AvailabilityZone string             `json:"availabilityZone"`
-	FlavorName       string             `json:"flavorName"`
-	KeyName          string             `json:"keyName"`
-	SecurityGroups   []string           `json:"securityGroups"`
-	Tags             map[string]string  `json:"tags,omitempty"`
-	NetworkID        string             `json:"networkID"`
-	SubnetID         *string            `json:"subnetID,omitempty"`
-	PodNetworkCidr   string             `json:"podNetworkCidr"`
-	RootDiskSize     int                `json:"rootDiskSize,omitempty"` // in GB
-	UseConfigDrive   *bool              `json:"useConfigDrive,omitempty"`
-	ServerGroupID    *string            `json:"serverGroupID,omitempty"`
-	Networks         []OpenStackNetwork `json:"networks,omitempty"`
+	// ImageID is the ID of image used by the machine.
+	ImageID string `json:"imageID"`
+	// ImageName is the name of the image used the machine. If ImageID is specified, it takes priority over ImageName.
+	ImageName string `json:"imageName"`
+	// Region is the region the machine should belong to.
+	Region string `json:"region"`
+	// AvailabilityZone is the availability zone the machine belongs.
+	AvailabilityZone string `json:"availabilityZone"`
+	// FlavorName is the flavor of the machine.
+	FlavorName string `json:"flavorName"`
+	// KeyName is the name of the key pair used for SSH access.
+	KeyName string `json:"keyName"`
+	// SecurityGroups is a list of security groups the instance should belong to.
+	SecurityGroups []string `json:"securityGroups"`
+	// Tags is a map of key-value pairs that annotate the instance. Tags are stored in the instance's Metadata field.
+	Tags map[string]string `json:"tags,omitempty"`
+	// NetworkID is the ID of the network the instance should belong to.
+	NetworkID string `json:"networkID"`
+	// SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified
+	// +optional
+	SubnetID *string `json:"subnetID,omitempty"`
+	// PodNetworkCidr is the CIDR range for the pods assigned to this instance.
+	PodNetworkCidr string `json:"podNetworkCidr"`
+	// The size of the root disk used for the instance.
+	RootDiskSize   int    `json:"rootDiskSize,omitempty"` // in GB
+	// UseConfigDrive enables the use of configuration drives for the instance.
+	UseConfigDrive *bool  `json:"useConfigDrive,omitempty"`
+	// ServerGroupID is the ID of the server group this instance should belong to.
+	// +optional
+	ServerGroupID *string `json:"serverGroupID,omitempty"`
+	// Networks is a list of networks the instance should belong to. Networks is mutually exclusive with the NetworkID option
+	// and only one should be specified.
+	Networks []OpenStackNetwork `json:"networks,omitempty"`
 }
 
+// OpenStacknetwork describes an network this instance should belong to.
 type OpenStackNetwork struct {
-	Id         string `json:"id,omitempty"` // takes priority before name
-	Name       string `json:"name,omitempty"`
-	PodNetwork bool   `json:"podNetwork,omitempty"`
+	// Id is the ID of a network the instance should belong to.
+	Id string `json:"id,omitempty"` // takes priority before name
+	// Name is the name of a network the instance should belong to. If Id is specified, it takes priority over Name.
+	Name string `json:"name,omitempty"`
+	// PodNetwork specifies whether this network is part of the pod network.
+	PodNetwork bool `json:"podNetwork,omitempty"`
 }
