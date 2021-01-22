@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 BINARY_PATH         := bin/
-REPO_ROOT 			    := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+REPO_ROOT 			:= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 COVERPROFILE        := test/output/coverprofile.out
 REGISTRY            := eu.gcr.io/gardener-project/gardener
 IMAGE_PREFIX        := $(REGISTRY)/extensions

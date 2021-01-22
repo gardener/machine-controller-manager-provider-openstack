@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
       - name: machine-controller-manager
-        image: eu.gcr.io/gardener-project/gardener/machine-controller-manager:v0.28.0-dev-793b105c41adfc434e07107decaf1ac67fc1fd3f
+        image: eu.gcr.io/gardener-project/gardener/machine-controller-manager
         imagePullPolicy: Always
         command:
           - ./machine-controller-manager
@@ -38,7 +38,7 @@ spec:
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 5
-      - name: machine-controller
+      - name: machine-controller-openstack
         command:
         - ./machine-controller
         - --control-kubeconfig=$(TARGET_KUBECONFIG) # Mandatory Parameter - Filepath to the target cluster's kubeconfig where node objects are expected to join.
@@ -49,7 +49,7 @@ spec:
         - --machine-safety-orphan-vms-period=30m # Optional Parameter - Default value 30mins - Time period (in time) used to poll for orphan VMs by safety controller.
         - --node-conditions=ReadonlyFilesystem,KernelDeadlock,DiskPressure # List of comma-separated/case-sensitive node-conditions which when set to True will change machine to a failed state after MachineHealthTimeout duration. It may further be replaced with a new machine if the machine is backed by a machine-set object.
         - --v=3
-        image: gcr.io/gardener-project/gardener/machine-controller-manager-provider-aws:0.1.0-dev-47bc8cf5b02affba97bfb7b0e57202947d397b4c
+        image: gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3

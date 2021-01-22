@@ -44,7 +44,7 @@ type Compute interface {
 	// used as an argument to CreateOpts to resolve Image and Flavor names to IDs (assuming they were provided by names and not IDs).
 	// In this implementation we fetch the IDs before the create call and supply them directly, hence this is superfluous.
 	// TODO(KA): Remove with further testing.
-	ServiceClient() *gophercloud.ServiceClient
+	// ServiceClient() *gophercloud.ServiceClient
 
 	// CreateServer creates a server.
 	CreateServer(opts servers.CreateOptsBuilder) (*servers.Server, error)

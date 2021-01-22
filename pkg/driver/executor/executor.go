@@ -405,7 +405,7 @@ func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, provi
 		}
 	}
 
-	klog.Warningf("server [ID=%q] found, but cluster/role tags are missing", serverID)
+	klog.Warningf("server [ID=%q] found, but cluster/role tags are missing/not matching", serverID)
 	return nil, fmt.Errorf("could not find server [ID=%q]: %w", serverID, ErrNotFound)
 }
 
@@ -460,7 +460,6 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 
 	return &matchingServers[0], nil
 }
-
 
 // GetMachineStatus returns the provider-encoded ID of a server.
 func (ex *Executor) GetMachineStatus(ctx context.Context, machineName string) (string, error) {

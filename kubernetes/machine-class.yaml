@@ -2,9 +2,23 @@ apiVersion: machine.sapcloud.io/v1alpha1
 kind: MachineClass
 metadata:
   name: test-mc
-  namespace: default # Namespace where the controller would watch
+  namespace: shoot--foobar--openstack
+secretRef:
+  name: core-openstack
+  namespace: shoot--foobar--openstack
 providerSpec:
-  dummy-field: "provider-api based fields goes here"
-secretRef: # If required
-  name: test-secret
-  namespace: default # Namespace where the controller would watch
+  apiVersion: openstack.machine.gardener.cloud/v1alpha1
+  kind: MachineProviderConfig
+  spec:
+    availabilityZone: eu-nl-1b
+    flavorName: m1.xmedium
+    imageID: a40dff99-e78a-4c83-af12-26b97e13fc9f
+    keyName: shoot--foobar--openstack
+    networkID: 378c4e98-dcf9-438a-bf7f-89d964d18793
+    podNetworkCidr: 100.96.0.0/11
+    region: eu-nl-1
+    securityGroups:
+      - shoot--foobar-openstack
+    tags:
+      kubernetes.io-cluster-shoot--foobar--openstack: "1"
+      kubernetes.io-role-node: "1"

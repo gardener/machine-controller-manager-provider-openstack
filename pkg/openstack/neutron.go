@@ -17,6 +17,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var (
+	_ Network = &neutronV2{}
+)
+
 func newNeutronV2(providerClient *gophercloud.ProviderClient, eo gophercloud.EndpointOpts) (*neutronV2, error) {
 	nw, err := openstack.NewNetworkV2(providerClient, eo)
 	if err != nil {
@@ -27,6 +31,7 @@ func newNeutronV2(providerClient *gophercloud.ProviderClient, eo gophercloud.End
 	}, nil
 }
 
+// GetSubnet fetches the subnet data from the supplied ID.
 func (n *neutronV2) GetSubnet(id string) (*subnets.Subnet, error) {
 	sn, err := subnets.Get(n.serviceClient, id).Extract()
 
@@ -38,6 +43,7 @@ func (n *neutronV2) GetSubnet(id string) (*subnets.Subnet, error) {
 	return sn, nil
 }
 
+// CreatePort creates a Neutron port.
 func (n *neutronV2) CreatePort(opts ports.CreateOptsBuilder) (*ports.Port, error) {
 	p, err := ports.Create(n.serviceClient, opts).Extract()
 
@@ -49,6 +55,7 @@ func (n *neutronV2) CreatePort(opts ports.CreateOptsBuilder) (*ports.Port, error
 	return p, nil
 }
 
+// ListPorts lists all ports.
 func (n *neutronV2) ListPorts(opts ports.ListOptsBuilder) ([]ports.Port, error) {
 	pages, err := ports.List(n.serviceClient, opts).AllPages()
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
@@ -61,6 +68,7 @@ func (n *neutronV2) ListPorts(opts ports.ListOptsBuilder) ([]ports.Port, error) 
 	return ports.ExtractPorts(pages)
 }
 
+// UpdatePort updates the port from the supplied ID.
 func (n *neutronV2) UpdatePort(id string, opts ports.UpdateOptsBuilder) error {
 	_, err := ports.Update(n.serviceClient, id, opts).Extract()
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
@@ -75,6 +83,7 @@ func (n *neutronV2) UpdatePort(id string, opts ports.UpdateOptsBuilder) error {
 	return nil
 }
 
+// DeletePort deletes the port from the supplied ID.
 func (n *neutronV2) DeletePort(id string) error {
 	err := ports.Delete(n.serviceClient, id).ExtractErr()
 
@@ -86,6 +95,7 @@ func (n *neutronV2) DeletePort(id string) error {
 	return nil
 }
 
+// NetworkIDFromName resolves the given network name to a unique ID.
 func (n *neutronV2) NetworkIDFromName(name string) (string, error) {
 	id, err := networks.IDFromName(n.serviceClient, name)
 
@@ -97,6 +107,7 @@ func (n *neutronV2) NetworkIDFromName(name string) (string, error) {
 	return id, nil
 }
 
+// GroupIDFromName resolves the given security group name to a unique ID.
 func (n *neutronV2) GroupIDFromName(name string) (string, error) {
 	id, err := groups.IDFromName(n.serviceClient, name)
 
@@ -108,6 +119,7 @@ func (n *neutronV2) GroupIDFromName(name string) (string, error) {
 	return id, nil
 }
 
+// PortIDFromName resolves the given port name to a unique ID.
 func (n *neutronV2) PortIDFromName(name string) (string, error) {
 	id, err := ports.IDFromName(n.serviceClient, name)
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()

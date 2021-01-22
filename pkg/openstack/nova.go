@@ -17,6 +17,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var (
+	_ Compute = &novaV2{}
+)
+
 func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.EndpointOpts) (*novaV2, error) {
 	compute, err := openstack.NewComputeV2(providerClient, eo)
 	if err != nil {
