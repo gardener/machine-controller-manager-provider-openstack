@@ -56,7 +56,6 @@ const (
 // This logic is used by safety controller to delete orphan VMs which are not backed by any machine CRD
 //
 func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateMachineRequest) (*driver.CreateMachineResponse, error) {
-	// Log messages to track request
 	klog.V(2).Infof("machine creation request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("machine creation request has been processed for %q", req.Machine.Name)
 
@@ -205,7 +204,7 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 //
 // RESPONSE PARAMETERS (driver.ListMachinesResponse)
 // MachineList           map<string,string>  A map containing the keys as the MachineID and value as the MachineName
-//                                           for all machine's who where possibilly created by this ProviderSpec
+//                                           for all machine's who where possibility created by this ProviderSpec
 //
 func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMachinesRequest) (*driver.ListMachinesResponse, error) {
 	// Log messages to track start and end of request

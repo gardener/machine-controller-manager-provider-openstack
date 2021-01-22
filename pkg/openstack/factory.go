@@ -25,10 +25,10 @@ func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
 		return nil, fmt.Errorf("secret does not contain any data")
 	}
 
-	creds := ExtractCredentials(secret)
+	creds := extractCredentialsFromSecret(secret)
 	provider, err := newAuthenticatedProviderClientFromCredentials(creds)
 	if err != nil {
-		return nil, fmt.Errorf("error creating OpenStack client from Credentials: %v", err)
+		return nil, fmt.Errorf("error creating OpenStack client from credentials: %v", err)
 	}
 
 	return &ClientFactory{
@@ -36,7 +36,7 @@ func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
 	}, nil
 }
 
-func newAuthenticatedProviderClientFromCredentials(credentials *Credentials) (*gophercloud.ProviderClient, error) {
+func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*gophercloud.ProviderClient, error) {
 	config := &tls.Config{}
 
 	if credentials.CACert != nil {

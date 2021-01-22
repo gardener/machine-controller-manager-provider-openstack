@@ -9,6 +9,11 @@ import (
 )
 
 var (
+	// ErrNotFound is returned when the requested resource could not be found.
 	ErrNotFound      = fmt.Errorf("resource not found")
+
+	// ErrMultipleFound is returned when a resource that is expected to be unique has multiple matches.
+	// For example, reverse lookups from names to IDs may yield multiple matches because names are not unique in most
+	// OpenStack resources. In case this case, where a unique ID could not be determined an ErrMultipleFound is returned.
 	ErrMultipleFound = fmt.Errorf("multiple resources found")
 )

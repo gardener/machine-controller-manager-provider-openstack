@@ -12,7 +12,7 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 )
 
-type Credentials struct {
+type credentials struct {
 	DomainName     string
 	DomainID       string
 	UserDomainName string
@@ -32,7 +32,7 @@ type Credentials struct {
 	AuthURL  string
 }
 
-func ExtractCredentials(secret *corev1.Secret) *Credentials {
+func extractCredentialsFromSecret(secret *corev1.Secret) *credentials {
 	data := secret.Data
 
 	authURL := data[cloudprovider.OpenStackAuthURL]
@@ -64,7 +64,7 @@ func ExtractCredentials(secret *corev1.Secret) *Credentials {
 
 	insecure := strings.TrimSpace(string(data[cloudprovider.OpenStackInsecure])) == "true"
 
-	return &Credentials{
+	return &credentials{
 		DomainName:     strings.TrimSpace(string(domainName)),
 		DomainID:       strings.TrimSpace(string(domainID)),
 		UserDomainName: strings.TrimSpace(string(userDomainName)),

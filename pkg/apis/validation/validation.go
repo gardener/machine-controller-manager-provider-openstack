@@ -20,15 +20,15 @@ import (
 func ValidateRequest(providerConfig *openstack.MachineProviderConfig, secret *corev1.Secret) error {
 	allErrs := field.ErrorList{}
 
-	allErrs = append(allErrs, ValidateMachineProviderConfig(providerConfig)...)
-	allErrs = append(allErrs, ValidateSecret(secret)...)
-	allErrs = append(allErrs, ValidateUserData(secret)...)
+	allErrs = append(allErrs, validateMachineProviderConfig(providerConfig)...)
+	allErrs = append(allErrs, validateSecret(secret)...)
+	allErrs = append(allErrs, validateUserData(secret)...)
 
 	return allErrs.ToAggregate()
 }
 
-// ValidateMachineProviderConfig validates a MachineProviderConfig object.
-func ValidateMachineProviderConfig(providerConfig *openstack.MachineProviderConfig) field.ErrorList {
+// validateMachineProviderConfig validates a MachineProviderConfig object.
+func validateMachineProviderConfig(providerConfig *openstack.MachineProviderConfig) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	fldPath := field.NewPath("spec")
@@ -112,8 +112,8 @@ func validateClassSpecTags(tags map[string]string, fldPath *field.Path) field.Er
 	return allErrs
 }
 
-// ValidateSecret validates that the secret contain data to authenticate with an Openstack provider.
-func ValidateSecret(secret *corev1.Secret) field.ErrorList {
+// validateSecret validates that the secret contain data to authenticate with an Openstack provider.
+func validateSecret(secret *corev1.Secret) field.ErrorList {
 	var (
 		ok, ok2 bool
 		allErrs = field.ErrorList{}
@@ -167,8 +167,8 @@ func ValidateSecret(secret *corev1.Secret) field.ErrorList {
 	return allErrs
 }
 
-// ValidateUserData validates that a secret contains user data.
-func ValidateUserData(secret *corev1.Secret) field.ErrorList {
+// validateUserData validates that a secret contains user data.
+func validateUserData(secret *corev1.Secret) field.ErrorList {
 	allErrs := field.ErrorList{}
 	root := field.NewPath("data")
 	if b, ok := secret.Data[UserData]; !ok || isEmptyStringByteSlice(b) {

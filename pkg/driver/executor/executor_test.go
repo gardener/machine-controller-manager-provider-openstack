@@ -106,11 +106,11 @@ var _ = Describe("Executor", func() {
 			gomock.InOrder(
 				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
 					ID:     serverID,
-					Status: client.StatusBuild,
+					Status: client.ServerStatusBuild,
 				}, nil),
 				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
 					ID:     serverID,
-					Status: client.StatusActive,
+					Status: client.ServerStatusActive,
 				}, nil))
 			network.EXPECT().ListPorts(&ports.ListOpts{
 				DeviceID: serverID,
@@ -148,7 +148,7 @@ var _ = Describe("Executor", func() {
 				compute.EXPECT().GetServer(serverID).Return(nil, fmt.Errorf("error fetching server")),
 				compute.EXPECT().GetServer(serverID).Return(server, nil),
 				compute.EXPECT().DeleteServer(serverID).Return(nil),
-				compute.EXPECT().GetServer(serverID).Do(func(_ string) { server.Status = client.StatusDeleted }).Return(server, nil),
+				compute.EXPECT().GetServer(serverID).Do(func(_ string) { server.Status = client.ServerStatusDeleted }).Return(server, nil),
 			)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
@@ -288,7 +288,7 @@ var _ = Describe("Executor", func() {
 		It("should return no error if delete is successful", func() {
 			compute.EXPECT().ListServers(&servers.ListOpts{Name: "foo"}).Return(serverList, nil)
 			compute.EXPECT().DeleteServer("id1").Return(nil)
-			compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.StatusDeleted}, nil)
+			compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil)
 			ex := Executor{
 				Compute: compute,
 				Network: network,
@@ -303,9 +303,9 @@ var _ = Describe("Executor", func() {
 				id = "id"
 			)
 			gomock.InOrder(
-				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.StatusActive, Metadata: tags}, nil),
+				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.ServerStatusActive, Metadata: tags}, nil),
 				compute.EXPECT().DeleteServer(id).Return(nil),
-				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.StatusDeleted, Metadata: tags}, nil),
+				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.ServerStatusDeleted, Metadata: tags}, nil),
 			)
 			ex := Executor{
 				Compute: compute,
@@ -327,7 +327,7 @@ var _ = Describe("Executor", func() {
 			gomock.InOrder(
 				compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return(serverList, nil),
 				compute.EXPECT().DeleteServer("id1").Return(nil),
-				compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.StatusDeleted}, nil),
+				compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
 			)
 			gomock.InOrder(
 				network.EXPECT().PortIDFromName(machineName).Return(portID, nil),

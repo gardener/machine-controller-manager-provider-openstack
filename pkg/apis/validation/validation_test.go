@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package validation_test
+package validation
 
 import (
 	"fmt"
@@ -14,7 +14,6 @@ import (
 
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
 )
 
 var _ = Describe("Validation", func() {
@@ -50,7 +49,7 @@ var _ = Describe("Validation", func() {
 
 		Context("required fields", func() {
 			It("should return no error", func() {
-				err := validation.ValidateMachineProviderConfig(machineProviderConfig).ToAggregate()
+				err := validateMachineProviderConfig(machineProviderConfig).ToAggregate()
 				Expect(err).To(BeNil())
 			})
 
@@ -61,7 +60,7 @@ var _ = Describe("Validation", func() {
 				spec.AvailabilityZone = ""
 				spec.KeyName = ""
 				spec.PodNetworkCidr = ""
-				err := validation.ValidateMachineProviderConfig(machineProviderConfig)
+				err := validateMachineProviderConfig(machineProviderConfig)
 
 				Expect(err).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
@@ -99,7 +98,7 @@ var _ = Describe("Validation", func() {
 					},
 				}
 
-				err := validation.ValidateMachineProviderConfig(machineProviderConfig)
+				err := validateMachineProviderConfig(machineProviderConfig)
 				Expect(err).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  BeEquivalentTo("FieldValueForbidden"),
@@ -112,7 +111,7 @@ var _ = Describe("Validation", func() {
 				spec := &machineProviderConfig.Spec
 				spec.NetworkID = ""
 
-				err := validation.ValidateMachineProviderConfig(machineProviderConfig)
+				err := validateMachineProviderConfig(machineProviderConfig)
 				Expect(err).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  BeEquivalentTo("FieldValueForbidden"),
@@ -131,7 +130,7 @@ var _ = Describe("Validation", func() {
 						PodNetwork: false,
 					},
 				}
-				err := validation.ValidateMachineProviderConfig(machineProviderConfig)
+				err := validateMachineProviderConfig(machineProviderConfig)
 				Expect(err).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  BeEquivalentTo("FieldValueForbidden"),
@@ -146,7 +145,7 @@ var _ = Describe("Validation", func() {
 				spec := &machineProviderConfig.Spec
 				spec.Tags = map[string]string{}
 
-				err := validation.ValidateMachineProviderConfig(machineProviderConfig)
+				err := validateMachineProviderConfig(machineProviderConfig)
 				Expect(err).To(ConsistOf(
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  BeEquivalentTo("FieldValueRequired"),
@@ -178,14 +177,14 @@ var _ = Describe("Validation", func() {
 		})
 
 		It("should not fail", func() {
-			err := validation.ValidateSecret(secret).ToAggregate()
+			err := validateSecret(secret).ToAggregate()
 			Expect(err).To(BeNil())
 		})
 
 		It("should fail is required fields are missing", func() {
 			secret = &corev1.Secret{}
 
-			err := validation.ValidateSecret(secret)
+			err := validateSecret(secret)
 			Expect(err).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  BeEquivalentTo("FieldValueRequired"),
@@ -213,7 +212,7 @@ var _ = Describe("Validation", func() {
 		It("should fail if Insecure has erroneous value", func() {
 			secret.Data[OpenStackInsecure] = []byte("foo")
 
-			err := validation.ValidateSecret(secret).ToAggregate()
+			err := validateSecret(secret).ToAggregate()
 			Expect(err).NotTo(BeNil())
 		})
 	})
@@ -233,12 +232,12 @@ var _ = Describe("Validation", func() {
 			// empty secret
 			secret = &corev1.Secret{}
 
-			err := validation.ValidateUserData(secret).ToAggregate()
+			err := validateUserData(secret).ToAggregate()
 			Expect(err).To(Not(BeNil()))
 		})
 
 		It("should pass if user data found", func() {
-			err := validation.ValidateUserData(secret).ToAggregate()
+			err := validateUserData(secret).ToAggregate()
 			Expect(err).To(BeNil())
 		})
 	})

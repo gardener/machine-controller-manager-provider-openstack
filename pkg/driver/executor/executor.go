@@ -14,6 +14,7 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
@@ -24,12 +25,15 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+// Executor concretely handles the execution of requests to the machine controller. Executor is responsible
+// for communicating with OpenStack services and orchestrates the operations.
 type Executor struct {
 	Compute openstack.Compute
 	Network openstack.Network
 	Config  api.MachineProviderConfig
 }
 
+// NewExecutor returns a new instance of Executor.
 func NewExecutor(factory openstack.Factory, config api.MachineProviderConfig) (*Executor, error) {
 	computeClient, err := factory.Compute(openstack.WithRegion(config.Spec.Region))
 	if err != nil {
@@ -50,6 +54,8 @@ func NewExecutor(factory openstack.Factory, config api.MachineProviderConfig) (*
 	return ex, nil
 }
 
+// CreateMachine creates a new OpenStack server instance and waits until it reports "ACTIVE".
+// If there is an error during the build process, or if the building phase timeouts, it will delete any artifacts created.
 func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userData []byte) (string, error) {
 	serverNetworks, podNetworkIDs, err := ex.resolveServerNetworks(machineName)
 	if err != nil {
@@ -71,7 +77,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return err
 	}
 
-	err = ex.waitForStatus(server.ID, []string{openstack.StatusBuild}, []string{openstack.StatusActive}, 600)
+	err = ex.waitForStatus(server.ID, []string{openstack.ServerStatusBuild}, []string{openstack.ServerStatusActive}, 600)
 	if err != nil {
 		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %s", server.ID, err))
 	}
@@ -82,9 +88,8 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 	return providerID, nil
 }
 
-// resolveServerNetworks processes the networks for the server.
-// It returns a list of networks that the server is part of, a map of Network IDs that are part of the Pod Network and
-// the error if any occurred.
+// resolveServerNetworks resolves the network configuration for a server.
+// It returns a list of networks that the server should be part of and a map of Network IDs that are part of the Pod Network.
 func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network, map[string]struct{}, error) {
 	var (
 		networkID      = ex.Config.Spec.NetworkID
@@ -153,11 +158,13 @@ func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network
 	return serverNetworks, podNetworkIDs, nil
 }
 
+// waitForStatus blocks until the server with the specified ID reaches one of the target status.
+// waitForStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
 func (ex *Executor) waitForStatus(serverID string, pending []string, target []string, secs int) error {
 	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
 		current, err := ex.Compute.GetServer(serverID)
 		if err != nil {
-			if openstack.IsNotFoundError(err) && strSliceContains(target, openstack.StatusDeleted) {
+			if openstack.IsNotFoundError(err) && strSliceContains(target, openstack.ServerStatusDeleted) {
 				return true, nil
 			}
 			return false, err
@@ -174,7 +181,7 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 		}
 
 		retErr := fmt.Errorf("unexpected status %q, wanted target %q", current.Status, strings.Join(target, ", "))
-		if current.Status == openstack.StatusError {
+		if current.Status == openstack.ServerStatusError {
 			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Fault)
 		}
 
@@ -182,6 +189,7 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 	})
 }
 
+// deployServer handles creating the server instance.
 func (ex *Executor) deployServer(machineName string, userData []byte, nws []servers.Network) (*servers.Server, error) {
 	keyName := ex.Config.Spec.KeyName
 	imageName := ex.Config.Spec.ImageName
@@ -214,8 +222,6 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 	}
 
 	createOpts = &servers.CreateOpts{
-		// ServiceClient:    ex.Compute.ServiceClient(),
-		// FlavorName:       flavorName,
 		Name:             machineName,
 		FlavorRef:        flavorRef,
 		ImageRef:         imageRef,
@@ -273,6 +279,7 @@ func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfro
 	return blockDeviceOpts, nil
 }
 
+// patchServerPortsForPodNetwork updates a server's ports with rules for whitelisting the pod network CIDR.
 func (ex *Executor) patchServerPortsForPodNetwork(serverID string, podNetworkIDs map[string]struct{}) error {
 	allPorts, err := ex.Network.ListPorts(&ports.ListOpts{
 		DeviceID: serverID,
@@ -299,6 +306,9 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string, podNetworkIDs
 	return nil
 }
 
+// DeleteMachine deletes a server based on the supplied ID or name.
+// If providerID is specified it takes priority over the machineName. If no providerID is specified, DeleteMachine will
+// try to resolve the machineName to an appropriate server ID.
 func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID string) error {
 	var (
 		err    error
@@ -322,7 +332,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 		return err
 	}
 
-	if err = ex.waitForStatus(server.ID, nil, []string{openstack.StatusDeleted}, 300); err != nil {
+	if err = ex.waitForStatus(server.ID, nil, []string{openstack.ServerStatusDeleted}, 300); err != nil {
 		return fmt.Errorf("error waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 	}
 
@@ -354,6 +364,7 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	return nil
 }
 
+// getMachineByProviderID fetches the data for a server based on a provider-encoded ID.
 func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, providerID string) (*servers.Server, error) {
 	klog.V(2).Infof("finding server with providerID %s", providerID)
 	serverID := DecodeProviderID(providerID)
@@ -450,6 +461,8 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 	return &matchingServers[0], nil
 }
 
+
+// GetMachineStatus returns the provider-encoded ID of a server.
 func (ex *Executor) GetMachineStatus(ctx context.Context, machineName string) (string, error) {
 	server, err := ex.getMachineByName(ctx, machineName)
 	if err != nil {
@@ -459,6 +472,7 @@ func (ex *Executor) GetMachineStatus(ctx context.Context, machineName string) (s
 	return EncodeProviderID(ex.Config.Spec.Region, server.ID), nil
 }
 
+// ListMachines lists all servers.
 func (ex *Executor) ListMachines(_ context.Context) (map[string]string, error) {
 	searchClusterName := ""
 	searchNodeRole := ""

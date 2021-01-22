@@ -16,14 +16,13 @@ var (
 	_ driver.Driver = &OpenstackDriver{}
 )
 
-// OpenstackDriver is the struct that implements the driver interface
-// It is used to implement the basic driver functionalities
+// OpenstackDriver implements and handles requests via the Driver interface.
 type OpenstackDriver struct {
 	decoder           runtime.Decoder
 	clientConstructor openstack.ClientConstructor
 }
 
-// NewOpenstackDriver returns an empty provider object
+// NewOpenstackDriver returns a new instance of the Openstack driver.
 func NewOpenstackDriver(decoder runtime.Decoder, constructor openstack.ClientConstructor) driver.Driver {
 	return &OpenstackDriver{
 		decoder:           decoder,

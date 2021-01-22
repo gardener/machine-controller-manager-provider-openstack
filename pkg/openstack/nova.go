@@ -27,10 +27,12 @@ func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.Endpoi
 	}, nil
 }
 
+// ServiceClient returns the gophercloud.ServiceClient for the service.
 func (c *novaV2) ServiceClient() *gophercloud.ServiceClient {
 	return c.serviceClient
 }
 
+// CreateServer creates a server.
 func (c *novaV2) CreateServer(opts servers.CreateOptsBuilder) (*servers.Server, error) {
 	server, err := servers.Create(c.serviceClient, opts).Extract()
 
@@ -43,6 +45,7 @@ func (c *novaV2) CreateServer(opts servers.CreateOptsBuilder) (*servers.Server, 
 	return server, nil
 }
 
+// BootFromVolume creates a server from a block device mapping.
 func (c *novaV2) BootFromVolume(opts servers.CreateOptsBuilder) (*servers.Server, error) {
 	server, err := bootfromvolume.Create(c.serviceClient, opts).Extract()
 
@@ -54,6 +57,7 @@ func (c *novaV2) BootFromVolume(opts servers.CreateOptsBuilder) (*servers.Server
 	return server, nil
 }
 
+// GetServer fetches server data from the supplied ID.
 func (c *novaV2) GetServer(id string) (*servers.Server, error) {
 	server, err := servers.Get(c.serviceClient, id).Extract()
 
@@ -67,6 +71,7 @@ func (c *novaV2) GetServer(id string) (*servers.Server, error) {
 	return server, nil
 }
 
+// ListServers lists all servers based on opts constraints.
 func (c *novaV2) ListServers(opts servers.ListOptsBuilder) ([]servers.Server, error) {
 	pages, err := servers.List(c.serviceClient, opts).AllPages()
 
@@ -78,6 +83,7 @@ func (c *novaV2) ListServers(opts servers.ListOptsBuilder) ([]servers.Server, er
 	return servers.ExtractServers(pages)
 }
 
+// DeleteServer deletes a server with the supplied ID. If the server does not exist it returns nil.
 func (c *novaV2) DeleteServer(id string) error {
 	err := servers.Delete(c.serviceClient, id).ExtractErr()
 
@@ -89,6 +95,7 @@ func (c *novaV2) DeleteServer(id string) error {
 	return nil
 }
 
+// ImageIDFromName resolves the given image name to a unique ID.
 func (c *novaV2) ImageIDFromName(name string) (string, error) {
 	id, err := images.IDFromName(c.serviceClient, name)
 
@@ -103,6 +110,7 @@ func (c *novaV2) ImageIDFromName(name string) (string, error) {
 	return id, nil
 }
 
+// FlavorIDFromName resolves the given flavor name to a unique ID.
 func (c *novaV2) FlavorIDFromName(name string) (string, error) {
 	id, err := flavors.IDFromName(c.serviceClient, name)
 

@@ -8,7 +8,7 @@ import (
 	"github.com/gophercloud/gophercloud"
 )
 
-// IsNotFoundError checks if an error returned by OpenStack is caused by HTTP 404 status code.
+// IsNotFoundError checks if an error returned by OpenStack service calls is caused by HTTP 404 status code.
 func IsNotFoundError(err error) bool {
 	if err == nil {
 		return false

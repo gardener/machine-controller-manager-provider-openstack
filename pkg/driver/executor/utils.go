@@ -9,10 +9,12 @@ import (
 	"strings"
 )
 
+// EncodeProviderID encodes the ID of a server.
 func EncodeProviderID(region string, machineID string) string {
 	return fmt.Sprintf("openstack:///%s/%s", region, machineID)
 }
 
+// DecodeProviderID decodes a provider-encoded ID into the ID of the server.
 func DecodeProviderID(id string) string {
 	splitProviderID := strings.Split(id, "/")
 	return splitProviderID[len(splitProviderID)-1]
