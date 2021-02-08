@@ -9,7 +9,6 @@ import (
 
 	openstack "github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 	gomock "github.com/golang/mock/gomock"
-	gophercloud "github.com/gophercloud/gophercloud"
 	servers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	ports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	subnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
@@ -201,20 +200,6 @@ func (m *MockCompute) ListServers(arg0 servers.ListOptsBuilder) ([]servers.Serve
 func (mr *MockComputeMockRecorder) ListServers(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListServers", reflect.TypeOf((*MockCompute)(nil).ListServers), arg0)
-}
-
-// ServiceClient mocks base method.
-func (m *MockCompute) ServiceClient() *gophercloud.ServiceClient {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ServiceClient")
-	ret0, _ := ret[0].(*gophercloud.ServiceClient)
-	return ret0
-}
-
-// ServiceClient indicates an expected call of ServiceClient.
-func (mr *MockComputeMockRecorder) ServiceClient() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ServiceClient", reflect.TypeOf((*MockCompute)(nil).ServiceClient))
 }
 
 // MockNetwork is a mock of Network interface.
