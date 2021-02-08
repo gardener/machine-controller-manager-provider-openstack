@@ -170,7 +170,7 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 			return false, err
 		}
 
-		klog.V(5).Infof("waiting for server [ID=%q] status %v. current status %v", serverID, target, current.Status)
+		klog.V(3).Infof("waiting for server [ID=%q] and current status %v, to reach status %v.", serverID, current.Status, target)
 		if strSliceContains(target, current.Status) {
 			return true, nil
 		}
@@ -275,7 +275,7 @@ func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfro
 		SourceType:          "image",
 		DestinationType:     "volume",
 	}
-	klog.V(2).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
+	klog.V(3).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
 	return blockDeviceOpts, nil
 }
 
@@ -333,7 +333,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	}
 
 	if err = ex.waitForStatus(server.ID, nil, []string{openstack.ServerStatusDeleted}, 300); err != nil {
-		return fmt.Errorf("error waiting for server [ID=%q] to be deleted: %v", server.ID, err)
+		return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 	}
 
 	if !isEmptyString(ex.Config.Spec.SubnetID) {
@@ -356,7 +356,7 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	klog.V(3).Infof("deleting port [ID=%q]", portID)
 	err = ex.Network.DeletePort(portID)
 	if err != nil {
-		klog.Errorf("failed to delete [ID=%q]", portID)
+		klog.Errorf("failed to delete port [ID=%q]", portID)
 		return err
 	}
 	klog.V(3).Infof("deleted port [ID=%q]", portID)
@@ -431,6 +431,7 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 
 	// TODO(KA) better tag handling ? Should it return nil if no tags are found (should be blocked by validation)
 	if searchClusterName == "" || searchNodeRole == "" {
+		klog.Warningf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
 		return nil, nil
 	}
 
@@ -453,9 +454,9 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 	}
 
 	if len(matchingServers) > 1 {
-		return nil, fmt.Errorf("failed to find machine by name %q: %w", machineName, ErrMultipleFound)
+		return nil, fmt.Errorf("failed to find server [Name=%q]: %w", machineName, ErrMultipleFound)
 	} else if len(matchingServers) == 0 {
-		return nil, fmt.Errorf("failed to find machine by name %q: %w", machineName, ErrNotFound)
+		return nil, fmt.Errorf("failed to find server [Name=%q]: %w", machineName, ErrNotFound)
 	}
 
 	return &matchingServers[0], nil

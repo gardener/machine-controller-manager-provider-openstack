@@ -125,7 +125,7 @@ func validateSecret(secret *corev1.Secret) field.ErrorList {
 		allErrs = append(allErrs, field.Required(root.Key(OpenStackAuthURL), fmt.Sprintf("%s is required", OpenStackAuthURL)))
 	}
 	if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b) {
-		allErrs = append(allErrs, field.Required(root.Key(OpenStackUsername), fmt.Sprintf("%s is required", OpenStackUserDomainName)))
+		allErrs = append(allErrs, field.Required(root.Key(OpenStackUsername), fmt.Sprintf("%s is required", OpenStackUsername)))
 	}
 	if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b) {
 		allErrs = append(allErrs, field.Required(root.Key(OpenStackPassword), fmt.Sprintf("%s is required", OpenStackPassword)))

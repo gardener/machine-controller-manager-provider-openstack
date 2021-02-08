@@ -4,24 +4,22 @@ go 1.15
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/gardener/gardener v1.14.0
+	github.com/gardener/gardener v1.16.0
 	github.com/gardener/machine-controller-manager v0.36.0
 	github.com/golang/mock v1.4.4-0.20200731163441-8734ec565a4d
-	github.com/google/go-cmp v0.4.1 // indirect
 	github.com/gophercloud/gophercloud v0.7.0
 	github.com/gophercloud/utils v0.0.0-20200204043447-9864b6f1f12f
-	github.com/kr/pretty v0.2.0 // indirect
-	github.com/onsi/ginkgo v1.14.0
+	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.4
-	github.com/prometheus/client_golang v1.5.1 // indirecd
+	github.com/prometheus/client_golang v1.7.1 // indirecd
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
-	k8s.io/api v0.18.10
-	k8s.io/apimachinery v0.18.10
-	k8s.io/code-generator v0.18.10
-	k8s.io/component-base v0.18.10
+	k8s.io/api v0.19.6
+	k8s.io/apimachinery v0.19.6
+	k8s.io/code-generator v0.19.6
+	k8s.io/component-base v0.19.6
 	k8s.io/klog v1.0.0
-	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19
+	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
 )
 
 replace (
