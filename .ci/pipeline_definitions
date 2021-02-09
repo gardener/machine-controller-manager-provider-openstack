@@ -16,6 +16,7 @@ machine-controller-manager-provider-openstack:
   jobs:
     head-update:
       traits:
+        component_descriptor: ~
         draft_release: ~
     pull-request:
       traits:
