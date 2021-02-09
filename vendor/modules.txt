@@ -23,7 +23,7 @@ github.com/fsnotify/fsnotify
 github.com/gardener/gardener/hack
 github.com/gardener/gardener/hack/.ci
 github.com/gardener/gardener/hack/api-reference/template
-# github.com/gardener/machine-controller-manager v0.36.0
+# github.com/gardener/machine-controller-manager v0.37.0
 ## explicit
 github.com/gardener/machine-controller-manager/pkg/apis/machine
 github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1
