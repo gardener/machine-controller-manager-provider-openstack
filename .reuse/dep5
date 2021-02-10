@@ -12,7 +12,9 @@ Files:
   CODEOWNERS
   go.mod
   go.sum
+  .golangci.yaml
   VERSION
+  .ci/**
 Copyright: 2020 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
@@ -225,9 +227,3 @@ License: Apache-2.0
 Files: vendor/gonum.org/v1/gonum
 Copyright: 2013 The Gonum Authors
 License: BSD-3-Clause
-
-Files: vendor/k8s.io/gengo
-License: Apache-2.0
-
-Files: vendor/k8s.io/code-generator
-License: Apache-2.0
