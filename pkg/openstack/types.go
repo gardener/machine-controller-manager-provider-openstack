@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-//go:generate mockgen -destination=mocks/client_mocks.go -package=mocks . Factory,Compute,Network
 package openstack
 
 import (
