@@ -7,6 +7,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
@@ -71,20 +72,20 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 
 	factory, err := p.clientConstructor(req.Secret)
 	if err != nil {
-		klog.Errorf("failed constructing OpenStack client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		klog.Errorf("failed to construct OpenStack client: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
 	ex, err := executor.NewExecutor(factory, *providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
 	}
 
 	providerID, err := ex.CreateMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
 	if err != nil {
 		klog.Errorf("machine creation for machine %q failed with: %v", req.Machine.Name, err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(mapErrorToCode(err), err.Error())
 	}
 
 	return &driver.CreateMachineResponse{
@@ -121,14 +122,14 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 
 	factory, err := p.clientConstructor(req.Secret)
 	if err != nil {
-		klog.Errorf("failed constructing OpenStack client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		klog.Errorf("failed to construct OpenStack client: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
 	ex, err := executor.NewExecutor(factory, *providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
 	}
 
 	err = ex.DeleteMachine(ctx, req.Machine.Name, req.Machine.Spec.ProviderID)
@@ -171,19 +172,19 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 
 	factory, err := p.clientConstructor(req.Secret)
 	if err != nil {
-		klog.Errorf("failed constructing OpenStack client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		klog.Errorf("failed to construct OpenStack client: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
 	ex, err := executor.NewExecutor(factory, *providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
 	}
 
 	providerID, err := ex.GetMachineStatus(ctx, req.Machine.Name)
 	if err != nil {
-		return nil, status.Error(mapErrorToCode(err), err.Error())
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("getting machine status failed with: %v", err))
 	}
 
 	klog.V(2).Infof("Machine get request has been processed for %q: %v", req.Machine.Name, err)
@@ -224,19 +225,19 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 
 	factory, err := p.clientConstructor(req.Secret)
 	if err != nil {
-		klog.Errorf("failed constructing OpenStack client: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		klog.Errorf("failed to construct OpenStack client: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
 	ex, err := executor.NewExecutor(factory, *providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
 	}
 
 	machines, err := ex.ListMachines(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("listing machines for machine class %q failed with: %v", req.MachineClass.Name, err))
 	}
 	if len(machines) == 0 {
 		klog.V(3).Infof("no machines found for machine class: %q", req.MachineClass.Name)
@@ -257,7 +258,7 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 //
 func (p *OpenstackDriver) GetVolumeIDs(_ context.Context, req *driver.GetVolumeIDsRequest) (*driver.GetVolumeIDsResponse, error) {
 	// Log messages to track start and end of request
-	klog.V(2).Infof("GetVolumeIDs request has been recieved for %q", req.PVSpecs)
+	klog.V(2).Infof("GetVolumeIDs request has been received for %q", req.PVSpecs)
 	defer klog.V(2).Infof("GetVolumeIDs request has been processed for %q", req.PVSpecs)
 
 	names := make([]string, 0)
@@ -294,7 +295,7 @@ func (p *OpenstackDriver) GetVolumeIDs(_ context.Context, req *driver.GetVolumeI
 //
 func (p *OpenstackDriver) GenerateMachineClassForMigration(_ context.Context, req *driver.GenerateMachineClassForMigrationRequest) (*driver.GenerateMachineClassForMigrationResponse, error) {
 	// Log messages to track start and end of request
-	klog.V(2).Infof("MigrateMachineClass request has been recieved for %q", req.ClassSpec)
+	klog.V(2).Infof("MigrateMachineClass request has been received for %q", req.ClassSpec)
 	defer klog.V(2).Infof("MigrateMachineClass request has been processed for %q", req.ClassSpec)
 
 	if req.ClassSpec.Kind != openStackMachineClassKind {

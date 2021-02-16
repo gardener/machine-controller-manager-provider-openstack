@@ -13,7 +13,7 @@ import (
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
@@ -28,21 +28,21 @@ import (
 // Executor concretely handles the execution of requests to the machine controller. Executor is responsible
 // for communicating with OpenStack services and orchestrates the operations.
 type Executor struct {
-	Compute openstack.Compute
-	Network openstack.Network
+	Compute client.Compute
+	Network client.Network
 	Config  api.MachineProviderConfig
 }
 
 // NewExecutor returns a new instance of Executor.
-func NewExecutor(factory openstack.Factory, config api.MachineProviderConfig) (*Executor, error) {
-	computeClient, err := factory.Compute(openstack.WithRegion(config.Spec.Region))
+func NewExecutor(factory client.Factory, config api.MachineProviderConfig) (*Executor, error) {
+	computeClient, err := factory.Compute(client.WithRegion(config.Spec.Region))
 	if err != nil {
-		klog.Errorf("failed to create compute client for executor")
+		klog.Errorf("failed to create compute client for executor: %v", err)
 		return nil, err
 	}
-	networkClient, err := factory.Network(openstack.WithRegion(config.Spec.Region))
+	networkClient, err := factory.Network(client.WithRegion(config.Spec.Region))
 	if err != nil {
-		klog.Errorf("failed to create network client for executor")
+		klog.Errorf("failed to create network client for executor: %v", err)
 		return nil, err
 	}
 
@@ -59,7 +59,7 @@ func NewExecutor(factory openstack.Factory, config api.MachineProviderConfig) (*
 func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userData []byte) (string, error) {
 	serverNetworks, podNetworkIDs, err := ex.resolveServerNetworks(machineName)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve server networks: %v", err)
+		return "", fmt.Errorf("failed to resolve server networks: %w", err)
 	}
 
 	server, err := ex.deployServer(machineName, userData, serverNetworks)
@@ -71,15 +71,16 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 
 	// if we fail in the creation post-processing step we have to delete the server we created
 	deleteOnFail := func(err error) error {
+		klog.Infof("attempting to delete server [ID=%q] after unsuccessful create operation with error: %v", server.ID, err)
 		if errIn := ex.DeleteMachine(ctx, machineName, providerID); errIn != nil {
-			return fmt.Errorf("error deleting machine %q after unsuccessful creation attempt: %s. Original error: %s", providerID, errIn.Error(), err.Error())
+			return fmt.Errorf("error deleting server [ID=%q] after unsuccessful creation attempt: %w. Original error: %v", server.ID, errIn, err)
 		}
 		return err
 	}
 
-	err = ex.waitForStatus(server.ID, []string{openstack.ServerStatusBuild}, []string{openstack.ServerStatusActive}, 600)
+	err = ex.waitForStatus(server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 600)
 	if err != nil {
-		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %s", server.ID, err))
+		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %w", server.ID, err))
 	}
 
 	if err := ex.patchServerPortsForPodNetwork(server.ID, podNetworkIDs); err != nil {
@@ -164,7 +165,7 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
 		current, err := ex.Compute.GetServer(serverID)
 		if err != nil {
-			if openstack.IsNotFoundError(err) && strSliceContains(target, openstack.ServerStatusDeleted) {
+			if client.IsNotFoundError(err) && strSliceContains(target, client.ServerStatusDeleted) {
 				return true, nil
 			}
 			return false, err
@@ -180,8 +181,8 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 			return false, nil
 		}
 
-		retErr := fmt.Errorf("unexpected status %q, wanted target %q", current.Status, strings.Join(target, ", "))
-		if current.Status == openstack.ServerStatusError {
+		retErr := fmt.Errorf("server [ID=%q] reached unexpected status %q", serverID, current.Status)
+		if current.Status == client.ServerStatusError {
 			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Fault)
 		}
 
@@ -332,7 +333,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 		return err
 	}
 
-	if err = ex.waitForStatus(server.ID, nil, []string{openstack.ServerStatusDeleted}, 300); err != nil {
+	if err = ex.waitForStatus(server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
 		return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 	}
 
@@ -346,7 +347,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	portID, err := ex.Network.PortIDFromName(machineName)
 	if err != nil {
-		if openstack.IsNotFoundError(err) {
+		if client.IsNotFoundError(err) {
 			klog.V(3).Infof("port with name %q was not found", machineName)
 			return nil
 		}
@@ -375,7 +376,7 @@ func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, provi
 	server, err := ex.Compute.GetServer(serverID)
 	if err != nil {
 		klog.V(2).Infof("error finding server %q: %v", serverID, err)
-		if openstack.IsNotFoundError(err) {
+		if client.IsNotFoundError(err) {
 			// normalize errors by wrapping not found error
 			return nil, fmt.Errorf("could not find server [ID=%q]: %w", serverID, ErrNotFound)
 		}
@@ -384,7 +385,6 @@ func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, provi
 
 	if machineName != server.Name {
 		klog.Warningf("found server [ID=%q] with matching ID, but names mismatch with machine object %q", serverID, machineName)
-		// TODO(KA): return an error if names mismatch ?
 	}
 
 	var (
@@ -399,8 +399,8 @@ func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, provi
 		}
 	}
 
-	if _, ok := server.Metadata[searchClusterName]; ok {
-		if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
+	if _, nameOk := server.Metadata[searchClusterName]; nameOk {
+		if _, roleOk := server.Metadata[searchNodeRole]; roleOk {
 			return server, nil
 		}
 	}
@@ -429,10 +429,9 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 		}
 	}
 
-	// TODO(KA) better tag handling ? Should it return nil if no tags are found (should be blocked by validation)
 	if searchClusterName == "" || searchNodeRole == "" {
 		klog.Warningf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
-		return nil, nil
+		return nil, fmt.Errorf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
 	}
 
 	listedServers, err := ex.Compute.ListServers(&servers.ListOpts{
@@ -445,8 +444,8 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 	matchingServers := []servers.Server{}
 	for _, server := range listedServers {
 		if server.Name == machineName {
-			if _, ok := server.Metadata[searchClusterName]; ok {
-				if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
+			if _, nameOk := server.Metadata[searchClusterName]; nameOk {
+				if _, roleOk := server.Metadata[searchNodeRole]; roleOk {
 					matchingServers = append(matchingServers, server)
 				}
 			}
@@ -485,9 +484,10 @@ func (ex *Executor) ListMachines(_ context.Context) (map[string]string, error) {
 		}
 	}
 
-	// TODO(KA) better tag handling ? Should it return nil if no tags are found (should be blocked by validation)
+	//
 	if searchClusterName == "" || searchNodeRole == "" {
-		return nil, nil
+		klog.Warningf("operation can not proceed: cluster/role tags are missing")
+		return nil, fmt.Errorf("operation can not proceed: cluster/role tags are missing")
 	}
 
 	servers, err := ex.Compute.ListServers(&servers.ListOpts{})
@@ -497,8 +497,8 @@ func (ex *Executor) ListMachines(_ context.Context) (map[string]string, error) {
 
 	result := map[string]string{}
 	for _, server := range servers {
-		if _, ok := server.Metadata[searchClusterName]; ok {
-			if _, ok2 := server.Metadata[searchNodeRole]; ok2 {
+		if _, nameOk := server.Metadata[searchClusterName]; nameOk {
+			if _, roleOk := server.Metadata[searchNodeRole]; roleOk {
 				providerID := EncodeProviderID(ex.Config.Spec.Region, server.ID)
 				result[providerID] = server.Name
 			}

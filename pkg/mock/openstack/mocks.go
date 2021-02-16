@@ -12,7 +12,7 @@ package openstack
 import (
 	reflect "reflect"
 
-	openstack "github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+	openstack "github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	gomock "github.com/golang/mock/gomock"
 	servers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	ports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"

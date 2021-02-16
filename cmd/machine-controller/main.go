@@ -11,7 +11,7 @@ package main
 import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/install"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	_ "github.com/gardener/machine-controller-manager/pkg/util/client/metrics/prometheus" // for client metric registration
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/app"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/app/options"
@@ -38,7 +38,7 @@ func main() {
 		klog.Fatalf("failed to install scheme: %v", err)
 	}
 
-	provider := driver.NewOpenstackDriver(serializer.NewCodecFactory(scheme).UniversalDecoder(), openstack.NewClientFactoryFromSecret)
+	provider := driver.NewOpenstackDriver(serializer.NewCodecFactory(scheme).UniversalDecoder(), client.NewClientFactoryFromSecret)
 
 	if err := app.Run(s, provider); err != nil {
 		klog.Fatalf("failed to run application: %v", err)

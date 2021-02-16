@@ -19,9 +19,9 @@ import (
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
+	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 	mocks "github.com/gardener/machine-controller-manager-provider-openstack/pkg/mock/openstack"
-	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 )
 
 var _ = Describe("Executor", func() {
