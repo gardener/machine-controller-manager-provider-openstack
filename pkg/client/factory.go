@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package openstack
+package client
 
 import (
 	"crypto/tls"
@@ -28,7 +28,7 @@ func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
 	creds := extractCredentialsFromSecret(secret)
 	provider, err := newAuthenticatedProviderClientFromCredentials(creds)
 	if err != nil {
-		return nil, fmt.Errorf("error creating OpenStack client from credentials: %v", err)
+		return nil, fmt.Errorf("error creating OpenStack client from credentials: %w", err)
 	}
 
 	return &ClientFactory{
@@ -74,12 +74,12 @@ func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*g
 
 	ao, err := clientconfig.AuthOptions(clientOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client auth options: %v", err)
+		return nil, fmt.Errorf("failed to create client auth options: %w", err)
 	}
 
 	provider, err := openstack.NewClient(ao.IdentityEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create authenticated client: %v", err)
+		return nil, fmt.Errorf("failed to create authenticated client: %w", err)
 	}
 
 	// Set UserAgent
