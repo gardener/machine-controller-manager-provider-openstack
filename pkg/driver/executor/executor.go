@@ -30,11 +30,11 @@ import (
 type Executor struct {
 	Compute client.Compute
 	Network client.Network
-	Config  api.MachineProviderConfig
+	Config  *api.MachineProviderConfig
 }
 
 // NewExecutor returns a new instance of Executor.
-func NewExecutor(factory client.Factory, config api.MachineProviderConfig) (*Executor, error) {
+func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*Executor, error) {
 	computeClient, err := factory.Compute(client.WithRegion(config.Spec.Region))
 	if err != nil {
 		klog.Errorf("failed to create compute client for executor: %v", err)
@@ -100,6 +100,7 @@ func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network
 		podNetworkIDs  = make(map[string]struct{})
 	)
 
+	klog.V(3).Infof("resolving network setup for machine %q", machineName)
 	// If NetworkID is specified in the spec, we deploy the VMs in an existing Network.
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
 	if !isEmptyString(pointer.StringPtr(networkID)) {
@@ -148,7 +149,7 @@ func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network
 					return nil, nil, err
 				}
 			} else {
-				resolvedNetworkID = networkID
+				resolvedNetworkID = network.Id
 			}
 			serverNetworks = append(serverNetworks, servers.Network{UUID: resolvedNetworkID})
 			if network.PodNetwork {
@@ -171,7 +172,7 @@ func (ex *Executor) waitForStatus(serverID string, pending []string, target []st
 			return false, err
 		}
 
-		klog.V(3).Infof("waiting for server [ID=%q] and current status %v, to reach status %v.", serverID, current.Status, target)
+		klog.V(5).Infof("waiting for server [ID=%q] and current status %v, to reach status %v.", serverID, current.Status, target)
 		if strSliceContains(target, current.Status) {
 			return true, nil
 		}
@@ -328,7 +329,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 		return err
 	}
 
-	klog.V(1).Infof("deleting server with id %s", server.ID)
+	klog.V(1).Infof("deleting server [ID=%s]", server.ID)
 	if err := ex.Compute.DeleteServer(server.ID); err != nil {
 		return err
 	}
@@ -348,7 +349,7 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	portID, err := ex.Network.PortIDFromName(machineName)
 	if err != nil {
 		if client.IsNotFoundError(err) {
-			klog.V(3).Infof("port with name %q was not found", machineName)
+			klog.V(3).Infof("port [Name=%q] was not found", machineName)
 			return nil
 		}
 		return fmt.Errorf("error deleting port with name %q: %s", machineName, err)
@@ -375,7 +376,7 @@ func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, provi
 
 	server, err := ex.Compute.GetServer(serverID)
 	if err != nil {
-		klog.V(2).Infof("error finding server %q: %v", serverID, err)
+		klog.V(2).Infof("error finding server [ID=%q]: %v", serverID, err)
 		if client.IsNotFoundError(err) {
 			// normalize errors by wrapping not found error
 			return nil, fmt.Errorf("could not find server [ID=%q]: %w", serverID, ErrNotFound)

@@ -95,7 +95,7 @@ var _ = Describe("Executor", func() {
 			ex := &Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
@@ -128,7 +128,7 @@ var _ = Describe("Executor", func() {
 			ex := &Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 
 			server := &servers.Server{
@@ -180,7 +180,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 
 			res, err := ex.ListMachines(ctx)
@@ -236,7 +236,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			providerID, err := ex.GetMachineStatus(ctx, name)
 			if expectedErr != nil {
@@ -279,7 +279,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "unknown", "")
 			Expect(err).To(BeNil())
@@ -292,7 +292,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "foo", "")
 			Expect(err).To(BeNil())
@@ -310,7 +310,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "", EncodeProviderID(region, id))
 			Expect(err).To(BeNil())
@@ -337,7 +337,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, machineName, "")
 			Expect(err).To(BeNil())

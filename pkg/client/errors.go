@@ -43,11 +43,7 @@ func IsUnauthenticated(err error) bool {
 	}
 
 	var e gophercloud.Err401er
-	if errors.As(err, &e) {
-		return true
-	}
-
-	return false
+	return errors.As(err, &e)
 }
 
 // IsUnauthorizes checks if an error returned by OpenStack service calls is caused by HTTP 403 status code.
@@ -61,9 +57,5 @@ func IsUnauthorized(err error) bool {
 	}
 
 	var e gophercloud.Err403er
-	if errors.As(err, &e) {
-		return true
-	}
-
-	return false
+	return errors.As(err, &e)
 }

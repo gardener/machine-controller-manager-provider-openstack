@@ -21,6 +21,11 @@ var (
 	_ Network = &neutronV2{}
 )
 
+// neutronV2 is a NeutronV2 client implementing the Network interface.
+type neutronV2 struct {
+	serviceClient *gophercloud.ServiceClient
+}
+
 func newNeutronV2(providerClient *gophercloud.ProviderClient, eo gophercloud.EndpointOpts) (*neutronV2, error) {
 	nw, err := openstack.NewNetworkV2(providerClient, eo)
 	if err != nil {

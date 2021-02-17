@@ -17,6 +17,7 @@ import (
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/validation"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
@@ -70,13 +71,13 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	factory, err := p.clientConstructor(req.Secret)
+	factory, err := client.NewFactoryFromSecret(req.Secret)
 	if err != nil {
 		klog.Errorf("failed to construct OpenStack client: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, *providerConfig)
+	ex, err := executor.NewExecutor(factory, providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
@@ -120,13 +121,13 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	factory, err := p.clientConstructor(req.Secret)
+	factory, err := client.NewFactoryFromSecret(req.Secret)
 	if err != nil {
 		klog.Errorf("failed to construct OpenStack client: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, *providerConfig)
+	ex, err := executor.NewExecutor(factory, providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
@@ -158,6 +159,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("Get request has been received for %q", req.Machine.Name)
+	defer klog.V(2).Infof("Machine get request has been processed for %q", req.Machine.Name)
 
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
@@ -170,13 +172,13 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	factory, err := p.clientConstructor(req.Secret)
+	factory, err := client.NewFactoryFromSecret(req.Secret)
 	if err != nil {
 		klog.Errorf("failed to construct OpenStack client: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, *providerConfig)
+	ex, err := executor.NewExecutor(factory, providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
@@ -187,7 +189,6 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("getting machine status failed with: %v", err))
 	}
 
-	klog.V(2).Infof("Machine get request has been processed for %q: %v", req.Machine.Name, err)
 	return &driver.GetMachineStatusResponse{
 		ProviderID: providerID,
 		NodeName:   req.Machine.Name,
@@ -223,13 +224,13 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	factory, err := p.clientConstructor(req.Secret)
+	factory, err := client.NewFactoryFromSecret(req.Secret)
 	if err != nil {
 		klog.Errorf("failed to construct OpenStack client: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, *providerConfig)
+	ex, err := executor.NewExecutor(factory, providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))

@@ -15,8 +15,8 @@ import (
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
 const (

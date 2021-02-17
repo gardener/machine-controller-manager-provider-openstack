@@ -8,8 +8,6 @@ package driver
 import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 )
 
 var (
@@ -18,14 +16,12 @@ var (
 
 // OpenstackDriver implements and handles requests via the Driver interface.
 type OpenstackDriver struct {
-	decoder           runtime.Decoder
-	clientConstructor client.ClientConstructor
+	decoder runtime.Decoder
 }
 
 // NewOpenstackDriver returns a new instance of the Openstack driver.
-func NewOpenstackDriver(decoder runtime.Decoder, constructor client.ClientConstructor) driver.Driver {
+func NewOpenstackDriver(decoder runtime.Decoder) driver.Driver {
 	return &OpenstackDriver{
-		decoder:           decoder,
-		clientConstructor: constructor,
+		decoder: decoder,
 	}
 }

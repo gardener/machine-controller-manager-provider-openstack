@@ -114,7 +114,7 @@ update-dependencies:
 #########################################
 
 .PHONY: release
-release: docker-image docker-login docker-push
+release: docker-image docker-push
 
 .PHONY: docker-image
 docker-image:
