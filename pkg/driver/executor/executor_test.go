@@ -30,7 +30,6 @@ var _ = Describe("Executor", func() {
 	)
 	var (
 		ctrl    *gomock.Controller
-		factory *mocks.MockFactory
 		compute *mocks.MockCompute
 		network *mocks.MockNetwork
 		tags    map[string]string
@@ -41,12 +40,8 @@ var _ = Describe("Executor", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		ctrl = gomock.NewController(GinkgoT())
-		factory = mocks.NewMockFactory(ctrl)
 		compute = mocks.NewMockCompute(ctrl)
 		network = mocks.NewMockNetwork(ctrl)
-
-		factory.EXPECT().Compute().AnyTimes().Return(compute, nil)
-		factory.EXPECT().Network().AnyTimes().Return(network, nil)
 
 		tags = map[string]string{
 			fmt.Sprintf("%sfoo", cloudprovider.ServerTagClusterPrefix): "1",
