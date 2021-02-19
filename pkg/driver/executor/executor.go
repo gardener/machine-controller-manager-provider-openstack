@@ -308,7 +308,7 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string, podNetworkIDs
 	return nil
 }
 
-// DeleteMachine deletes a server based on the supplied ID or name.
+// DeleteMachine deletes a server based on the supplied ID or name. The machine must have the cluster/role tags for any operation to take place.
 // If providerID is specified it takes priority over the machineName. If no providerID is specified, DeleteMachine will
 // try to resolve the machineName to an appropriate server ID.
 func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID string) error {
@@ -320,7 +320,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	if isEmptyString(pointer.StringPtr(providerID)) {
 		server, err = ex.getMachineByName(ctx, machineName)
 	} else {
-		server, err = ex.getMachineByProviderID(ctx, machineName, providerID)
+		server, err = ex.getMachineByProviderID(ctx, providerID)
 	}
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
@@ -367,7 +367,7 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 }
 
 // getMachineByProviderID fetches the data for a server based on a provider-encoded ID.
-func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, providerID string) (*servers.Server, error) {
+func (ex *Executor) getMachineByProviderID(_ context.Context, providerID string) (*servers.Server, error) {
 	klog.V(2).Infof("finding server with providerID %s", providerID)
 	serverID := DecodeProviderID(providerID)
 	if isEmptyString(pointer.StringPtr(serverID)) {
@@ -382,10 +382,6 @@ func (ex *Executor) getMachineByProviderID(_ context.Context, machineName, provi
 			return nil, fmt.Errorf("could not find server [ID=%q]: %w", serverID, ErrNotFound)
 		}
 		return nil, err
-	}
-
-	if machineName != server.Name {
-		klog.Warningf("found server [ID=%q] with matching ID, but names mismatch with machine object %q", serverID, machineName)
 	}
 
 	var (
