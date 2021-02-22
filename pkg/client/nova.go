@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package openstack
+package client
 
 import (
 	"fmt"
@@ -17,9 +17,26 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	// Server status source: https://docs.openstack.org/api-guide/compute/server_concepts.html
+	// ServerStatusActive indicates that the server is active.
+	ServerStatusActive = "ACTIVE"
+	// ServerStatusBuild indicates tha the server has not yet finished the build process.
+	ServerStatusBuild = "BUILD"
+	// ServerStatusDeleted indicates that the server is deleted.
+	ServerStatusDeleted = "DELETED"
+	// ServerStatusError indicates that the server is in error.
+	ServerStatusError = "ERROR"
+)
+
 var (
 	_ Compute = &novaV2{}
 )
+
+// novaV2 is a NovaV2 client implementing the Compute interface.
+type novaV2 struct {
+	serviceClient *gophercloud.ServiceClient
+}
 
 func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.EndpointOpts) (*novaV2, error) {
 	compute, err := openstack.NewComputeV2(providerClient, eo)
@@ -29,11 +46,6 @@ func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.Endpoi
 	return &novaV2{
 		serviceClient: compute,
 	}, nil
-}
-
-// ServiceClient returns the gophercloud.ServiceClient for the service.
-func (c *novaV2) ServiceClient() *gophercloud.ServiceClient {
-	return c.serviceClient
 }
 
 // CreateServer creates a server.

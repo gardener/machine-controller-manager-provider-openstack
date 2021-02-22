@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package openstack
+package client
 
 import (
 	"crypto/tls"
@@ -20,7 +20,16 @@ import (
 	"k8s.io/klog"
 )
 
-func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
+// Factory can create clients for Nova and Neutron OpenStack services.
+type Factory struct {
+	providerClient *gophercloud.ProviderClient
+}
+
+// Option can modify client parameters by manipulating EndpointOpts.
+type Option func(opts gophercloud.EndpointOpts) gophercloud.EndpointOpts
+
+// NewFactoryFromSecret can create a Factory from the a kubernetes secret.
+func NewFactoryFromSecret(secret *corev1.Secret) (*Factory, error) {
 	if secret.Data == nil {
 		return nil, fmt.Errorf("secret does not contain any data")
 	}
@@ -28,10 +37,10 @@ func NewClientFactoryFromSecret(secret *corev1.Secret) (Factory, error) {
 	creds := extractCredentialsFromSecret(secret)
 	provider, err := newAuthenticatedProviderClientFromCredentials(creds)
 	if err != nil {
-		return nil, fmt.Errorf("error creating OpenStack client from credentials: %v", err)
+		return nil, fmt.Errorf("error creating OpenStack client from credentials: %w", err)
 	}
 
-	return &ClientFactory{
+	return &Factory{
 		providerClient: provider,
 	}, nil
 }
@@ -74,12 +83,12 @@ func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*g
 
 	ao, err := clientconfig.AuthOptions(clientOpts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client auth options: %v", err)
+		return nil, fmt.Errorf("failed to create client auth options: %w", err)
 	}
 
 	provider, err := openstack.NewClient(ao.IdentityEndpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create authenticated client: %v", err)
+		return nil, fmt.Errorf("failed to create authenticated client: %w", err)
 	}
 
 	// Set UserAgent
@@ -142,7 +151,8 @@ func WithRegion(region string) Option {
 	}
 }
 
-func (f *ClientFactory) Compute(opts ...Option) (Compute, error) {
+// Compute returns a client for OpenStack's Nova service.
+func (f *Factory) Compute(opts ...Option) (Compute, error) {
 	eo := gophercloud.EndpointOpts{}
 	for _, opt := range opts {
 		eo = opt(eo)
@@ -151,7 +161,8 @@ func (f *ClientFactory) Compute(opts ...Option) (Compute, error) {
 	return newNovaV2(f.providerClient, eo)
 }
 
-func (f *ClientFactory) Network(opts ...Option) (Network, error) {
+// Network returns a client for OpenStack's Neutron service.
+func (f *Factory) Network(opts ...Option) (Network, error) {
 	eo := gophercloud.EndpointOpts{}
 	for _, opt := range opts {
 		eo = opt(eo)

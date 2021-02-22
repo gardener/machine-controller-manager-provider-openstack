@@ -3,20 +3,20 @@
 # SPDX-License-Identifier: Apache-2.0
 
 BINARY_PATH         := bin/
-REPO_ROOT 			:= $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+REPO_ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 COVERPROFILE        := test/output/coverprofile.out
 REGISTRY            := eu.gcr.io/gardener-project/gardener
 IMAGE_PREFIX        := $(REGISTRY)/extensions
 NAME                := machine-controller-manager-provider-openstack
 IMAGE_NAME          := $(IMAGE_PREFIX)/$(NAME)
 VERSION             := $(shell cat VERSION)
-CONTROL_NAMESPACE  	?= default
-CONTROL_KUBECONFIG 	?= dev/target-kubeconfig.yaml
-TARGET_KUBECONFIG  	?= dev/target-kubeconfig.yaml
+CONTROL_NAMESPACE   := default
+CONTROL_KUBECONFIG  := dev/target-kubeconfig.yaml
+TARGET_KUBECONFIG   := dev/target-kubeconfig.yaml
 
-#########################################
+#################################################
 # Rules for starting machine-controller locally
-#########################################
+#################################################
 
 .PHONY: start
 start:
@@ -36,7 +36,7 @@ start:
 			--v=3
 
 #####################################################################
-# Rules for verification, formatting, linting, testing and cleaning #
+# Rules for verification, formatting, linting, testing and cleaning
 #####################################################################
 
 .PHONY: install-requirements
@@ -45,6 +45,11 @@ install-requirements:
 	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/golang/mock/mockgen
 	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/onsi/ginkgo/ginkgo
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/install-requirements.sh
+
+.PHONY: install
+install:
+	@LD_FLAGS="-w -X github.com/gardener/$(NAME)/pkg/version.Version=$(VERSION)" \
+	$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/install.sh ./...
 
 .PHONY: generate
 generate:
@@ -75,11 +80,19 @@ test-cov:
 test-clean:
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/test-cover-clean.sh
 
+.PHONY: test-integration
+test-integration:
+	@echo "not yet implemented"
+
 .PHONY: verify
 verify: check format test
 
 .PHONY: verify-extended
 verify-extended: install-requirements check-generate check format test-cov test-clean
+
+.PHONY: clean
+clean:
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/clean.sh ./cmd/... ./pkg/...
 
 #########################################
 # Rules for re-vendoring
@@ -97,28 +110,11 @@ update-dependencies:
 	@env GO111MODULE=on go get -u
 
 #########################################
-# Rules for testing
-#########################################
-
-.PHONY: test-unit
-test-unit:
-	pass
-
-.PHONY: test-integration
-test-integration:
-	pass
-
-#########################################
 # Rules for build/release
 #########################################
 
 .PHONY: release
-release: build docker-image docker-login docker-push
-
-.PHONY: install
-install:
-	@LD_FLAGS="-w -X github.com/gardener/$(EXTENSION_PREFIX)-$(NAME)/pkg/version.Version=$(VERSION)" \
-	$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/install.sh ./...
+release: docker-image docker-push
 
 .PHONY: docker-image
 docker-image:
@@ -131,8 +127,5 @@ docker-login:
 .PHONY: docker-push
 docker-push:
 	@if ! docker images $(IMAGE_NAME) | awk '{ print $$2 }' | grep -q -F $(VERSION); then echo "$(IMAGE_NAME)/$(VERSION) is not yet built. Please run 'make docker-images'"; false; fi
-	# @gcloud docker -- push $(IMAGE_REPOSITORY):$(IMAGE_TAG)
+	@docker image push $(IMAGE_NAME):$(VERSION)
 
-.PHONY: clean
-clean:
-	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/clean.sh ./cmd/... ./pkg/...

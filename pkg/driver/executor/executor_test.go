@@ -19,9 +19,9 @@ import (
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
+	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 	mocks "github.com/gardener/machine-controller-manager-provider-openstack/pkg/mock/openstack"
-	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/openstack"
 )
 
 var _ = Describe("Executor", func() {
@@ -30,7 +30,6 @@ var _ = Describe("Executor", func() {
 	)
 	var (
 		ctrl    *gomock.Controller
-		factory *mocks.MockFactory
 		compute *mocks.MockCompute
 		network *mocks.MockNetwork
 		tags    map[string]string
@@ -41,12 +40,8 @@ var _ = Describe("Executor", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		ctrl = gomock.NewController(GinkgoT())
-		factory = mocks.NewMockFactory(ctrl)
 		compute = mocks.NewMockCompute(ctrl)
 		network = mocks.NewMockNetwork(ctrl)
-
-		factory.EXPECT().Compute().AnyTimes().Return(compute, nil)
-		factory.EXPECT().Network().AnyTimes().Return(network, nil)
 
 		tags = map[string]string{
 			fmt.Sprintf("%sfoo", cloudprovider.ServerTagClusterPrefix): "1",
@@ -95,7 +90,7 @@ var _ = Describe("Executor", func() {
 			ex := &Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
@@ -128,7 +123,7 @@ var _ = Describe("Executor", func() {
 			ex := &Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 
 			server := &servers.Server{
@@ -180,7 +175,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 
 			res, err := ex.ListMachines(ctx)
@@ -236,7 +231,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			providerID, err := ex.GetMachineStatus(ctx, name)
 			if expectedErr != nil {
@@ -279,7 +274,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "unknown", "")
 			Expect(err).To(BeNil())
@@ -292,7 +287,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "foo", "")
 			Expect(err).To(BeNil())
@@ -310,7 +305,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "", EncodeProviderID(region, id))
 			Expect(err).To(BeNil())
@@ -337,7 +332,7 @@ var _ = Describe("Executor", func() {
 			ex := Executor{
 				Compute: compute,
 				Network: network,
-				Config:  *cfg,
+				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, machineName, "")
 			Expect(err).To(BeNil())

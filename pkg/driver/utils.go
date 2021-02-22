@@ -15,6 +15,7 @@ import (
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
+	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
@@ -75,7 +76,6 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 	machineClass.Labels = os.Labels
 	machineClass.Annotations = os.Annotations
 
-	//TODO(KA): finalizers necessary ?
 	machineClass.Finalizers = os.Finalizers
 	machineClass.ProviderSpec = runtime.RawExtension{
 		Object: cfg,
@@ -90,8 +90,18 @@ func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mc
 func mapErrorToCode(err error) codes.Code {
 	if errors.Is(err, executor.ErrNotFound) {
 		return codes.NotFound
-	} else if errors.Is(err, executor.ErrMultipleFound) {
+	}
+
+	if errors.Is(err, executor.ErrMultipleFound) {
 		return codes.OutOfRange
+	}
+
+	if client.IsUnauthenticated(err) {
+		return codes.Unauthenticated
+	}
+
+	if client.IsUnauthorized(err) {
+		return codes.PermissionDenied
 	}
 
 	return codes.Internal
