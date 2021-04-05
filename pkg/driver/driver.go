@@ -61,6 +61,12 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 	klog.V(2).Infof("machine creation request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("machine creation request has been processed for %q", req.Machine.Name)
 
+	// Check if incoming provider in the MachineClass is a provider we support
+	if req.MachineClass.Provider != openstackProvider {
+		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
 		klog.Errorf("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
@@ -111,6 +117,12 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 	klog.V(2).Infof("machine deletion request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("machine deletion request has been processed for %q", req.Machine.Name)
 
+	// Check if incoming provider in the MachineClass is a provider we support
+	if req.MachineClass.Provider != openstackProvider {
+		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
 		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
@@ -160,6 +172,12 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 	// Log messages to track start and end of request
 	klog.V(2).Infof("Get request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("Machine get request has been processed for %q", req.Machine.Name)
+
+	// Check if incoming provider in the MachineClass is a provider we support
+	if req.MachineClass.Provider != openstackProvider {
+		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {
@@ -212,6 +230,12 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 	// Log messages to track start and end of request
 	klog.V(2).Infof("list machines request has been received for %q", req.MachineClass.Name)
 	defer klog.V(2).Infof("list machines request has been processed for %q", req.MachineClass.Name)
+
+	// Check if incoming provider in the MachineClass is a provider we support
+	if req.MachineClass.Provider != openstackProvider {
+		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
 	if err != nil {

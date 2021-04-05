@@ -10,6 +10,7 @@ metadata:
 secretRef:
   name: core-openstack
   namespace: shoot--foobar--openstack
+provider: OpenStack
 providerSpec:
   apiVersion: openstack.machine.gardener.cloud/v1alpha1
   kind: MachineProviderConfig
