@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	openstackProvider = "openstack"
+	openstackProvider = "OpenStack"
 )
 
 func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*openstack.MachineProviderConfig, error) {
