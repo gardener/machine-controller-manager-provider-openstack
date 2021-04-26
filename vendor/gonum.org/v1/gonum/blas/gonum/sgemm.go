@@ -16,9 +16,9 @@ import (
 
 // Sgemm performs one of the matrix-matrix operations
 //  C = alpha * A * B + beta * C
-//  C = alpha * A^T * B + beta * C
-//  C = alpha * A * B^T + beta * C
-//  C = alpha * A^T * B^T + beta * C
+//  C = alpha * Aᵀ * B + beta * C
+//  C = alpha * A * Bᵀ + beta * C
+//  C = alpha * Aᵀ * Bᵀ + beta * C
 // where A is an m×k or k×m dense matrix, B is an n×k or k×n dense matrix, C is
 // an m×n matrix, and alpha and beta are scalars. tA and tB specify whether A or
 // B are transposed.
@@ -138,9 +138,9 @@ func sgemmParallel(aTrans, bTrans bool, m, n, k int, a []float32, lda int, b []f
 	// In all cases, there is one dimension for each matrix along which
 	// C must be updated sequentially.
 	// Cij = \sum_k Aik Bki,	(A * B)
-	// Cij = \sum_k Aki Bkj,	(A^T * B)
-	// Cij = \sum_k Aik Bjk,	(A * B^T)
-	// Cij = \sum_k Aki Bjk,	(A^T * B^T)
+	// Cij = \sum_k Aki Bkj,	(Aᵀ * B)
+	// Cij = \sum_k Aik Bjk,	(A * Bᵀ)
+	// Cij = \sum_k Aki Bjk,	(Aᵀ * Bᵀ)
 	//
 	// This code computes one {i, j} block sequentially along the k dimension,
 	// and computes all of the {i, j} blocks concurrently. This
@@ -162,31 +162,24 @@ func sgemmParallel(aTrans, bTrans bool, m, n, k int, a []float32, lda int, b []f
 		return
 	}
 
-	nWorkers := runtime.GOMAXPROCS(0)
-	if parBlocks < nWorkers {
-		nWorkers = parBlocks
-	}
-	// There is a tradeoff between the workers having to wait for work
-	// and a large buffer making operations slow.
-	buf := buffMul * nWorkers
-	if buf > parBlocks {
-		buf = parBlocks
-	}
+	// workerLimit acts a number of maximum concurrent workers,
+	// with the limit set to the number of procs available.
+	workerLimit := make(chan struct{}, runtime.GOMAXPROCS(0))
 
-	sendChan := make(chan subMul, buf)
-
-	// Launch workers. A worker receives an {i, j} submatrix of c, and computes
-	// A_ik B_ki (or the transposed version) storing the result in c_ij. When the
-	// channel is finally closed, it signals to the waitgroup that it has finished
-	// computing.
+	// wg is used to wait for all
 	var wg sync.WaitGroup
-	for i := 0; i < nWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for sub := range sendChan {
-				i := sub.i
-				j := sub.j
+	wg.Add(parBlocks)
+	defer wg.Wait()
+
+	for i := 0; i < m; i += blockSize {
+		for j := 0; j < n; j += blockSize {
+			workerLimit <- struct{}{}
+			go func(i, j int) {
+				defer func() {
+					wg.Done()
+					<-workerLimit
+				}()
+
 				leni := blockSize
 				if i+leni > m {
 					leni = m - i
@@ -217,21 +210,9 @@ func sgemmParallel(aTrans, bTrans bool, m, n, k int, a []float32, lda int, b []f
 					}
 					sgemmSerial(aTrans, bTrans, leni, lenj, lenk, aSub, lda, bSub, ldb, cSub, ldc, alpha)
 				}
-			}
-		}()
-	}
-
-	// Send out all of the {i, j} subblocks for computation.
-	for i := 0; i < m; i += blockSize {
-		for j := 0; j < n; j += blockSize {
-			sendChan <- subMul{
-				i: i,
-				j: j,
-			}
+			}(i, j)
 		}
 	}
-	close(sendChan)
-	wg.Wait()
 }
 
 // sgemmSerial is serial matrix multiply

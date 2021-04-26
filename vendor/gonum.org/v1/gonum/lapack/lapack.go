@@ -27,6 +27,9 @@ type Float64 interface {
 	Dlapmt(forward bool, m, n int, x []float64, ldx int, k []int)
 	Dormqr(side blas.Side, trans blas.Transpose, m, n, k int, a []float64, lda int, tau, c []float64, ldc int, work []float64, lwork int)
 	Dormlq(side blas.Side, trans blas.Transpose, m, n, k int, a []float64, lda int, tau, c []float64, ldc int, work []float64, lwork int)
+	Dpbcon(uplo blas.Uplo, n, kd int, ab []float64, ldab int, anorm float64, work []float64, iwork []int) float64
+	Dpbtrf(uplo blas.Uplo, n, kd int, ab []float64, ldab int) (ok bool)
+	Dpbtrs(uplo blas.Uplo, n, kd, nrhs int, ab []float64, ldab int, b []float64, ldb int)
 	Dpocon(uplo blas.Uplo, n int, a []float64, lda int, anorm float64, work []float64, iwork []int) float64
 	Dpotrf(ul blas.Uplo, n int, a []float64, lda int) (ok bool)
 	Dpotri(ul blas.Uplo, n int, a []float64, lda int) (ok bool)
@@ -93,15 +96,15 @@ const (
 type ApplyOrtho byte
 
 const (
-	ApplyP ApplyOrtho = 'P' // Apply P or P^T.
-	ApplyQ ApplyOrtho = 'Q' // Apply Q or Q^T.
+	ApplyP ApplyOrtho = 'P' // Apply P or Pᵀ.
+	ApplyQ ApplyOrtho = 'Q' // Apply Q or Qᵀ.
 )
 
 // GenOrtho specifies which orthogonal matrix is generated in Dorgbr.
 type GenOrtho byte
 
 const (
-	GeneratePT GenOrtho = 'P' // Generate P^T.
+	GeneratePT GenOrtho = 'P' // Generate Pᵀ.
 	GenerateQ  GenOrtho = 'Q' // Generate Q.
 )
 

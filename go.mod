@@ -1,25 +1,25 @@
 module github.com/gardener/machine-controller-manager-provider-openstack
 
-go 1.15
+go 1.16
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/gardener/gardener v1.16.0
-	github.com/gardener/machine-controller-manager v0.37.0
-	github.com/golang/mock v1.4.4-0.20200731163441-8734ec565a4d
+	github.com/gardener/gardener v1.21.0
+	github.com/gardener/machine-controller-manager v0.38.0
+	github.com/golang/mock v1.5.0
 	github.com/gophercloud/gophercloud v0.7.0
 	github.com/gophercloud/utils v0.0.0-20200204043447-9864b6f1f12f
-	github.com/onsi/ginkgo v1.14.1
-	github.com/onsi/gomega v1.10.4
+	github.com/onsi/ginkgo v1.15.2
+	github.com/onsi/gomega v1.11.0
 	github.com/prometheus/client_golang v1.7.1 // indirecd
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
-	k8s.io/api v0.19.6
-	k8s.io/apimachinery v0.19.6
-	k8s.io/code-generator v0.19.6
-	k8s.io/component-base v0.19.6
+	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5
+	k8s.io/api v0.20.2
+	k8s.io/apimachinery v0.20.2
+	k8s.io/code-generator v0.20.2
+	k8s.io/component-base v0.20.2
 	k8s.io/klog v1.0.0
-	k8s.io/utils v0.0.0-20200912215256-4140de9c8800
+	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 )
 
 replace (
