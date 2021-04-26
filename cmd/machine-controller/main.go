@@ -38,7 +38,7 @@ func main() {
 		klog.Fatalf("failed to install scheme: %v", err)
 	}
 
-	provider := driver.NewOpenstackDriver(serializer.NewCodecFactory(scheme).UniversalDecoder())
+	provider := driver.NewOpenstackDriver(serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder())
 
 	if err := app.Run(s, provider); err != nil {
 		klog.Fatalf("failed to run application: %v", err)
