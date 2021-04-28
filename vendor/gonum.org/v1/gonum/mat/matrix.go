@@ -9,7 +9,7 @@ import (
 
 	"gonum.org/v1/gonum/blas"
 	"gonum.org/v1/gonum/blas/blas64"
-	"gonum.org/v1/gonum/floats"
+	"gonum.org/v1/gonum/floats/scalar"
 	"gonum.org/v1/gonum/lapack"
 	"gonum.org/v1/gonum/lapack/lapack64"
 )
@@ -28,6 +28,23 @@ type Matrix interface {
 	// This method may be implemented using the Transpose type, which
 	// provides an implicit matrix transpose.
 	T() Matrix
+}
+
+// allMatrix represents the extra set of methods that all mat Matrix types
+// should satisfy. This is used to enforce compile-time consistency between the
+// Dense types, especially helpful when adding new features.
+type allMatrix interface {
+	Reseter
+	IsEmpty() bool
+	Zero()
+}
+
+// denseMatrix represents the extra set of methods that all Dense Matrix types
+// should satisfy. This is used to enforce compile-time consistency between the
+// Dense types, especially helpful when adding new features.
+type denseMatrix interface {
+	DiagView() Diagonal
+	Tracer
 }
 
 var (
@@ -129,19 +146,20 @@ type RawColViewer interface {
 	RawColView(j int) []float64
 }
 
-// A Cloner can make a copy of a into the receiver, overwriting the previous value of the
+// A ClonerFrom can make a copy of a into the receiver, overwriting the previous value of the
 // receiver. The clone operation does not make any restriction on shape and will not cause
 // shadowing.
-type Cloner interface {
-	Clone(a Matrix)
+type ClonerFrom interface {
+	CloneFrom(a Matrix)
 }
 
 // A Reseter can reset the matrix so that it can be reused as the receiver of a dimensionally
 // restricted operation. This is commonly used when the matrix is being used as a workspace
 // or temporary matrix.
 //
-// If the matrix is a view, using the reset matrix may result in data corruption in elements
-// outside the view.
+// If the matrix is a view, using Reset may result in data corruption in elements outside
+// the view. Similarly, if the matrix shares backing data with another variable, using
+// Reset may lead to unexpected changes in data values.
 type Reseter interface {
 	Reset()
 }
@@ -226,7 +244,7 @@ func untranspose(a Matrix) (Matrix, bool) {
 func untransposeExtract(a Matrix) (Matrix, bool) {
 	ut, trans := untranspose(a)
 	switch m := ut.(type) {
-	case *DiagDense, *SymBandDense, *TriBandDense, *BandDense, *TriDense, *SymDense, *Dense:
+	case *DiagDense, *SymBandDense, *TriBandDense, *BandDense, *TriDense, *SymDense, *Dense, *VecDense:
 		return m, trans
 	// TODO(btracey): Add here if we ever have an equivalent of RawDiagDense.
 	case RawSymBander:
@@ -269,6 +287,10 @@ func untransposeExtract(a Matrix) (Matrix, bool) {
 		var d Dense
 		d.SetRawMatrix(m.RawMatrix())
 		return &d, trans
+	case RawVectorer:
+		var v VecDense
+		v.SetRawVector(m.RawVector())
+		return &v, trans
 	default:
 		return ut, trans
 	}
@@ -349,7 +371,7 @@ func Row(dst []float64, i int, a Matrix) []float64 {
 // Cond will panic with matrix.ErrShape if the matrix has zero size.
 //
 // BUG(btracey): The computation of the 1-norm and ∞-norm for non-square matrices
-// is innacurate, although is typically the right order of magnitude. See
+// is inaccurate, although is typically the right order of magnitude. See
 // https://github.com/xianyi/OpenBLAS/issues/636. While the value returned will
 // change with the resolution of this bug, the result from Cond will match the
 // condition number used internally.
@@ -509,7 +531,7 @@ func EqualApprox(a, b Matrix, epsilon float64) bool {
 			if aTrans == bTrans {
 				for i := 0; i < ra.Rows; i++ {
 					for j := 0; j < ra.Cols; j++ {
-						if !floats.EqualWithinAbsOrRel(ra.Data[i*ra.Stride+j], rb.Data[i*rb.Stride+j], epsilon, epsilon) {
+						if !scalar.EqualWithinAbsOrRel(ra.Data[i*ra.Stride+j], rb.Data[i*rb.Stride+j], epsilon, epsilon) {
 							return false
 						}
 					}
@@ -518,7 +540,7 @@ func EqualApprox(a, b Matrix, epsilon float64) bool {
 			}
 			for i := 0; i < ra.Rows; i++ {
 				for j := 0; j < ra.Cols; j++ {
-					if !floats.EqualWithinAbsOrRel(ra.Data[i*ra.Stride+j], rb.Data[j*rb.Stride+i], epsilon, epsilon) {
+					if !scalar.EqualWithinAbsOrRel(ra.Data[i*ra.Stride+j], rb.Data[j*rb.Stride+i], epsilon, epsilon) {
 						return false
 					}
 				}
@@ -533,7 +555,7 @@ func EqualApprox(a, b Matrix, epsilon float64) bool {
 			// Symmetric matrices are always upper and equal to their transpose.
 			for i := 0; i < ra.N; i++ {
 				for j := i; j < ra.N; j++ {
-					if !floats.EqualWithinAbsOrRel(ra.Data[i*ra.Stride+j], rb.Data[i*rb.Stride+j], epsilon, epsilon) {
+					if !scalar.EqualWithinAbsOrRel(ra.Data[i*ra.Stride+j], rb.Data[i*rb.Stride+j], epsilon, epsilon) {
 						return false
 					}
 				}
@@ -546,7 +568,7 @@ func EqualApprox(a, b Matrix, epsilon float64) bool {
 			// If the raw vectors are the same length they must either both be
 			// transposed or both not transposed (or have length 1).
 			for i := 0; i < ra.mat.N; i++ {
-				if !floats.EqualWithinAbsOrRel(ra.mat.Data[i*ra.mat.Inc], rb.mat.Data[i*rb.mat.Inc], epsilon, epsilon) {
+				if !scalar.EqualWithinAbsOrRel(ra.mat.Data[i*ra.mat.Inc], rb.mat.Data[i*rb.mat.Inc], epsilon, epsilon) {
 					return false
 				}
 			}
@@ -555,7 +577,7 @@ func EqualApprox(a, b Matrix, epsilon float64) bool {
 	}
 	for i := 0; i < ar; i++ {
 		for j := 0; j < ac; j++ {
-			if !floats.EqualWithinAbsOrRel(a.At(i, j), b.At(i, j), epsilon, epsilon) {
+			if !scalar.EqualWithinAbsOrRel(a.At(i, j), b.At(i, j), epsilon, epsilon) {
 				return false
 			}
 		}
@@ -580,7 +602,7 @@ func Max(a Matrix) float64 {
 	if r == 0 || c == 0 {
 		panic(ErrShape)
 	}
-	// Max(A) = Max(A^T)
+	// Max(A) = Max(Aᵀ)
 	aU, _ := untranspose(a)
 	switch m := aU.(type) {
 	case RawMatrixer:
@@ -655,7 +677,7 @@ func Min(a Matrix) float64 {
 	if r == 0 || c == 0 {
 		panic(ErrShape)
 	}
-	// Min(A) = Min(A^T)
+	// Min(A) = Min(Aᵀ)
 	aU, _ := untranspose(a)
 	switch m := aU.(type) {
 	case RawMatrixer:
@@ -768,7 +790,7 @@ func Norm(a Matrix, norm float64) float64 {
 		rv := rma.RawVector()
 		switch norm {
 		default:
-			panic("unreachable")
+			panic(ErrNormOrder)
 		case 1:
 			if aTrans {
 				imax := blas64.Iamax(rv)
@@ -787,7 +809,7 @@ func Norm(a Matrix, norm float64) float64 {
 	}
 	switch norm {
 	default:
-		panic("unreachable")
+		panic(ErrNormOrder)
 	case 1:
 		var max float64
 		for j := 0; j < c; j++ {
@@ -848,12 +870,43 @@ func normLapack(norm float64, aTrans bool) lapack.MatrixNorm {
 
 // Sum returns the sum of the elements of the matrix.
 func Sum(a Matrix) float64 {
-	// TODO(btracey): Add a fast path for the other supported matrix types.
 
-	r, c := a.Dims()
 	var sum float64
 	aU, _ := untranspose(a)
-	if rma, ok := aU.(RawMatrixer); ok {
+	switch rma := aU.(type) {
+	case RawSymmetricer:
+		rm := rma.RawSymmetric()
+		for i := 0; i < rm.N; i++ {
+			// Diagonals count once while off-diagonals count twice.
+			sum += rm.Data[i*rm.Stride+i]
+			var s float64
+			for _, v := range rm.Data[i*rm.Stride+i+1 : i*rm.Stride+rm.N] {
+				s += v
+			}
+			sum += 2 * s
+		}
+		return sum
+	case RawTriangular:
+		rm := rma.RawTriangular()
+		var startIdx, endIdx int
+		for i := 0; i < rm.N; i++ {
+			// Start and end index for this triangle-row.
+			switch rm.Uplo {
+			case blas.Upper:
+				startIdx = i
+				endIdx = rm.N
+			case blas.Lower:
+				startIdx = 0
+				endIdx = i + 1
+			default:
+				panic(badTriangle)
+			}
+			for _, v := range rm.Data[i*rm.Stride+startIdx : i*rm.Stride+endIdx] {
+				sum += v
+			}
+		}
+		return sum
+	case RawMatrixer:
 		rm := rma.RawMatrix()
 		for i := 0; i < rm.Rows; i++ {
 			for _, v := range rm.Data[i*rm.Stride : i*rm.Stride+rm.Cols] {
@@ -861,13 +914,21 @@ func Sum(a Matrix) float64 {
 			}
 		}
 		return sum
-	}
-	for i := 0; i < r; i++ {
-		for j := 0; j < c; j++ {
-			sum += a.At(i, j)
+	case *VecDense:
+		rm := rma.RawVector()
+		for i := 0; i < rm.N; i++ {
+			sum += rm.Data[i*rm.Inc]
 		}
+		return sum
+	default:
+		r, c := a.Dims()
+		for i := 0; i < r; i++ {
+			for j := 0; j < c; j++ {
+				sum += a.At(i, j)
+			}
+		}
+		return sum
 	}
-	return sum
 }
 
 // A Tracer can compute the trace of the matrix. Trace must panic if the
@@ -877,7 +938,8 @@ type Tracer interface {
 }
 
 // Trace returns the trace of the matrix. Trace will panic if the
-// matrix is not square.
+// matrix is not square. If a is a Tracer, its Trace method will be
+// used to calculate the matrix trace.
 func Trace(a Matrix) float64 {
 	m, _ := untransposeExtract(a)
 	if t, ok := m.(Tracer); ok {

@@ -49,8 +49,6 @@ func (g *DirectedGraph) AddNode(n graph.Node) {
 		panic(fmt.Sprintf("simple: node ID collision: %d", n.ID()))
 	}
 	g.nodes[n.ID()] = n
-	g.from[n.ID()] = make(map[int64]graph.Edge)
-	g.to[n.ID()] = make(map[int64]graph.Edge)
 	g.nodeIDs.Use(n.ID())
 }
 
@@ -79,21 +77,14 @@ func (g *DirectedGraph) Edges() graph.Edges {
 }
 
 // From returns all nodes in g that can be reached directly from n.
+//
+// The returned graph.Nodes is only valid until the next mutation of
+// the receiver.
 func (g *DirectedGraph) From(id int64) graph.Nodes {
-	if _, ok := g.from[id]; !ok {
+	if len(g.from[id]) == 0 {
 		return graph.Empty
 	}
-
-	from := make([]graph.Node, len(g.from[id]))
-	i := 0
-	for vid := range g.from[id] {
-		from[i] = g.nodes[vid]
-		i++
-	}
-	if len(from) == 0 {
-		return graph.Empty
-	}
-	return iterator.NewOrderedNodes(from)
+	return iterator.NewNodesByEdge(g.nodes, g.from[id])
 }
 
 // HasEdgeBetween returns whether an edge exists between nodes x and y without
@@ -116,7 +107,7 @@ func (g *DirectedGraph) HasEdgeFromTo(uid, vid int64) bool {
 
 // NewEdge returns a new Edge from the source to the destination node.
 func (g *DirectedGraph) NewEdge(from, to graph.Node) graph.Edge {
-	return &Edge{F: from, T: to}
+	return Edge{F: from, T: to}
 }
 
 // NewNode returns a new unique Node to be added to g. The Node's ID does
@@ -138,17 +129,14 @@ func (g *DirectedGraph) Node(id int64) graph.Node {
 }
 
 // Nodes returns all the nodes in the graph.
+//
+// The returned graph.Nodes is only valid until the next mutation of
+// the receiver.
 func (g *DirectedGraph) Nodes() graph.Nodes {
 	if len(g.nodes) == 0 {
 		return graph.Empty
 	}
-	nodes := make([]graph.Node, len(g.nodes))
-	i := 0
-	for _, n := range g.nodes {
-		nodes[i] = n
-		i++
-	}
-	return iterator.NewOrderedNodes(nodes)
+	return iterator.NewNodes(g.nodes)
 }
 
 // RemoveEdge removes the edge with the given end point IDs from the graph, leaving the terminal
@@ -212,24 +200,25 @@ func (g *DirectedGraph) SetEdge(e graph.Edge) {
 		g.nodes[tid] = to
 	}
 
-	g.from[fid][tid] = e
-	g.to[tid][fid] = e
+	if fm, ok := g.from[fid]; ok {
+		fm[tid] = e
+	} else {
+		g.from[fid] = map[int64]graph.Edge{tid: e}
+	}
+	if tm, ok := g.to[tid]; ok {
+		tm[fid] = e
+	} else {
+		g.to[tid] = map[int64]graph.Edge{fid: e}
+	}
 }
 
 // To returns all nodes in g that can reach directly to n.
+//
+// The returned graph.Nodes is only valid until the next mutation of
+// the receiver.
 func (g *DirectedGraph) To(id int64) graph.Nodes {
-	if _, ok := g.from[id]; !ok {
+	if len(g.to[id]) == 0 {
 		return graph.Empty
 	}
-
-	to := make([]graph.Node, len(g.to[id]))
-	i := 0
-	for uid := range g.to[id] {
-		to[i] = g.nodes[uid]
-		i++
-	}
-	if len(to) == 0 {
-		return graph.Empty
-	}
-	return iterator.NewOrderedNodes(to)
+	return iterator.NewNodesByEdge(g.nodes, g.to[id])
 }
