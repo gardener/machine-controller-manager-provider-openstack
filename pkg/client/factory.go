@@ -168,5 +168,5 @@ func (f *Factory) Network(opts ...Option) (Network, error) {
 		eo = opt(eo)
 	}
 
-	return newNeutronV2(f.providerClient, gophercloud.EndpointOpts{})
+	return newNeutronV2(f.providerClient, eo)
 }
