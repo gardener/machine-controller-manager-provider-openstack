@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/gardener/gardener v1.21.0
-	github.com/gardener/machine-controller-manager v0.38.0
+	github.com/gardener/machine-controller-manager v0.39.0
 	github.com/golang/mock v1.5.0
 	github.com/gophercloud/gophercloud v0.7.0
 	github.com/gophercloud/utils v0.0.0-20200204043447-9864b6f1f12f
