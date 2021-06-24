@@ -69,17 +69,23 @@ func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*g
 
 	clientOpts := new(clientconfig.ClientOpts)
 	authInfo := &clientconfig.AuthInfo{
-		AuthURL:        credentials.AuthURL,
-		Username:       credentials.Username,
-		Password:       credentials.Password,
-		DomainName:     credentials.DomainName,
-		DomainID:       credentials.DomainID,
-		ProjectName:    credentials.TenantName,
-		ProjectID:      credentials.TenantID,
-		UserDomainName: credentials.UserDomainName,
-		UserDomainID:   credentials.UserDomainID,
+		AuthURL:                     credentials.AuthURL,
+		Username:                    credentials.Username,
+		Password:                    credentials.Password,
+		DomainName:                  credentials.DomainName,
+		DomainID:                    credentials.DomainID,
+		ProjectName:                 credentials.TenantName,
+		ProjectID:                   credentials.TenantID,
+		UserDomainName:              credentials.UserDomainName,
+		UserDomainID:                credentials.UserDomainID,
+		ApplicationCredentialID:     credentials.ApplicationCredentialID,
+		ApplicationCredentialSecret: credentials.ApplicationCredentialSecret,
 	}
 	clientOpts.AuthInfo = authInfo
+
+	if clientOpts.AuthInfo.ApplicationCredentialID != "" {
+		clientOpts.AuthType = clientconfig.AuthV3ApplicationCredential
+	}
 
 	ao, err := clientconfig.AuthOptions(clientOpts)
 	if err != nil {

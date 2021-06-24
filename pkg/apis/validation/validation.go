@@ -124,11 +124,20 @@ func validateSecret(secret *corev1.Secret) field.ErrorList {
 	if b, ok := data[OpenStackAuthURL]; !ok || isEmptyStringByteSlice(b) {
 		allErrs = append(allErrs, field.Required(root.Key(OpenStackAuthURL), fmt.Sprintf("%s is required", OpenStackAuthURL)))
 	}
-	if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b) {
-		allErrs = append(allErrs, field.Required(root.Key(OpenStackUsername), fmt.Sprintf("%s is required", OpenStackUsername)))
-	}
-	if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b) {
-		allErrs = append(allErrs, field.Required(root.Key(OpenStackPassword), fmt.Sprintf("%s is required", OpenStackPassword)))
+	if _, ok := data[OpenStackApplicationCredentialID]; !ok {
+		if b, ok := data[OpenStackUsername]; !ok || isEmptyStringByteSlice(b) {
+			allErrs = append(allErrs, field.Required(root.Key(OpenStackUsername), fmt.Sprintf("%s is required", OpenStackUsername)))
+		}
+		if b, ok := data[OpenStackPassword]; !ok || isEmptyStringByteSlice(b) {
+			allErrs = append(allErrs, field.Required(root.Key(OpenStackPassword), fmt.Sprintf("%s is required", OpenStackPassword)))
+		}
+	} else {
+		if b, ok := data[OpenStackApplicationCredentialID]; !ok || isEmptyStringByteSlice(b) {
+			allErrs = append(allErrs, field.Required(root.Key(OpenStackApplicationCredentialID), fmt.Sprintf("%s is required", OpenStackApplicationCredentialID)))
+		}
+		if b, ok := data[OpenStackApplicationCredentialSecret]; !ok || isEmptyStringByteSlice(b) {
+			allErrs = append(allErrs, field.Required(root.Key(OpenStackApplicationCredentialSecret), fmt.Sprintf("%s is required", OpenStackApplicationCredentialSecret)))
+		}
 	}
 
 	domainName, ok := data[OpenStackDomainName]
