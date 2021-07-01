@@ -206,27 +206,62 @@ var _ = Describe("Validation", func() {
 					"Type":  BeEquivalentTo("FieldValueRequired"),
 					"Field": Equal("data[tenantName]"),
 				})),
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  BeEquivalentTo("FieldValueRequired"),
+					"Field": Equal("data[applicationCredentialID]"),
+				})),
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  BeEquivalentTo("FieldValueRequired"),
+					"Field": Equal("data[applicationCredentialName]"),
+				})),
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  BeEquivalentTo("FieldValueRequired"),
+					"Field": Equal("data[applicationCredentialSecret]"),
+				})),
 			))
 		})
 
-		It("should fail if application credential secret field is missing", func() {
-			delete(secret.Data, OpenStackUsername)
+		It("should fail if application credential id or name field are missing", func() {
 			delete(secret.Data, OpenStackPassword)
-			secret.Data[OpenStackApplicationCredentialID] = []byte("app-id")
+			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
 
 			err := validateSecret(secret)
 			Expect(err).To(ConsistOf(
 				PointTo(MatchFields(IgnoreExtras, Fields{
 					"Type":  BeEquivalentTo("FieldValueRequired"),
-					"Field": Equal("data[" + OpenStackApplicationCredentialSecret + "]"),
+					"Field": Equal("data[" + OpenStackApplicationCredentialID + "]"),
+				})),
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  BeEquivalentTo("FieldValueRequired"),
+					"Field": Equal("data[" + OpenStackApplicationCredentialName + "]"),
 				})),
 			))
 		})
 
-		It("should succeed if application credentials are used", func() {
+		It("should succeed if application credentials are used (id + secret)", func() {
 			delete(secret.Data, OpenStackUsername)
 			delete(secret.Data, OpenStackPassword)
 			secret.Data[OpenStackApplicationCredentialID] = []byte("app-id")
+			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
+
+			err := validateSecret(secret).ToAggregate()
+			Expect(err).To(BeNil())
+		})
+
+		It("should succeed if application credentials are used (id + name + secret)", func() {
+			delete(secret.Data, OpenStackUsername)
+			delete(secret.Data, OpenStackPassword)
+			secret.Data[OpenStackApplicationCredentialID] = []byte("app-id")
+			secret.Data[OpenStackApplicationCredentialName] = []byte("app-name")
+			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
+
+			err := validateSecret(secret).ToAggregate()
+			Expect(err).To(BeNil())
+		})
+
+		It("should succeed if application credentials are used (username + name + secret)", func() {
+			delete(secret.Data, OpenStackPassword)
+			secret.Data[OpenStackApplicationCredentialName] = []byte("app-name")
 			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
 
 			err := validateSecret(secret).ToAggregate()
