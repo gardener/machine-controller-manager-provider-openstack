@@ -181,7 +181,7 @@ var _ = Describe("Validation", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("should fail is required fields are missing", func() {
+		It("should fail if required fields are missing", func() {
 			secret = &corev1.Secret{}
 
 			err := validateSecret(secret)
@@ -207,6 +207,30 @@ var _ = Describe("Validation", func() {
 					"Field": Equal("data[tenantName]"),
 				})),
 			))
+		})
+
+		It("should fail if application credential secret field is missing", func() {
+			delete(secret.Data, OpenStackUsername)
+			delete(secret.Data, OpenStackPassword)
+			secret.Data[OpenStackApplicationCredentialID] = []byte("app-id")
+
+			err := validateSecret(secret)
+			Expect(err).To(ConsistOf(
+				PointTo(MatchFields(IgnoreExtras, Fields{
+					"Type":  BeEquivalentTo("FieldValueRequired"),
+					"Field": Equal("data[" + OpenStackApplicationCredentialSecret + "]"),
+				})),
+			))
+		})
+
+		It("should succeed if application credentials are used", func() {
+			delete(secret.Data, OpenStackUsername)
+			delete(secret.Data, OpenStackPassword)
+			secret.Data[OpenStackApplicationCredentialID] = []byte("app-id")
+			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
+
+			err := validateSecret(secret).ToAggregate()
+			Expect(err).To(BeNil())
 		})
 
 		It("should fail if Insecure has erroneous value", func() {
