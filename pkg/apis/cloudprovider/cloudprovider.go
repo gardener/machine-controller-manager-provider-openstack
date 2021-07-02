@@ -29,6 +29,8 @@ const (
 	OpenStackPassword string = "password"
 	// OpenStackApplicationCredentialID is a constant for a key name that is part of the OpenStack cloud Credentials.
 	OpenStackApplicationCredentialID = "applicationCredentialID"
+	// OpenStackApplicationCredentialName is a constant for a key name that is part of the OpenStack cloud Credentials.
+	OpenStackApplicationCredentialName = "applicationCredentialName"
 	// OpenStackApplicationCredentialSecret is a constant for a key name that is part of the OpenStack cloud Credentials.
 	OpenStackApplicationCredentialSecret = "applicationCredentialSecret"
 

@@ -79,11 +79,12 @@ func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*g
 		UserDomainName:              credentials.UserDomainName,
 		UserDomainID:                credentials.UserDomainID,
 		ApplicationCredentialID:     credentials.ApplicationCredentialID,
+		ApplicationCredentialName:   credentials.ApplicationCredentialName,
 		ApplicationCredentialSecret: credentials.ApplicationCredentialSecret,
 	}
 	clientOpts.AuthInfo = authInfo
 
-	if clientOpts.AuthInfo.ApplicationCredentialID != "" {
+	if clientOpts.AuthInfo.ApplicationCredentialSecret != "" {
 		clientOpts.AuthType = clientconfig.AuthV3ApplicationCredential
 	}
 

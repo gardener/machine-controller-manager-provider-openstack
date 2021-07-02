@@ -25,6 +25,7 @@ type credentials struct {
 	Password string
 
 	ApplicationCredentialID     string
+	ApplicationCredentialName   string
 	ApplicationCredentialSecret string
 
 	CACert     []byte
@@ -43,6 +44,7 @@ func extractCredentialsFromSecret(secret *corev1.Secret) *credentials {
 	password := data[cloudprovider.OpenStackPassword]
 
 	applicationCredentialID := data[cloudprovider.OpenStackApplicationCredentialID]
+	applicationCredentialName := data[cloudprovider.OpenStackApplicationCredentialName]
 	applicationCredentialSecret := data[cloudprovider.OpenStackApplicationCredentialSecret]
 
 	// optional OS_USER_DOMAIN_NAME
@@ -80,6 +82,7 @@ func extractCredentialsFromSecret(secret *corev1.Secret) *credentials {
 		Username:                    strings.TrimSpace(string(username)),
 		Password:                    strings.TrimSpace(string(password)),
 		ApplicationCredentialID:     strings.TrimSpace(string(applicationCredentialID)),
+		ApplicationCredentialName:   strings.TrimSpace(string(applicationCredentialName)),
 		ApplicationCredentialSecret: strings.TrimSpace(string(applicationCredentialSecret)),
 		AuthURL:                     strings.TrimSpace(string(authURL)),
 		ClientCert:                  clientCert,
