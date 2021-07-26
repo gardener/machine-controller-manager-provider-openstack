@@ -11,9 +11,9 @@ import (
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
+	"github.com/gophercloud/utils/openstack/compute/v2/flavors"
+	"github.com/gophercloud/utils/openstack/imageservice/v2/images"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -114,7 +114,6 @@ func (c *novaV2) DeleteServer(id string) error {
 // ImageIDFromName resolves the given image name to a unique ID.
 func (c *novaV2) ImageIDFromName(name string) (string, error) {
 	id, err := images.IDFromName(c.serviceClient, name)
-
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
 	if err != nil {
 		if !IsNotFoundError(err) {

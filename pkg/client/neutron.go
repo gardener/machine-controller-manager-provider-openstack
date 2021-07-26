@@ -10,10 +10,11 @@ import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/metrics"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
+	utilGroups "github.com/gophercloud/utils/openstack/networking/v2/extensions/security/groups"
+	utilNetworks "github.com/gophercloud/utils/openstack/networking/v2/networks"
+	utilPorts "github.com/gophercloud/utils/openstack/networking/v2/ports"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -102,7 +103,7 @@ func (n *neutronV2) DeletePort(id string) error {
 
 // NetworkIDFromName resolves the given network name to a unique ID.
 func (n *neutronV2) NetworkIDFromName(name string) (string, error) {
-	id, err := networks.IDFromName(n.serviceClient, name)
+	id, err := utilNetworks.IDFromName(n.serviceClient, name)
 
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
 	if err != nil {
@@ -114,7 +115,7 @@ func (n *neutronV2) NetworkIDFromName(name string) (string, error) {
 
 // GroupIDFromName resolves the given security group name to a unique ID.
 func (n *neutronV2) GroupIDFromName(name string) (string, error) {
-	id, err := groups.IDFromName(n.serviceClient, name)
+	id, err := utilGroups.IDFromName(n.serviceClient, name)
 
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
 	if err != nil {
@@ -126,7 +127,7 @@ func (n *neutronV2) GroupIDFromName(name string) (string, error) {
 
 // PortIDFromName resolves the given port name to a unique ID.
 func (n *neutronV2) PortIDFromName(name string) (string, error) {
-	id, err := ports.IDFromName(n.serviceClient, name)
+	id, err := utilPorts.IDFromName(n.serviceClient, name)
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
 
 	if err != nil {
