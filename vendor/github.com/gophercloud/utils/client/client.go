@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +10,11 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/gophercloud/gophercloud"
 )
 
 // Logger is an interface representing the Logger struct
@@ -62,6 +67,7 @@ var defaultSensitiveHeaders = map[string]struct{}{
 	"x-container-meta-temp-url-key-2": {},
 	"set-cookie":                      {},
 	"x-subject-token":                 {},
+	"authorization":                   {},
 }
 
 // GetDefaultSensitiveHeaders returns the default list of headers to be masked
@@ -211,7 +217,7 @@ func (rt *RoundTripper) RoundTrip(request *http.Request) (*http.Response, error)
 // If the body is JSON, it will attempt to be pretty-formatted.
 func (rt *RoundTripper) logRequest(original io.ReadCloser, contentType string) (io.ReadCloser, error) {
 	// Handle request contentType
-	if strings.HasPrefix(contentType, "application/json") {
+	if strings.HasPrefix(contentType, "application/json") || (strings.HasPrefix(contentType, "application/") && strings.HasSuffix(contentType, "-json-patch")) {
 		var bs bytes.Buffer
 		defer original.Close()
 
@@ -324,6 +330,25 @@ func FormatJSON(raw []byte) (string, error) {
 		}
 	}
 
+	// Mask EC2 access id and body hash
+	if v, ok := data["credentials"].(map[string]interface{}); ok {
+		var access string
+		if s, ok := v["access"]; ok {
+			access, _ = s.(string)
+			v["access"] = "***"
+		}
+		if _, ok := v["body_hash"]; ok {
+			v["body_hash"] = "***"
+		}
+		if v, ok := v["headers"].(map[string]interface{}); ok {
+			if _, ok := v["Authorization"]; ok {
+				if s, ok := v["Authorization"].(string); ok {
+					v["Authorization"] = strings.Replace(s, access, "***", -1)
+				}
+			}
+		}
+	}
+
 	// Ignore the huge catalog output
 	if v, ok := data["token"].(map[string]interface{}); ok {
 		if _, ok := v["catalog"]; ok {
@@ -337,4 +362,43 @@ func FormatJSON(raw []byte) (string, error) {
 	}
 
 	return string(pretty), nil
+}
+
+func RetryBackoffFunc(logger Logger) gophercloud.RetryFunc {
+	return func(ctx context.Context, respErr *gophercloud.ErrUnexpectedResponseCode, e error, retries uint) error {
+		retryAfter := respErr.ResponseHeader.Get("Retry-After")
+		if retryAfter == "" {
+			return e
+		}
+
+		var sleep time.Duration
+
+		// Parse delay seconds or HTTP date
+		if v, err := strconv.ParseUint(retryAfter, 10, 32); err == nil {
+			sleep = time.Duration(v) * time.Second
+		} else if v, err := time.Parse(http.TimeFormat, retryAfter); err == nil {
+			sleep = time.Until(v)
+		} else {
+			return e
+		}
+
+		l := logger
+		if l != nil {
+			l.Printf("Received StatusTooManyRequests response code sleeping for %s", sleep)
+		}
+		if c := ctx; c != nil {
+			select {
+			case <-time.After(sleep):
+			case <-c.Done():
+				if l != nil {
+					l.Printf("Sleeping aborted: %w", c.Err())
+				}
+				return e
+			}
+		} else {
+			time.Sleep(sleep)
+		}
+
+		return nil
+	}
 }

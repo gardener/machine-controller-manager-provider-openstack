@@ -7,8 +7,8 @@ require (
 	github.com/gardener/gardener v1.21.0
 	github.com/gardener/machine-controller-manager v0.39.0
 	github.com/golang/mock v1.5.0
-	github.com/gophercloud/gophercloud v0.7.0
-	github.com/gophercloud/utils v0.0.0-20200204043447-9864b6f1f12f
+	github.com/gophercloud/gophercloud v0.19.0
+	github.com/gophercloud/utils v0.0.0-20210720165645-8a3ad2ad9e70
 	github.com/onsi/ginkgo v1.15.2
 	github.com/onsi/gomega v1.11.0
 	github.com/prometheus/client_golang v1.7.1 // indirecd

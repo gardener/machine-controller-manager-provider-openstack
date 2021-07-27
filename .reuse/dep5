@@ -163,6 +163,10 @@ Files: vendor/github.com/matttproud/golang_protobuf_extensions/*
 Copyright: 2013 Matt T. Proud
 License: Apache-2.0
 
+Files: vendor/github.com/mitchellh/go-homedir/*
+Copyright: 2013 Mitchell Hashimoto
+License: MIT
+
 Files: vendor/github.com/modern-go/concurrent/*
 Copyright: 2018 Tao Wen
 License: Apache-2.0
@@ -266,6 +270,10 @@ Copyright: 2009 The Go Authors
 License: BSD-3-Clause
 
 Files: vendor/golang.org/x/sys/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/golang.org/x/term/*
 Copyright: 2009 The Go Authors
 License: BSD-3-Clause
 
@@ -381,3 +389,4 @@ Files: vendor/sigs.k8s.io/yaml/*
 Copyright: 2014 Sam Ghods
 Copyright: 2012 The Go Authors
 License: MIT and BSD-3-Clause
+
