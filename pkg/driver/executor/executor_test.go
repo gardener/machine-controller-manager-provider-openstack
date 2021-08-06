@@ -10,8 +10,10 @@ import (
 	"fmt"
 
 	"github.com/golang/mock/gomock"
+	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -19,14 +21,15 @@ import (
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 	mocks "github.com/gardener/machine-controller-manager-provider-openstack/pkg/mock/openstack"
 )
 
 var _ = Describe("Executor", func() {
 	const (
-		region = "eu-nl-1"
+		region    = "eu-nl-1"
+		networkID = "networkID"
 	)
 	var (
 		ctrl    *gomock.Controller
@@ -50,8 +53,9 @@ var _ = Describe("Executor", func() {
 
 		cfg = &openstack.MachineProviderConfig{
 			Spec: openstack.MachineProviderConfigSpec{
-				Tags:   tags,
-				Region: region,
+				Tags:      tags,
+				Region:    region,
+				NetworkID: networkID,
 			},
 		}
 	})
@@ -119,6 +123,47 @@ var _ = Describe("Executor", func() {
 			Expect(providerId).To(Equal(EncodeProviderID(region, serverID)))
 		})
 
+		It("should succeed when spec contains subnet", func() {
+			var (
+				subnetID = "subnetID"
+			)
+
+			cfg.Spec.SubnetID = &subnetID
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			network.EXPECT().GetSubnet(subnetID).Return(&subnets.Subnet{}, nil)
+			network.EXPECT().PortIDFromName(machineName).Return("", gophercloud.ErrResourceNotFound{})
+			network.EXPECT().CreatePort(gomock.Any()).Return(&ports.Port{ID: portID, Name: machineName}, nil)
+			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
+			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
+			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{
+				ID: serverID,
+			}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusBuild,
+				}, nil),
+				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+				}, nil))
+			network.EXPECT().ListPorts(&ports.ListOpts{
+				DeviceID: serverID,
+			}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+			network.EXPECT().UpdatePort(portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+
+			providerId, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).To(BeNil())
+			Expect(providerId).To(Equal(EncodeProviderID(region, serverID)))
+		})
+
 		It("should delete the server on failure", func() {
 			ex := &Executor{
 				Compute: compute,
@@ -148,6 +193,10 @@ var _ = Describe("Executor", func() {
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).NotTo(BeNil())
+		})
+
+		Context("#User-managed network", func() {
+			It("should create the port if it does not exist", func() {})
 		})
 	})
 
@@ -191,6 +240,7 @@ var _ = Describe("Executor", func() {
 	Context("#GetMachineStatus", func() {
 		var (
 			serverList []servers.Server
+			portID     = "portID"
 		)
 
 		BeforeEach(func() {
@@ -228,6 +278,13 @@ var _ = Describe("Executor", func() {
 
 		table.DescribeTable("#Status", func(name string, expectedID string, expectedErr error) {
 			compute.EXPECT().ListServers(&servers.ListOpts{Name: name}).Return(serverList, nil)
+			if expectedErr == nil {
+				network.EXPECT().ListPorts(&ports.ListOpts{
+					DeviceID: expectedID,
+				}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+				network.EXPECT().UpdatePort(portID, gomock.Any()).Return(nil)
+			}
+
 			ex := Executor{
 				Compute: compute,
 				Network: network,
@@ -247,6 +304,30 @@ var _ = Describe("Executor", func() {
 			table.Entry("Should return not found if name exists without matching metadata", "baz", "", ErrNotFound),
 			table.Entry("Should detect multiple matching servers", "lorem", "", ErrMultipleFound),
 		)
+
+		It("should not try to patch ports with correct addressPairs", func() {
+			var (
+				podCidr = "10.0.0.0/16"
+				server  = serverList[0]
+			)
+			compute.EXPECT().ListServers(&servers.ListOpts{Name: server.Name}).Return(serverList, nil)
+			network.EXPECT().ListPorts(&ports.ListOpts{
+				DeviceID: server.ID,
+			}).Return([]ports.Port{
+				{NetworkID: "foo", ID: "foo"},
+				{NetworkID: "bar", ID: "bar"},
+				{NetworkID: networkID, ID: portID, AllowedAddressPairs: []ports.AddressPair{{IPAddress: podCidr}}},
+			}, nil)
+
+			cfg.Spec.PodNetworkCidr = podCidr
+			ex := Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+			_, err := ex.GetMachineStatus(ctx, server.Name)
+			Expect(err).To(BeNil())
+		})
 	})
 
 	Context("Delete", func() {
