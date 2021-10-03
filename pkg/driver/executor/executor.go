@@ -58,25 +58,39 @@ func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*E
 // CreateMachine creates a new OpenStack server instance and waits until it reports "ACTIVE".
 // If there is an error during the build process, or if the building phase timeouts, it will delete any artifacts created.
 func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userData []byte) (string, error) {
-	serverNetworks, err := ex.resolveServerNetworks(machineName)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve server networks: %w", err)
-	}
+	var (
+		server *servers.Server
+		err    error
+	)
 
-	server, err := ex.deployServer(machineName, userData, serverNetworks)
-	if err != nil {
-		return "", fmt.Errorf("failed to deploy server for machine %q: %w", machineName, err)
-	}
-
-	providerID := EncodeProviderID(ex.Config.Spec.Region, server.ID)
-
-	// if we fail in the creation post-processing step we have to delete the server we created
 	deleteOnFail := func(err error) error {
-		klog.Infof("attempting to delete server [ID=%q] after unsuccessful create operation with error: %v", server.ID, err)
-		if errIn := ex.DeleteMachine(ctx, machineName, providerID); errIn != nil {
-			return fmt.Errorf("error deleting server [ID=%q] after unsuccessful creation attempt: %w. Original error: %v", server.ID, errIn, err)
+		klog.Infof("attempting to delete server [Name=%q] after unsuccessful create operation with error: %v", machineName, err)
+		if errIn := ex.DeleteMachine(ctx, machineName, ""); errIn != nil {
+			return fmt.Errorf("error deleting server [Name=%q] after unsuccessful creation attempt: %v. Original error: %w", machineName, errIn, err)
 		}
 		return err
+	}
+
+	server, err = ex.getMachineByName(ctx, machineName)
+	if err == nil {
+		klog.Infof("found existing server [Name=%q, ID=%q]", machineName, server.ID)
+	}
+
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return "", err
+	}
+
+	if errors.Is(err, ErrNotFound) {
+		// clean-up function when creation fails in an intermediate step
+		serverNetworks, err := ex.resolveServerNetworks(ctx, machineName)
+		if err != nil {
+			return "", deleteOnFail(fmt.Errorf("failed to resolve server [Name=%q] networks: %w", machineName, err))
+		}
+
+		server, err = ex.deployServer(machineName, userData, serverNetworks)
+		if err != nil {
+			return "", deleteOnFail(fmt.Errorf("failed to deploy server [Name=%q]: %w", machineName, err))
+		}
 	}
 
 	err = ex.waitForStatus(server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 600)
@@ -87,11 +101,12 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 	if err := ex.patchServerPortsForPodNetwork(server.ID); err != nil {
 		return "", deleteOnFail(fmt.Errorf("failed to patch server [ID=%q] ports: %s", server.ID, err))
 	}
-	return providerID, nil
+
+	return encodeProviderID(ex.Config.Spec.Region, server.ID), nil
 }
 
 // resolveServerNetworks resolves the network configuration for the server.
-func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network, error) {
+func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName string) ([]servers.Network, error) {
 	var (
 		networkID      = ex.Config.Spec.NetworkID
 		subnetID       = ex.Config.Spec.SubnetID
@@ -99,54 +114,18 @@ func (ex *Executor) resolveServerNetworks(machineName string) ([]servers.Network
 		serverNetworks = make([]servers.Network, 0)
 	)
 
-	klog.V(3).Infof("resolving network setup for machine %q", machineName)
-	// If NetworkID is specified in the spec, we deploy the VMs in an existing Network.
+	klog.V(3).Infof("resolving network setup for machine [Name=%q]", machineName)
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
-	if !isEmptyString(pointer.StringPtr(networkID)) && !isEmptyString(ex.Config.Spec.SubnetID) {
+	if ex.isUserManagedNetwork() {
 		// check if the subnet exists
 		if _, err := ex.Network.GetSubnet(*subnetID); err != nil {
 			return nil, err
 		}
 
-		klog.V(3).Infof("deploying in subnet [ID=%q]", *subnetID)
-
-		var (
-			portID           string
-			err              error
-			securityGroupIDs []string
-		)
-
-		for _, securityGroup := range ex.Config.Spec.SecurityGroups {
-			securityGroupID, err := ex.Network.GroupIDFromName(securityGroup)
-			if err != nil {
-				return nil, err
-			}
-			securityGroupIDs = append(securityGroupIDs, securityGroupID)
-		}
-
-		portID, err = ex.Network.PortIDFromName(machineName)
-		if err != nil && !client.IsNotFoundError(err) {
-			return nil, fmt.Errorf("error fetching port with name %q: %s", machineName, err)
-		}
-
-		if client.IsNotFoundError(err) {
-			klog.V(3).Infof("failed to find port [Name=%q]", machineName)
-			klog.V(3).Infof("creating port [Name=%q]... ", machineName)
-			port, err := ex.Network.CreatePort(&ports.CreateOpts{
-				Name:                machineName,
-				NetworkID:           ex.Config.Spec.NetworkID,
-				FixedIPs:            []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
-				AllowedAddressPairs: []ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
-				SecurityGroups:      &securityGroupIDs,
-			})
-			if err != nil {
-				return nil, err
-			}
-
-			klog.V(3).Infof("port [Name=%q] successfully created", port.Name)
-			portID = port.ID
-		} else {
-			klog.V(3).Infof("found port [Name=%q] skipping creation", machineName)
+		klog.V(3).Infof("deploying machine [Name=%q] in subnet [ID=%q]", machineName, *subnetID)
+		portID, err := ex.getOrCreatePort(ctx, machineName)
+		if err != nil {
+			return nil, err
 		}
 
 		serverNetworks = append(serverNetworks, servers.Network{UUID: ex.Config.Spec.NetworkID, Port: portID})
@@ -376,43 +355,85 @@ func (ex *Executor) resolveNetworkIDsForPodNetwork() (sets.String, error) {
 	return podNetworkIDs, nil
 }
 
-// DeleteMachine deletes a server based on the supplied ID or name. The machine must have the cluster/role tags for any operation to take place.
-// If providerID is specified it takes priority over the machineName. If no providerID is specified, DeleteMachine will
-// try to resolve the machineName to an appropriate server ID.
+// DeleteMachine deletes a server based on the supplied machineName. If a providerID is supplied it is used instead of the
+// machineName to locate the server.
 func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID string) error {
 	var (
-		err    error
 		server *servers.Server
+		err    error
 	)
 
-	if isEmptyString(pointer.StringPtr(providerID)) {
-		server, err = ex.getMachineByName(ctx, machineName)
+	if !isEmptyString(pointer.StringPtr(providerID)) {
+		serverID := decodeProviderID(providerID)
+		server, err = ex.getMachineByID(ctx, serverID)
 	} else {
-		server, err = ex.getMachineByProviderID(ctx, providerID)
+		server, err = ex.getMachineByName(ctx, machineName)
 	}
-	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return nil
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return err
+	}
+
+	if err == nil {
+		klog.V(1).Infof("deleting server [Name=%s, ID=%s]", server.Name, server.ID)
+		if err := ex.Compute.DeleteServer(server.ID); err != nil {
+			return err
 		}
-		return err
+
+		if err = ex.waitForStatus(server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
+			return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
+		}
+
 	}
 
-	klog.V(1).Infof("deleting server [ID=%s]", server.ID)
-	if err := ex.Compute.DeleteServer(server.ID); err != nil {
-		return err
-	}
-
-	if err = ex.waitForStatus(server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
-		return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
-	}
-
-	if !isEmptyString(ex.Config.Spec.SubnetID) {
+	if ex.isUserManagedNetwork() {
 		return ex.deletePort(ctx, machineName)
 	}
 
 	return nil
 }
 
+func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (string, error) {
+	var (
+		err              error
+		securityGroupIDs []string
+	)
+
+	portID, err := ex.Network.PortIDFromName(machineName)
+	if err == nil {
+		klog.V(2).Infof("found port [Name=%q, ID=%q]... skipping creation", machineName, portID)
+		return portID, nil
+	}
+	if err != nil && !client.IsNotFoundError(err) {
+		klog.V(5).Infof("error fetching port [Name=%q]: %s", machineName, err)
+		return "", fmt.Errorf("error fetching port [Name=%q]: %s", machineName, err)
+	}
+
+	klog.V(5).Infof("failed to find port [Name=%q]", machineName)
+	klog.V(3).Infof("creating port [Name=%q]... ", machineName)
+
+	for _, securityGroup := range ex.Config.Spec.SecurityGroups {
+		securityGroupID, err := ex.Network.GroupIDFromName(securityGroup)
+		if err != nil {
+			return "", err
+		}
+		securityGroupIDs = append(securityGroupIDs, securityGroupID)
+	}
+
+	port, err := ex.Network.CreatePort(&ports.CreateOpts{
+		Name:                machineName,
+		NetworkID:           ex.Config.Spec.NetworkID,
+		FixedIPs:            []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
+		AllowedAddressPairs: []ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
+		SecurityGroups:      &securityGroupIDs,
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	klog.V(3).Infof("port [Name=%q] successfully created", port.Name)
+	return port.ID, nil
+}
 func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	portID, err := ex.Network.PortIDFromName(machineName)
 	if err != nil {
@@ -420,28 +441,23 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 			klog.V(3).Infof("port [Name=%q] was not found", machineName)
 			return nil
 		}
-		return fmt.Errorf("error deleting port with name %q: %s", machineName, err)
+		return fmt.Errorf("error deleting port [Name=%q]: %s", machineName, err)
 	}
 
-	klog.V(3).Infof("deleting port [ID=%q]", portID)
+	klog.V(2).Infof("deleting port [Name=%q]", machineName)
 	err = ex.Network.DeletePort(portID)
 	if err != nil {
-		klog.Errorf("failed to delete port [ID=%q]", portID)
+		klog.Errorf("failed to delete port [Name=%q]", machineName)
 		return err
 	}
-	klog.V(3).Infof("deleted port [ID=%q]", portID)
+	klog.V(3).Infof("deleted port [Name=%q]", machineName)
 
 	return nil
 }
 
 // getMachineByProviderID fetches the data for a server based on a provider-encoded ID.
-func (ex *Executor) getMachineByProviderID(_ context.Context, providerID string) (*servers.Server, error) {
-	klog.V(2).Infof("finding server with providerID %s", providerID)
-	serverID := DecodeProviderID(providerID)
-	if isEmptyString(pointer.StringPtr(serverID)) {
-		return nil, fmt.Errorf("could not parse serverID from providerID %q", providerID)
-	}
-
+func (ex *Executor) getMachineByID(_ context.Context, serverID string) (*servers.Server, error) {
+	klog.V(2).Infof("finding server with [ID=%q]", serverID)
 	server, err := ex.Compute.GetServer(serverID)
 	if err != nil {
 		klog.V(2).Infof("error finding server [ID=%q]: %v", serverID, err)
@@ -506,7 +522,7 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 		return nil, err
 	}
 
-	matchingServers := []servers.Server{}
+	var matchingServers []servers.Server
 	for _, server := range listedServers {
 		if server.Name == machineName {
 			if _, nameOk := server.Metadata[searchClusterName]; nameOk {
@@ -526,27 +542,24 @@ func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*se
 	return &matchingServers[0], nil
 }
 
-// GetMachineStatus returns the provider-encoded ID of a server.
-func (ex *Executor) GetMachineStatus(ctx context.Context, machineName string) (string, error) {
-	server, err := ex.getMachineByName(ctx, machineName)
+// ListMachines lists returns a map from the server's encoded provider ID to the server name.
+func (ex *Executor) ListMachines(ctx context.Context) (map[string]string, error) {
+	allServers, err := ex.listServers(ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	// Patch the server ports to allow pod network cidr
-	// This is a workaround in case the pod restarts between the server creation on openstack side and the patching
-	// of the ports during CreateMachine.
-	// Currently there is no way to signal that a machine is unhealthy after creation, so repeat the steps.
-	err = ex.patchServerPortsForPodNetwork(server.ID)
-	if err != nil {
-		return "", err
+	result := map[string]string{}
+	for _, server := range allServers {
+		providerID := encodeProviderID(ex.Config.Spec.Region, server.ID)
+		result[providerID] = server.Name
 	}
 
-	return EncodeProviderID(ex.Config.Spec.Region, server.ID), nil
+	return result, nil
 }
 
-// ListMachines lists all servers.
-func (ex *Executor) ListMachines(_ context.Context) (map[string]string, error) {
+// ListServers lists all servers with the appropriate tags.
+func (ex *Executor) listServers(_ context.Context) ([]servers.Server, error) {
 	searchClusterName := ""
 	searchNodeRole := ""
 
@@ -564,20 +577,24 @@ func (ex *Executor) ListMachines(_ context.Context) (map[string]string, error) {
 		return nil, fmt.Errorf("operation can not proceed: cluster/role tags are missing")
 	}
 
-	servers, err := ex.Compute.ListServers(&servers.ListOpts{})
+	allServers, err := ex.Compute.ListServers(&servers.ListOpts{})
 	if err != nil {
 		return nil, err
 	}
 
-	result := map[string]string{}
-	for _, server := range servers {
+	var result []servers.Server
+	for _, server := range allServers {
 		if _, nameOk := server.Metadata[searchClusterName]; nameOk {
 			if _, roleOk := server.Metadata[searchNodeRole]; roleOk {
-				providerID := EncodeProviderID(ex.Config.Spec.Region, server.ID)
-				result[providerID] = server.Name
+				result = append(result, server)
 			}
 		}
 	}
 
 	return result, nil
+}
+
+// isUserManagedNetwork returns true if the port used by the machine will be created and managed by MCM.
+func (ex *Executor) isUserManagedNetwork() bool {
+	return !isEmptyString(pointer.StringPtr(ex.Config.Spec.NetworkID)) && !isEmptyString(ex.Config.Spec.SubnetID)
 }

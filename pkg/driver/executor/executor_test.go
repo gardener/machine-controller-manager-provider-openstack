@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package executor_test
+package executor
 
 import (
 	"context"
@@ -22,7 +22,6 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
-	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 	mocks "github.com/gardener/machine-controller-manager-provider-openstack/pkg/mock/openstack"
 )
 
@@ -97,6 +96,7 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 
+			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
 			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
 			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{
@@ -120,7 +120,7 @@ var _ = Describe("Executor", func() {
 
 			providerId, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).To(BeNil())
-			Expect(providerId).To(Equal(EncodeProviderID(region, serverID)))
+			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
 		})
 
 		It("should succeed when spec contains subnet", func() {
@@ -135,33 +135,25 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 
+			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			network.EXPECT().GetSubnet(subnetID).Return(&subnets.Subnet{}, nil)
 			network.EXPECT().PortIDFromName(machineName).Return("", gophercloud.ErrResourceNotFound{})
 			network.EXPECT().CreatePort(gomock.Any()).Return(&ports.Port{ID: portID, Name: machineName}, nil)
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
 			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
-			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{
-				ID: serverID,
-			}, nil)
+			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
-					ID:     serverID,
-					Status: client.ServerStatusBuild,
-				}, nil),
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
-					ID:     serverID,
-					Status: client.ServerStatusActive,
-				}, nil))
-			network.EXPECT().ListPorts(&ports.ListOpts{
-				DeviceID: serverID,
-			}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
+			)
+			network.EXPECT().ListPorts(&ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
 			network.EXPECT().UpdatePort(portID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
 
 			providerId, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).To(BeNil())
-			Expect(providerId).To(Equal(EncodeProviderID(region, serverID)))
+			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
 		})
 
 		It("should delete the server on failure", func() {
@@ -177,6 +169,7 @@ var _ = Describe("Executor", func() {
 				Name:     machineName,
 			}
 
+			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
 			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
 			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{
@@ -186,17 +179,13 @@ var _ = Describe("Executor", func() {
 			gomock.InOrder(
 				// we return an error to avoid waiting for the wait.Poll timeout
 				compute.EXPECT().GetServer(serverID).Return(nil, fmt.Errorf("error fetching server")),
-				compute.EXPECT().GetServer(serverID).Return(server, nil),
+				compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{*server}, nil),
 				compute.EXPECT().DeleteServer(serverID).Return(nil),
 				compute.EXPECT().GetServer(serverID).Do(func(_ string) { server.Status = client.ServerStatusDeleted }).Return(server, nil),
 			)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).NotTo(BeNil())
-		})
-
-		Context("#User-managed network", func() {
-			It("should create the port if it does not exist", func() {})
 		})
 	})
 
@@ -231,8 +220,8 @@ var _ = Describe("Executor", func() {
 			Expect(err).To(BeNil())
 			Expect(res).To(HaveLen(2))
 			Expect(res).To(Equal(map[string]string{
-				EncodeProviderID(region, "id1"): "foo",
-				EncodeProviderID(region, "id2"): "bar",
+				encodeProviderID(region, "id1"): "foo",
+				encodeProviderID(region, "id2"): "bar",
 			}))
 		})
 	})
@@ -240,7 +229,6 @@ var _ = Describe("Executor", func() {
 	Context("#GetMachineStatus", func() {
 		var (
 			serverList []servers.Server
-			portID     = "portID"
 		)
 
 		BeforeEach(func() {
@@ -278,25 +266,18 @@ var _ = Describe("Executor", func() {
 
 		table.DescribeTable("#Status", func(name string, expectedID string, expectedErr error) {
 			compute.EXPECT().ListServers(&servers.ListOpts{Name: name}).Return(serverList, nil)
-			if expectedErr == nil {
-				network.EXPECT().ListPorts(&ports.ListOpts{
-					DeviceID: expectedID,
-				}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
-				network.EXPECT().UpdatePort(portID, gomock.Any()).Return(nil)
-			}
-
 			ex := Executor{
 				Compute: compute,
 				Network: network,
 				Config:  cfg,
 			}
-			providerID, err := ex.GetMachineStatus(ctx, name)
+			server, err := ex.getMachineByName(ctx, name)
 			if expectedErr != nil {
 				Expect(err).ToNot(BeNil())
 				Expect(errors.Is(err, expectedErr)).To(BeTrue())
 			} else {
 				Expect(err).To(BeNil())
-				Expect(providerID).To(Equal(EncodeProviderID(region, expectedID)))
+				Expect(server.ID).To(Equal(expectedID))
 			}
 		},
 			table.Entry("Should find the entry with matching metadata", "foo", "id1", nil),
@@ -304,34 +285,9 @@ var _ = Describe("Executor", func() {
 			table.Entry("Should return not found if name exists without matching metadata", "baz", "", ErrNotFound),
 			table.Entry("Should detect multiple matching servers", "lorem", "", ErrMultipleFound),
 		)
-
-		It("should not try to patch ports with correct addressPairs", func() {
-			var (
-				podCidr = "10.0.0.0/16"
-				server  = serverList[0]
-			)
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: server.Name}).Return(serverList, nil)
-			network.EXPECT().ListPorts(&ports.ListOpts{
-				DeviceID: server.ID,
-			}).Return([]ports.Port{
-				{NetworkID: "foo", ID: "foo"},
-				{NetworkID: "bar", ID: "bar"},
-				{NetworkID: networkID, ID: portID, AllowedAddressPairs: []ports.AddressPair{{IPAddress: podCidr}}},
-			}, nil)
-
-			cfg.Spec.PodNetworkCidr = podCidr
-			ex := Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
-			}
-			_, err := ex.GetMachineStatus(ctx, server.Name)
-			Expect(err).To(BeNil())
-		})
 	})
 
 	Context("Delete", func() {
-
 		var (
 			serverList []servers.Server
 		)
@@ -388,7 +344,34 @@ var _ = Describe("Executor", func() {
 				Network: network,
 				Config:  cfg,
 			}
-			err := ex.DeleteMachine(ctx, "", EncodeProviderID(region, id))
+			err := ex.DeleteMachine(ctx, "", encodeProviderID(region, id))
+			Expect(err).To(BeNil())
+		})
+
+		It("should try to delete the port if we use specific subnetID", func() {
+			var (
+				subnetID    = "subID1"
+				portID      = "portID"
+				machineName = "foo"
+			)
+
+			cfg.Spec.SubnetID = pointer.StringPtr(subnetID)
+			gomock.InOrder(
+				compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return(serverList, nil),
+				compute.EXPECT().DeleteServer("id1").Return(nil),
+				compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
+			)
+			gomock.InOrder(
+				network.EXPECT().PortIDFromName(machineName).Return(portID, nil),
+				network.EXPECT().DeletePort(portID).Return(nil),
+			)
+
+			ex := Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+			err := ex.DeleteMachine(ctx, machineName, "")
 			Expect(err).To(BeNil())
 		})
 
