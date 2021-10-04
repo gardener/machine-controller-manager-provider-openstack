@@ -74,13 +74,9 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 	server, err = ex.getMachineByName(ctx, machineName)
 	if err == nil {
 		klog.Infof("found existing server [Name=%q, ID=%q]", machineName, server.ID)
-	}
-
-	if err != nil && !errors.Is(err, ErrNotFound) {
+	} else if !errors.Is(err, ErrNotFound) {
 		return "", err
-	}
-
-	if errors.Is(err, ErrNotFound) {
+	} else {
 		// clean-up function when creation fails in an intermediate step
 		serverNetworks, err := ex.resolveServerNetworks(ctx, machineName)
 		if err != nil {
@@ -369,9 +365,6 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	} else {
 		server, err = ex.getMachineByName(ctx, machineName)
 	}
-	if err != nil && !errors.Is(err, ErrNotFound) {
-		return err
-	}
 
 	if err == nil {
 		klog.V(1).Infof("deleting server [Name=%s, ID=%s]", server.Name, server.ID)
@@ -382,7 +375,8 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 		if err = ex.waitForStatus(server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
 			return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 		}
-
+	} else if !errors.Is(err, ErrNotFound) {
+		return err
 	}
 
 	if ex.isUserManagedNetwork() {
@@ -403,12 +397,13 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 		klog.V(2).Infof("found port [Name=%q, ID=%q]... skipping creation", machineName, portID)
 		return portID, nil
 	}
-	if err != nil && !client.IsNotFoundError(err) {
+
+	if !client.IsNotFoundError(err) {
 		klog.V(5).Infof("error fetching port [Name=%q]: %s", machineName, err)
 		return "", fmt.Errorf("error fetching port [Name=%q]: %s", machineName, err)
 	}
 
-	klog.V(5).Infof("failed to find port [Name=%q]", machineName)
+	klog.V(5).Infof("port [Name=%q] does not exist", machineName)
 	klog.V(3).Infof("creating port [Name=%q]... ", machineName)
 
 	for _, securityGroup := range ex.Config.Spec.SecurityGroups {
