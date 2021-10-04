@@ -58,8 +58,8 @@ const (
 // This logic is used by safety controller to delete orphan VMs which are not backed by any machine CRD
 //
 func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateMachineRequest) (*driver.CreateMachineResponse, error) {
-	klog.V(2).Infof("machine creation request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("machine creation request has been processed for %q", req.Machine.Name)
+	klog.V(2).Infof("CreateMachine request has been received for %q", req.Machine.Name)
+	defer klog.V(2).Infof("CreateMachine request has been processed for %q", req.Machine.Name)
 
 	// Check if incoming provider in the MachineClass is a provider we support
 	if req.MachineClass.Provider != openstackProvider {
@@ -114,8 +114,8 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 //
 func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteMachineRequest) (*driver.DeleteMachineResponse, error) {
 	// Log messages to track delete request
-	klog.V(2).Infof("machine deletion request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("machine deletion request has been processed for %q", req.Machine.Name)
+	klog.V(2).Infof("DeleteMachine request has been received for %q", req.Machine.Name)
+	defer klog.V(2).Infof("DeleteMachine request has been processed for %q", req.Machine.Name)
 
 	// Check if incoming provider in the MachineClass is a provider we support
 	if req.MachineClass.Provider != openstackProvider {
@@ -170,47 +170,10 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 // The request should return a NOT_FOUND (5) status error code if the machine is not existing
 func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
 	// Log messages to track start and end of request
-	klog.V(2).Infof("Get request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("Machine get request has been processed for %q", req.Machine.Name)
+	klog.V(2).Infof("GetMachineStatus request has been received for %q", req.Machine.Name)
+	defer klog.V(2).Infof("GetMachineStatus is not implemented")
 
-	// Check if incoming provider in the MachineClass is a provider we support
-	if req.MachineClass.Provider != openstackProvider {
-		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
-	if err != nil {
-		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
-		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	factory, err := client.NewFactoryFromSecret(req.Secret)
-	if err != nil {
-		klog.Errorf("failed to construct OpenStack client: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
-	}
-
-	ex, err := executor.NewExecutor(factory, providerConfig)
-	if err != nil {
-		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
-	}
-
-	providerID, err := ex.GetMachineStatus(ctx, req.Machine.Name)
-	if err != nil {
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("getting machine status failed with: %v", err))
-	}
-
-	return &driver.GetMachineStatusResponse{
-		ProviderID: providerID,
-		NodeName:   req.Machine.Name,
-	}, nil
+	return nil, status.Error(codes.Unimplemented, "method not implemented")
 }
 
 // ListMachines lists all the machines possibly created by a providerSpec
@@ -228,8 +191,8 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 //
 func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMachinesRequest) (*driver.ListMachinesResponse, error) {
 	// Log messages to track start and end of request
-	klog.V(2).Infof("list machines request has been received for %q", req.MachineClass.Name)
-	defer klog.V(2).Infof("list machines request has been processed for %q", req.MachineClass.Name)
+	klog.V(2).Infof("ListMachines request has been received for %q", req.MachineClass.Name)
+	defer klog.V(2).Infof("ListMachines request has been processed for %q", req.MachineClass.Name)
 
 	// Check if incoming provider in the MachineClass is a provider we support
 	if req.MachineClass.Provider != openstackProvider {

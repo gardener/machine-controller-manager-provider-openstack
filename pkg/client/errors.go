@@ -46,7 +46,7 @@ func IsUnauthenticated(err error) bool {
 	return errors.As(err, &e)
 }
 
-// IsUnauthorizes checks if an error returned by OpenStack service calls is caused by HTTP 403 status code.
+// IsUnauthorized checks if an error returned by OpenStack service calls is caused by HTTP 403 status code.
 func IsUnauthorized(err error) bool {
 	if err == nil {
 		return false
