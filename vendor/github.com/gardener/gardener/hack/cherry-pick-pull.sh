@@ -137,6 +137,7 @@ trap return_to_kansas EXIT
 
 SUBJECTS=()
 RELEASE_NOTES=()
+LABELS=()
 function make-a-pr() {
   local rel
   rel="$(basename "${BRANCH}")"
@@ -151,8 +152,11 @@ function make-a-pr() {
   local numandtitle
   numandtitle=$(printf '%s\n' "${SUBJECTS[@]}")
   relnotes=$(printf "${RELEASE_NOTES[@]}")
+  labels=$(printf "${LABELS[@]}")
   cat >"${prtext}" <<EOF
 [${rel}] Automated cherry pick of ${numandtitle}
+
+${labels}
 
 Cherry pick of ${PULLSUBJ} on ${rel}.
 
@@ -206,12 +210,14 @@ for pull in "${PULLS[@]}"; do
   pr_info=$(curl "https://api.github.com/repos/${MAIN_REPO_ORG}/${MAIN_REPO_NAME}/pulls/${pull}" -sS)
   subject=$(echo ${pr_info} | jq -cr '.title')
   SUBJECTS+=("#${pull}: ${subject}")
+  labels=$(echo ${pr_info} | jq '.labels[].name' -cr | grep -P '^(area|kind)' | sed 's|^|/|g')
+  LABELS+=("${labels}")
 
   # remove the patch file from /tmp
   rm -f "/tmp/${pull}.patch"
 
   # get the release notes
-  notes=$(echo ${pr_info} | jq '.body' | grep -Po "\`\`\` *${RELEASE_NOTE_CATEGORY} ${RELEASE_NOTE_TARGET_GROUP}.*?\`\`\`")
+  notes=$(echo ${pr_info} | jq '.body' | grep -Po "\`\`\` *${RELEASE_NOTE_CATEGORY} ${RELEASE_NOTE_TARGET_GROUP}.*?\`\`\`" || true)
   RELEASE_NOTES+=("${notes}")
 done
 gitamcleanup=false
