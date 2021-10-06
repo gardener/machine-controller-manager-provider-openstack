@@ -89,6 +89,10 @@ Files: vendor/github.com/go-openapi/swag/*
 Copyright: 2015 go-swagger
 License: Apache-2.0
 
+Files: vendor/github.com/go-task/slim-sprig/*
+Copyright: 2013-2020 Masterminds
+License: MIT
+
 Files: vendor/github.com/gobuffalo/flect/*
 Copyright: 2019 Mark Bates
 License: MIT
