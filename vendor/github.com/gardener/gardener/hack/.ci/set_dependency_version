@@ -109,10 +109,12 @@ if name == 'autoscaler':
     names = ['cluster-autoscaler']
 elif name == 'vpn':
     names = ['vpn-seed', 'vpn-shoot']
+elif name == 'vpn2':
+    names = ['vpn-seed-server']
 elif name == 'external-dns-management':
     names = ['dns-controller-manager']
 elif name == 'logging':
-    names = ['fluent-bit-plugin-installer', 'loki-curator']
+    names = ['fluent-bit-plugin-installer', 'loki-curator', 'telegraf']
 elif name == 'etcd-custom-image':
     names = ['etcd']
 else:

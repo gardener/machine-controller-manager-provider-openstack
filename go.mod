@@ -4,25 +4,26 @@ go 1.16
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/gardener/gardener v1.21.0
+	github.com/gardener/gardener v1.32.2
 	github.com/gardener/machine-controller-manager v0.40.0
-	github.com/golang/mock v1.5.0
+	github.com/golang/mock v1.6.0
 	github.com/gophercloud/gophercloud v0.19.0
 	github.com/gophercloud/utils v0.0.0-20210720165645-8a3ad2ad9e70
-	github.com/onsi/ginkgo v1.16.2
-	github.com/onsi/gomega v1.11.0
-	github.com/prometheus/client_golang v1.7.1 // indirecd
+	github.com/onsi/ginkgo v1.16.4
+	github.com/onsi/gomega v1.13.0
+	github.com/prometheus/client_golang v1.11.0 // indirecd
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5
-	k8s.io/api v0.20.2
-	k8s.io/apimachinery v0.20.2
-	k8s.io/code-generator v0.20.2
-	k8s.io/component-base v0.20.2
+	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
+	k8s.io/api v0.21.2
+	k8s.io/apimachinery v0.21.2
+	k8s.io/code-generator v0.21.2
+	k8s.io/component-base v0.21.2
 	k8s.io/klog v1.0.0
-	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
+	k8s.io/utils v0.0.0-20210527160623-6fdb442a123b
 )
 
 replace (
+	github.com/gardener/gardener-resource-manager/api => github.com/gardener/gardener-resource-manager/api v0.25.0
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.4.0
 	github.com/onsi/gomega => github.com/onsi/gomega v1.5.0
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
