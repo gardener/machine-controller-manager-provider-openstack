@@ -13,6 +13,7 @@ Resource Types:
 <h3 id="openstack.machine.gardener.cloud/v1alpha1.MachineProviderConfig">MachineProviderConfig
 </h3>
 <p>
+<p>MachineProviderConfig contains OpenStack specific configuration for a machine.</p>
 </p>
 <table>
 <thead>
@@ -407,7 +408,7 @@ and only one should be specified.</p>
 <a href="#openstack.machine.gardener.cloud/v1alpha1.MachineProviderConfigSpec">MachineProviderConfigSpec</a>)
 </p>
 <p>
-<p>OpenStacknetwork describes an network this instance should belong to.</p>
+<p>OpenStackNetwork describes a network this instance should belong to.</p>
 </p>
 <table>
 <thead>

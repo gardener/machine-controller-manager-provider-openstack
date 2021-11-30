@@ -19,6 +19,7 @@ import (
 
 const (
 	// Server status source: https://docs.openstack.org/api-guide/compute/server_concepts.html
+
 	// ServerStatusActive indicates that the server is active.
 	ServerStatusActive = "ACTIVE"
 	// ServerStatusBuild indicates tha the server has not yet finished the build process.

@@ -9,6 +9,8 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// MachineProviderConfig contains OpenStack specific configuration for a machine.
 type MachineProviderConfig struct {
 	// +optional
 	metav1.TypeMeta `json:",inline"`
@@ -54,7 +56,7 @@ type MachineProviderConfigSpec struct {
 	Networks []OpenStackNetwork `json:"networks,omitempty"`
 }
 
-// OpenStacknetwork describes an network this instance should belong to.
+// OpenStackNetwork describes a network this instance should belong to.
 type OpenStackNetwork struct {
 	// Id is the ID of a network the instance should belong to.
 	Id string `json:"id,omitempty"` // takes priority before name
