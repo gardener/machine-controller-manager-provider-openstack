@@ -15,6 +15,7 @@ Files:
   .golangci.yaml
   VERSION
   .ci/**
+  .github/workflows/**
 Copyright: 2020 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
