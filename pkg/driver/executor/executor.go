@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
@@ -21,7 +20,6 @@ import (
 	"k8s.io/klog"
 	"k8s.io/utils/pointer"
 
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 )
@@ -421,14 +419,25 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 		AllowedAddressPairs: []ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
 		SecurityGroups:      &securityGroupIDs,
 	})
-
 	if err != nil {
+		return "", err
+	}
+
+	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
+	if !ok {
+		klog.Warningf("operation can not proceed: cluster/role tags are missing")
+		return "", fmt.Errorf("operation can not proceed: cluster/role tags are missing")
+	}
+
+	portTags := []string{searchClusterName, searchNodeRole}
+	if err := ex.Network.TagPort(port.ID, portTags); err != nil {
 		return "", err
 	}
 
 	klog.V(3).Infof("port [Name=%q] successfully created", port.Name)
 	return port.ID, nil
 }
+
 func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	portID, err := ex.Network.PortIDFromName(machineName)
 	if err != nil {
@@ -463,16 +472,10 @@ func (ex *Executor) getMachineByID(_ context.Context, serverID string) (*servers
 		return nil, err
 	}
 
-	var (
-		searchClusterName string
-		searchNodeRole    string
-	)
-	for key := range ex.Config.Spec.Tags {
-		if strings.Contains(key, cloudprovider.ServerTagClusterPrefix) {
-			searchClusterName = key
-		} else if strings.Contains(key, cloudprovider.ServerTagRolePrefix) {
-			searchNodeRole = key
-		}
+	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
+	if !ok {
+		klog.Warningf("operation can not proceed: cluster/role tags are missing")
+		return nil, fmt.Errorf("operation can not proceed: cluster/role tags are missing")
 	}
 
 	if _, nameOk := server.Metadata[searchClusterName]; nameOk {
@@ -492,22 +495,10 @@ func (ex *Executor) getMachineByID(_ context.Context, serverID string) (*servers
 // to store tags in a respective field and do a server-side filtering. To avoid incompatibility with older versions
 // we will continue making the filtering clientside.
 func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*servers.Server, error) {
-	var (
-		searchClusterName string
-		searchNodeRole    string
-	)
-
-	for key := range ex.Config.Spec.Tags {
-		if strings.Contains(key, cloudprovider.ServerTagClusterPrefix) {
-			searchClusterName = key
-		} else if strings.Contains(key, cloudprovider.ServerTagRolePrefix) {
-			searchNodeRole = key
-		}
-	}
-
-	if searchClusterName == "" || searchNodeRole == "" {
-		klog.Warningf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
-		return nil, fmt.Errorf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
+	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
+	if !ok {
+		klog.Warningf("operation can not proceed: cluster/role tags are missing")
+		return nil, fmt.Errorf("operation can not proceed: cluster/role tags are missing")
 	}
 
 	listedServers, err := ex.Compute.ListServers(&servers.ListOpts{
@@ -555,19 +546,8 @@ func (ex *Executor) ListMachines(ctx context.Context) (map[string]string, error)
 
 // ListServers lists all servers with the appropriate tags.
 func (ex *Executor) listServers(_ context.Context) ([]servers.Server, error) {
-	searchClusterName := ""
-	searchNodeRole := ""
-
-	for key := range ex.Config.Spec.Tags {
-		if strings.Contains(key, cloudprovider.ServerTagClusterPrefix) {
-			searchClusterName = key
-		} else if strings.Contains(key, cloudprovider.ServerTagRolePrefix) {
-			searchNodeRole = key
-		}
-	}
-
-	//
-	if searchClusterName == "" || searchNodeRole == "" {
+	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
+	if !ok {
 		klog.Warningf("operation can not proceed: cluster/role tags are missing")
 		return nil, fmt.Errorf("operation can not proceed: cluster/role tags are missing")
 	}

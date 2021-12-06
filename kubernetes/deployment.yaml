@@ -10,6 +10,9 @@ metadata:
   name: machine-controller-manager
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: machine-controller-manager
   template:
     metadata:
       labels:
@@ -17,7 +20,7 @@ spec:
     spec:
       containers:
       - name: machine-controller-manager
-        image: eu.gcr.io/gardener-project/gardener/machine-controller-manager
+        image: eu.gcr.io/gardener-project/gardener/machine-controller-manager:v0.42.0
         imagePullPolicy: Always
         command:
           - ./machine-controller-manager
@@ -28,7 +31,7 @@ spec:
           - --safety-down=1 # Optional Parameter - Default value 1 - Upper-limit minus safety-down value gives the lower-limit. This is the limits below which any temporarily frozen machineSet/machineDeployment object is unfrozen. lower-limit = desired + maxSurge (if applicable) + safetyUp - safetyDown.
           - --machine-drain-timeout=5m # Optional Parameter - Timeout (in time) used while draining of machine before deletion, beyond which MCM forcefully deletes machine.
           - --machine-health-timeout=10m  # Optional Parameter - Default value 10mins - Timeout (in time) used while joining (during creation) or re-joining (in case of temporary health issues) of machine before it is declared as failed.
-          - --machine-safety-orphan-vms-period=30 # Optional Parameter - Default value 30mins - Time period (in time) used to poll for orphan VMs by safety controller.
+          - --machine-safety-orphan-vms-period=30m # Optional Parameter - Default value 30mins - Time period (in time) used to poll for orphan VMs by safety controller.
           - --machine-safety-overshooting-period=1 # Optional Parameter - Default value 1min - Time period (in time) used to poll for overshooting of machine objects backing a machineSet by safety controller.
           - --node-conditions=ReadonlyFilesystem,KernelDeadlock,DiskPressure # List of comma-separated/case-sensitive node-conditions which when set to True will change machine to a failed state after MachineHealthTimeout duration. It may further be replaced with a new machine if the machine is backed by a machine-set object.
           - --v=3
@@ -42,7 +45,7 @@ spec:
           periodSeconds: 10
           successThreshold: 1
           timeoutSeconds: 5
-      - name: machine-controller-openstack
+      - name: machine-controller-manager-provider-openstack
         command:
         - ./machine-controller
         - --control-kubeconfig=$(TARGET_KUBECONFIG) # Mandatory Parameter - Filepath to the target cluster's kubeconfig where node objects are expected to join.
@@ -53,7 +56,7 @@ spec:
         - --machine-safety-orphan-vms-period=30m # Optional Parameter - Default value 30mins - Time period (in time) used to poll for orphan VMs by safety controller.
         - --node-conditions=ReadonlyFilesystem,KernelDeadlock,DiskPressure # List of comma-separated/case-sensitive node-conditions which when set to True will change machine to a failed state after MachineHealthTimeout duration. It may further be replaced with a new machine if the machine is backed by a machine-set object.
         - --v=3
-        image: gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack
+        image: gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack:v0.6.0
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -79,6 +82,6 @@ spec:
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         securityContext: {}
-      serviceAccountName: machine-controller-manager
+      serviceAccount: machine-controller-manager
       dnsPolicy: ClusterFirst
       restartPolicy: Always

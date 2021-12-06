@@ -8,12 +8,12 @@
 package tools
 
 import (
+	_ "github.com/ahmetb/gen-crd-api-reference-docs"
+	_ "github.com/gardener/gardener/hack"
+	_ "github.com/gardener/gardener/hack/.ci"
+	_ "github.com/gardener/gardener/hack/api-reference/template"
 	_ "github.com/onsi/ginkgo/ginkgo"
 	_ "github.com/onsi/gomega"
 	_ "golang.org/x/lint/golint"
 	_ "k8s.io/code-generator"
-	_ "github.com/gardener/gardener/hack"
-	_ "github.com/gardener/gardener/hack/.ci"
-	_ "github.com/gardener/gardener/hack/api-reference/template"
-	_ "github.com/ahmetb/gen-crd-api-reference-docs
 )

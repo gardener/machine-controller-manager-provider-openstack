@@ -49,4 +49,6 @@ type Network interface {
 	GroupIDFromName(name string) (string, error)
 	// PortIDFromName resolves the given port name to a unique ID.
 	PortIDFromName(name string) (string, error)
+	// TagPort tags a port with the specified labels.
+	TagPort(id string, tags []string) error
 }
