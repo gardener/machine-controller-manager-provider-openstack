@@ -10,6 +10,7 @@ import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/metrics"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/attributestags"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
 	utilGroups "github.com/gophercloud/utils/openstack/networking/v2/extensions/security/groups"
@@ -18,9 +19,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var (
-	_ Network = &neutronV2{}
-)
+var _ Network = &neutronV2{}
 
 // neutronV2 is a NeutronV2 client implementing the Network interface.
 type neutronV2 struct {
@@ -135,4 +134,18 @@ func (n *neutronV2) PortIDFromName(name string) (string, error) {
 		return "", err
 	}
 	return id, nil
+}
+
+func (n *neutronV2) TagPort(id string, tags []string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+	tagOpts := attributestags.ReplaceAllOpts{Tags: tags}
+	_, err := attributestags.ReplaceAll(n.serviceClient, "ports", id, tagOpts).Extract()
+	if err != nil {
+		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
+		return err
+	}
+	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "neutron"}).Inc()
+	return nil
 }

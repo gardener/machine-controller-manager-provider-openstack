@@ -28,6 +28,7 @@ func setVersionPriority(scheme *runtime.Scheme) error {
 }
 
 // Install installs all APIs in the current scheme.
-func Install(scheme *runtime.Scheme) {
+func Install(scheme *runtime.Scheme) *runtime.Scheme {
 	utilruntime.Must(AddToScheme(scheme))
+	return scheme
 }

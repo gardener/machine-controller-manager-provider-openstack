@@ -3,6 +3,7 @@ module github.com/gardener/machine-controller-manager-provider-openstack
 go 1.16
 
 require (
+	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/gardener/gardener v1.35.1
 	github.com/gardener/machine-controller-manager v0.42.0
 	github.com/golang/mock v1.6.0

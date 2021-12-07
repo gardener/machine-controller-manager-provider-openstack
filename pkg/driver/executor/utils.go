@@ -7,6 +7,8 @@ package executor
 import (
 	"fmt"
 	"strings"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 )
 
 // encodeProviderID encodes the ID of a server.
@@ -39,4 +41,24 @@ func isEmptyString(ptr *string) bool {
 	}
 
 	return false
+}
+
+func findMandatoryTags(tags map[string]string) (string, string, bool) {
+	var (
+		searchClusterName = ""
+		searchNodeRole    = ""
+	)
+
+	for key := range tags {
+		if strings.Contains(key, cloudprovider.ServerTagClusterPrefix) {
+			searchClusterName = key
+		} else if strings.Contains(key, cloudprovider.ServerTagRolePrefix) {
+			searchNodeRole = key
+		}
+	}
+
+	if searchNodeRole == "" || searchClusterName == "" {
+		return searchClusterName, searchNodeRole, false
+	}
+	return searchClusterName, searchNodeRole, true
 }

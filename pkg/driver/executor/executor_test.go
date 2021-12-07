@@ -86,7 +86,6 @@ var _ = Describe("Executor", func() {
 					PodNetworkCidr: podCidr,
 				},
 			}
-
 		})
 
 		It("should take the happy path", func() {
@@ -124,9 +123,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should succeed when spec contains subnet", func() {
-			var (
-				subnetID = "subnetID"
-			)
+			subnetID := "subnetID"
 
 			cfg.Spec.SubnetID = &subnetID
 			ex := &Executor{
@@ -139,6 +136,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().GetSubnet(subnetID).Return(&subnets.Subnet{}, nil)
 			network.EXPECT().PortIDFromName(machineName).Return("", gophercloud.ErrResourceNotFound{})
 			network.EXPECT().CreatePort(gomock.Any()).Return(&ports.Port{ID: portID, Name: machineName}, nil)
+			network.EXPECT().TagPort(gomock.Any(), gomock.Any()).Return(nil)
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
 			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
 			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
@@ -227,9 +225,7 @@ var _ = Describe("Executor", func() {
 	})
 
 	Context("#GetMachineStatus", func() {
-		var (
-			serverList []servers.Server
-		)
+		var serverList []servers.Server
 
 		BeforeEach(func() {
 			serverList = []servers.Server{
@@ -288,9 +284,7 @@ var _ = Describe("Executor", func() {
 	})
 
 	Context("Delete", func() {
-		var (
-			serverList []servers.Server
-		)
+		var serverList []servers.Server
 
 		BeforeEach(func() {
 			serverList = []servers.Server{
@@ -331,9 +325,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should try to find by ProviderID if supplied", func() {
-			var (
-				id = "id"
-			)
+			id := "id"
 			gomock.InOrder(
 				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.ServerStatusActive, Metadata: tags}, nil),
 				compute.EXPECT().DeleteServer(id).Return(nil),

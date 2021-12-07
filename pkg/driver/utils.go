@@ -12,8 +12,10 @@ import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/install"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1"
 	client "github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
@@ -23,19 +25,27 @@ const (
 	openstackProvider = "OpenStack"
 )
 
-func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*openstack.MachineProviderConfig, error) {
+// Decoder is a decoder for a scheme containing the mcm-openstack APIs.
+var Decoder = serializer.NewCodecFactory(install.Install(runtime.NewScheme())).UniversalDecoder()
+
+// DecodeProviderSpec can decode raw to a MachineProviderConfig.
+func DecodeProviderSpec(decoder runtime.Decoder, raw runtime.RawExtension) (*openstack.MachineProviderConfig, error) {
 	json, err := raw.MarshalJSON()
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode provider spec: %v", err)
 	}
 
 	cfg := &openstack.MachineProviderConfig{}
-	_, _, err = p.decoder.Decode(json, nil, cfg)
+	_, _, err = decoder.Decode(json, nil, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode provider spec: %v", err)
 	}
 
 	return cfg, nil
+}
+
+func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*openstack.MachineProviderConfig, error) {
+	return DecodeProviderSpec(p.decoder, raw)
 }
 
 func migrateMachineClass(os *mcmv1alpha1.OpenStackMachineClass, machineClass *mcmv1alpha1.MachineClass) error {

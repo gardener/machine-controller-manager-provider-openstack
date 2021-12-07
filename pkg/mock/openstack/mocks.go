@@ -272,6 +272,20 @@ func (mr *MockNetworkMockRecorder) PortIDFromName(arg0 interface{}) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PortIDFromName", reflect.TypeOf((*MockNetwork)(nil).PortIDFromName), arg0)
 }
 
+// TagPort mocks base method.
+func (m *MockNetwork) TagPort(arg0 string, arg1 []string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TagPort", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// TagPort indicates an expected call of TagPort.
+func (mr *MockNetworkMockRecorder) TagPort(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TagPort", reflect.TypeOf((*MockNetwork)(nil).TagPort), arg0, arg1)
+}
+
 // UpdatePort mocks base method.
 func (m *MockNetwork) UpdatePort(arg0 string, arg1 ports.UpdateOptsBuilder) error {
 	m.ctrl.T.Helper()
