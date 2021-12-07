@@ -28,13 +28,13 @@ type Factory struct {
 // Option can modify client parameters by manipulating EndpointOpts.
 type Option func(opts gophercloud.EndpointOpts) gophercloud.EndpointOpts
 
-// NewFactoryFromSecret can create a Factory from the a kubernetes secret.
-func NewFactoryFromSecret(secret *corev1.Secret) (*Factory, error) {
-	if secret.Data == nil {
+// NewFactoryFromSecretData can create a Factory from the a kubernetes secret's data.
+func NewFactoryFromSecretData(data map[string][]byte) (*Factory, error) {
+	if data == nil {
 		return nil, fmt.Errorf("secret does not contain any data")
 	}
 
-	creds := extractCredentialsFromSecret(secret)
+	creds := extractCredentialsFromSecretData(data)
 	provider, err := newAuthenticatedProviderClientFromCredentials(creds)
 	if err != nil {
 		return nil, fmt.Errorf("error creating OpenStack client from credentials: %w", err)
@@ -43,6 +43,15 @@ func NewFactoryFromSecret(secret *corev1.Secret) (*Factory, error) {
 	return &Factory{
 		providerClient: provider,
 	}, nil
+}
+
+// NewFactoryFromSecret can create a Factory from the a kubernetes secret.
+func NewFactoryFromSecret(secret *corev1.Secret) (*Factory, error) {
+	if secret == nil {
+		return nil, fmt.Errorf("secret cannot be nil")
+	}
+
+	return NewFactoryFromSecretData(secret.Data)
 }
 
 func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*gophercloud.ProviderClient, error) {
@@ -128,7 +137,7 @@ func (l logger) Printf(format string, args ...interface{}) {
 	if klog.V(6) {
 		var skip int
 		var found bool
-		var gc = "/github.com/gophercloud/gophercloud"
+		gc := "/github.com/gophercloud/gophercloud"
 
 		// detect the depth of the actual function, which calls gophercloud code
 		// 10 is the common depth from the logger to "github.com/gophercloud/gophercloud"
