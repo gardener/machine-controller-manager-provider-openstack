@@ -497,8 +497,8 @@ func (ex *Executor) getMachineByID(_ context.Context, serverID string) (*servers
 func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*servers.Server, error) {
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
 	if !ok {
-		klog.Warningf("operation can not proceed: cluster/role tags are missing")
-		return nil, fmt.Errorf("operation can not proceed: cluster/role tags are missing")
+		klog.Warningf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
+		return nil, fmt.Errorf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
 	}
 
 	listedServers, err := ex.Compute.ListServers(&servers.ListOpts{
@@ -548,8 +548,8 @@ func (ex *Executor) ListMachines(ctx context.Context) (map[string]string, error)
 func (ex *Executor) listServers(_ context.Context) ([]servers.Server, error) {
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
 	if !ok {
-		klog.Warningf("operation can not proceed: cluster/role tags are missing")
-		return nil, fmt.Errorf("operation can not proceed: cluster/role tags are missing")
+		klog.Warningf("list operation can not proceed: cluster/role tags are missing")
+		return nil, fmt.Errorf("list operation can not proceed: cluster/role tags are missing")
 	}
 
 	allServers, err := ex.Compute.ListServers(&servers.ListOpts{})
