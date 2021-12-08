@@ -20,15 +20,13 @@ var ITResourceTagKey = "kubernetes.io-role-integration-test"
 type ResourcesTrackerImpl struct {
 	MachineClass *v1alpha1.MachineClass
 	SecretData   map[string][]byte
-	ClusterName  string
 }
 
 // InitializeResourcesTracker initializes the type ResourcesTrackerImpl variable and tries
 // to delete the orphan resources present before the actual IT runs.
-func (r *ResourcesTrackerImpl) InitializeResourcesTracker(machineClass *v1alpha1.MachineClass, secretData map[string][]byte, clusterName string) error {
+func (r *ResourcesTrackerImpl) InitializeResourcesTracker(machineClass *v1alpha1.MachineClass, secretData map[string][]byte, _ string) error {
 	r.MachineClass = machineClass
 	r.SecretData = secretData
-	r.ClusterName = clusterName
 
 	initialVMs, initialNICs, initialMachines, err := r.probeResources()
 	if err != nil {
