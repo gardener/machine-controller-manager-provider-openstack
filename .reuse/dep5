@@ -16,6 +16,7 @@ Files:
   VERSION
   .ci/**
   .github/workflows/**
+  .dockerignore
 Copyright: 2020 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
@@ -32,6 +33,10 @@ License: CC-BY-4.0
 
 # --------------------------------------------------
 # dependencies
+Files: vendor/github.com/acomagu/bufpipe/*
+Copyright: 2019 acomagu
+License: MIT
+
 Files: vendor/github.com/ahmetb/gen-crd-api-reference-docs/*
 Copyright: unknown
 License: Apache-2.0
@@ -50,6 +55,11 @@ License: ISC
 
 Files: vendor/github.com/emicklei/go-restful/*
 Copyright: 2012,2013 Ernest Micklei
+License: MIT
+
+Files: vendor/github.com/emirpasic/gods/*
+Copyright: 2015, Emir Pasic
+Copyright: 2017 Benjamin Scher Purcell
 License: MIT
 
 Files: vendor/github.com/evanphx/json-patch/*
@@ -72,6 +82,19 @@ License: Apache-2.0
 
 Files: vendor/github.com/gardener/machine-controller-manager/*
 Copyright: 2017-2018 SAP SE or an SAP affiliate company and Gardener contributors
+License: Apache-2.0
+
+Files: vendor/github.com/gcfg/*
+Copyright: 2012 Péter Surányi
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
+Files: vendor/github.com/go-billy/*
+Copyright: 2018 Sourced Technologies, S.L.
+License: Apache-2.0
+
+Files: vendor/github.com/go-git/*
+Copyright: 2018 Sourced Technologies, S.L.
 License: Apache-2.0
 
 Files: vendor/github.com/go-logr/logr/*
@@ -156,7 +179,16 @@ Files: vendor/github.com/inconshreveable/mousetrap/*
 Copyright: 2014 Alan Shreve
 License: Apache-2.0
 
+Files: vendor/github.com/jbenet/go-context/*
+Copyright: 2014 Juan Batiz-Benet
+License: MIT
+
 Files: vendor/github.com/json-iterator/go/*
+Copyright: 2017 Kevin Burke
+Copyright: 2013 - 2017 Thomas Pelletier, Eric Anderton
+License: MIT
+
+Files: vendor/github.com/kevinburke/ssh_config/*
 Copyright: 2016 json-iterator
 License: MIT
 
@@ -175,6 +207,10 @@ License: MIT
 Files: vendor/github.com/matttproud/golang_protobuf_extensions/*
 Copyright: 2013 Matt T. Proud
 License: Apache-2.0
+
+Files: vendor/github.com/Microsoft/go-winio/*
+Copyright: 2015 Microsoft
+License: MIT
 
 Files: vendor/github.com/mitchellh/go-homedir/*
 Copyright: 2013 Mitchell Hashimoto
@@ -224,6 +260,10 @@ Files: vendor/github.com/prometheus/procfs/*
 Copyright: 2014 The Prometheus Authors
 License: Apache-2.0
 
+Files: vendor/github.com/ProtonMail/go-crypto/*
+Copyright: 2009 The Go Authors
+License: BSD-3-Clause
+
 Files: vendor/github.com/PuerkitoBio/purell/*
 Copyright: 2012, Martin Angers
 License: BSD-3-Clause
@@ -235,6 +275,10 @@ License: BSD-3-Clause
 Files: vendor/github.com/russross/blackfriday/v2/*
 Copyright: 2011 Russ Ross
 License: BSD-2-Clause
+
+Files: vendor/github.com/sergi/go-diff/*
+Copyright: 2012-2016 The go-diff Authors
+License: MIT
 
 Files: vendor/github.com/shurcooL/sanitized_anchor_name/*
 Copyright: 2015 Dmitri Shuralyov
@@ -249,6 +293,11 @@ Copyright: 2009 The Go Authors
 Copyright: 2012 Alex Ogier
 Copyright: 2012 The Go Authors
 License: BSD-3-Clause
+
+Files: vendor/github.com/xanzy/ssh-agent/*
+Copyright: 2015 Sander van Harmelen
+Copyright: 2014 David Mzareulyan
+License: Apache-2.0
 
 Files: vendor/go.uber.org/atomic/*
 Copyright: 2016 Uber Technologies, Inc.
@@ -306,10 +355,6 @@ Files: vendor/golang.org/x/xerrors/*
 Copyright: 2019 The Go Authors
 License: BSD-3-Clause
 
-Files: vendor/gopkg.in/fsnotify.v1/*
-Copyright: 2010 The Go Authors
-License: BSD-3-Clause
-
 Files: vendor/gonum.org/v1/gonum/*
 Copyright: 2013 The Gonum Authors
 License: BSD-3-Clause
@@ -322,6 +367,10 @@ Files: vendor/google.golang.org/protobuf/*
 Copyright: 2018 The Go Authors
 License: BSD-3-Clause
 
+Files: vendor/gopkg.in/fsnotify.v1/*
+Copyright: 2010 The Go Authors
+License: BSD-3-Clause
+
 Files: vendor/gopkg.in/inf.v0/*
 Copyright: 2012 Peter Suranyi
 Copyright: 2009 The Go Authors
@@ -330,6 +379,10 @@ License: BSD-3-Clause
 Files: vendor/gopkg.in/tomb.v1/*
 Copyright: 2010-2011 - Gustavo Niemeyer
 License: BSD-3-Clause
+
+Files: vendor/gopkg.in/warnings.v0/*
+Copyright: 2016 Péter Surányi
+License: BSD-2-Clause
 
 Files: vendor/gopkg.in/yaml.v2/*
 Copyright: 2006 Kirill Simonov

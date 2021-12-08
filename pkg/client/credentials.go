@@ -7,8 +7,6 @@ package client
 import (
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 )
 
@@ -36,8 +34,10 @@ type credentials struct {
 	AuthURL string
 }
 
-func extractCredentialsFromSecret(secret *corev1.Secret) *credentials {
-	data := secret.Data
+func extractCredentialsFromSecretData(data map[string][]byte) *credentials {
+	if data == nil {
+		return nil
+	}
 
 	authURL := data[cloudprovider.OpenStackAuthURL]
 	username := data[cloudprovider.OpenStackUsername]
