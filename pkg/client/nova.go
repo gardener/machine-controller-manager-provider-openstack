@@ -30,9 +30,7 @@ const (
 	ServerStatusError = "ERROR"
 )
 
-var (
-	_ Compute = &novaV2{}
-)
+var _ Compute = &novaV2{}
 
 // novaV2 is a NovaV2 client implementing the Compute interface.
 type novaV2 struct {
@@ -44,6 +42,7 @@ func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.Endpoi
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize compute client: %v", err)
 	}
+
 	return &novaV2{
 		serviceClient: compute,
 	}, nil

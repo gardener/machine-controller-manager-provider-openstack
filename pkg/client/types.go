@@ -5,6 +5,7 @@
 package client
 
 import (
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
@@ -51,4 +52,13 @@ type Network interface {
 	PortIDFromName(name string) (string, error)
 	// TagPort tags a port with the specified labels.
 	TagPort(id string, tags []string) error
+}
+
+// Storage is an interface for communication with Cinder service.
+type Storage interface {
+	CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume, error)
+	GetVolume(id string) (*volumes.Volume, error)
+	DeleteVolume(id string) error
+	VolumeIDFromName(name string) (string, error)
+	ListVolumes(opts volumes.ListOptsBuilder) ([]volumes.Volume, error)
 }

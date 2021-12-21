@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
@@ -29,6 +30,7 @@ import (
 type Executor struct {
 	Compute client.Compute
 	Network client.Network
+	Storage client.Storage
 	Config  *api.MachineProviderConfig
 }
 
@@ -44,10 +46,16 @@ func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*E
 		klog.Errorf("failed to create network client for executor: %v", err)
 		return nil, err
 	}
+	storageClient, err := factory.Storage(client.WithRegion(config.Spec.Region))
+	if err != nil {
+		klog.Errorf("failed to create storage client for executor: %v", err)
+		return nil, err
+	}
 
 	ex := &Executor{
 		Compute: computeClient,
 		Network: networkClient,
+		Storage: storageClient,
 		Config:  config,
 	}
 	return ex, nil
@@ -190,6 +198,7 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 	availabilityZone := ex.Config.Spec.AvailabilityZone
 	metadata := ex.Config.Spec.Tags
 	rootDiskSize := ex.Config.Spec.RootDiskSize
+	rootDiskType := ex.Config.Spec.RootDiskType
 	useConfigDrive := ex.Config.Spec.UseConfigDrive
 	flavorName := ex.Config.Spec.FlavorName
 
@@ -242,9 +251,18 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
-		blockDevices, err := resourceInstanceBlockDevicesV2(rootDiskSize, imageRef)
-		if err != nil {
-			return nil, err
+		var (
+			blockDevices []bootfromvolume.BlockDevice
+			err          error
+		)
+
+		if rootDiskType != nil {
+			blockDevices, err = ex.instanceBlockDeviceWithType(machineName, imageID)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			blockDevices = instanceBlockDevice(rootDiskSize, imageRef)
 		}
 
 		createOpts = &bootfromvolume.CreateOptsExt{
@@ -257,7 +275,73 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 	return ex.Compute.CreateServer(createOpts)
 }
 
-func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfromvolume.BlockDevice, error) {
+func (ex *Executor) instanceBlockDeviceWithType(name, imageID string) ([]bootfromvolume.BlockDevice, error) {
+	volume, err := ex.Storage.GetVolume(name)
+	if err != nil && !client.IsNotFoundError(err) {
+		return nil, err
+	}
+
+	if client.IsNotFoundError(err) {
+		volume, err = ex.Storage.CreateVolume(volumes.CreateOpts{
+			Name:             name,
+			VolumeType:       *ex.Config.Spec.RootDiskType,
+			Size:             ex.Config.Spec.RootDiskSize,
+			ImageID:          imageID,
+			AvailabilityZone: ex.Config.Spec.AvailabilityZone,
+			Metadata:         ex.Config.Spec.Tags,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to created volume [Name=%s]: %v", name, err)
+		}
+	}
+
+	err = ex.volumeWaitForStatus(volume.ID, []string{client.VolumeStatusCreating}, []string{client.VolumeStatusAvailable}, 600)
+	if err != nil {
+		return nil, err
+	}
+
+	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
+	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+		UUID:                volume.ID,
+		VolumeSize:          ex.Config.Spec.RootDiskSize,
+		BootIndex:           0,
+		DeleteOnTermination: true,
+		SourceType:          "volume",
+		DestinationType:     "volume",
+	}
+
+	return blockDeviceOpts, nil
+}
+
+func (ex *Executor) volumeWaitForStatus(volumeID string, pending, target []string, secs int) error {
+	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
+		current, err := ex.Storage.GetVolume(volumeID)
+		if err != nil {
+			if client.IsNotFoundError(err) && strSliceContains(target, client.ServerStatusDeleted) {
+				return true, nil
+			}
+			return false, err
+		}
+
+		klog.V(3).Infof("waiting for volume[ID=%q] with current status %v, to reach status %v.", volumeID, current.Status, target)
+		if strSliceContains(target, current.Status) {
+			return true, nil
+		}
+
+		if len(pending) == 0 || strSliceContains(pending, current.Status) {
+			return false, nil
+		}
+
+		retErr := fmt.Errorf("server [ID=%q] reached status %q. Retrying until status reaches %q", volumeID, current.Status, target)
+		if current.Status == client.ServerStatusError {
+			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Status)
+		}
+
+		return false, retErr
+	})
+}
+
+func instanceBlockDevice(rootDiskSize int, imageID string) []bootfromvolume.BlockDevice {
 	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
 	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
 		UUID:                imageID,
@@ -267,8 +351,9 @@ func resourceInstanceBlockDevicesV2(rootDiskSize int, imageID string) ([]bootfro
 		SourceType:          "image",
 		DestinationType:     "volume",
 	}
+
 	klog.V(3).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
-	return blockDeviceOpts, nil
+	return blockDeviceOpts
 }
 
 // patchServerPortsForPodNetwork updates a server's ports with rules for whitelisting the pod network CIDR.
@@ -378,7 +463,14 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	}
 
 	if ex.isUserManagedNetwork() {
-		return ex.deletePort(ctx, machineName)
+		err := ex.deletePort(ctx, machineName)
+		if err != nil {
+			return err
+		}
+	}
+
+	if ex.Config.Spec.RootDiskType != nil {
+		return ex.deleteVolume(ctx, machineName)
 	}
 
 	return nil
@@ -451,11 +543,29 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	klog.V(2).Infof("deleting port [Name=%q]", machineName)
 	err = ex.Network.DeletePort(portID)
 	if err != nil {
+		klog.Errorf("failed to delete port [Name=%q]: %s", machineName, err)
+		return err
+	}
+
+	klog.V(3).Infof("deleted port [Name=%q]", machineName)
+	return nil
+}
+
+func (ex *Executor) deleteVolume(_ context.Context, machineName string) error {
+	volumeID, err := ex.Storage.VolumeIDFromName(machineName)
+	if err != nil {
+		if client.IsNotFoundError(err) {
+			return nil
+		}
+		return fmt.Errorf("error deleting [Name=%q]: %s", machineName, err)
+	}
+
+	klog.V(2).Infof("deleting volume [Name=%q]", machineName)
+	err = ex.Storage.DeleteVolume(volumeID)
+	if err != nil {
 		klog.Errorf("failed to delete port [Name=%q]", machineName)
 		return err
 	}
-	klog.V(3).Infof("deleted port [Name=%q]", machineName)
-
 	return nil
 }
 

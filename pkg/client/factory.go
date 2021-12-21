@@ -186,3 +186,13 @@ func (f *Factory) Network(opts ...Option) (Network, error) {
 
 	return newNeutronV2(f.providerClient, eo)
 }
+
+// Storage returns a client for OpenStack's Cinder service.
+func (f *Factory) Storage(opts ...Option) (Storage, error) {
+	eo := gophercloud.EndpointOpts{}
+	for _, opt := range opts {
+		eo = opt(eo)
+	}
+
+	return newCinderV3(f.providerClient, eo)
+}

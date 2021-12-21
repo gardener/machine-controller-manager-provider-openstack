@@ -1,4 +1,15 @@
-## 0.20.0 (Unreleased)
+## 0.21.0 (Unreleased)
+
+## 0.20.0 (August 10, 2021)
+
+IMPROVEMENTS
+
+* Added `RetryFunc` to enable custom retry functions. [GH-2194](https://github.com/gophercloud/gophercloud/pull/2194)
+* Added `openstack/baremetal/v1/nodes.GetVendorPassthruMethods` [GH-2201](https://github.com/gophercloud/gophercloud/pull/2201)
+* Added `openstack/baremetal/v1/nodes.GetAllSubscriptions` [GH-2201](https://github.com/gophercloud/gophercloud/pull/2201)
+* Added `openstack/baremetal/v1/nodes.GetSubscription` [GH-2201](https://github.com/gophercloud/gophercloud/pull/2201)
+* Added `openstack/baremetal/v1/nodes.DeleteSubscription` [GH-2201](https://github.com/gophercloud/gophercloud/pull/2201)
+* Added `openstack/baremetal/v1/nodes.CreateSubscription` [GH-2201](https://github.com/gophercloud/gophercloud/pull/2201)
 
 ## 0.19.0 (July 22, 2021)
 
