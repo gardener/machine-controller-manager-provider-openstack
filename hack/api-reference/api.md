@@ -178,6 +178,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>The type of the root disk used for the instance.</p>
 </td>
 </tr>
@@ -381,6 +382,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>The type of the root disk used for the instance.</p>
 </td>
 </tr>
