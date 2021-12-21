@@ -56,9 +56,14 @@ type Network interface {
 
 // Storage is an interface for communication with Cinder service.
 type Storage interface {
+	// CreateVolume creates a Cinder volume.
 	CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume, error)
+	// GetVolume retrieves information about a volume.
 	GetVolume(id string) (*volumes.Volume, error)
+	// DeleteVolume deletes a volume
 	DeleteVolume(id string) error
+	// VolumeIDFromName resolves the given volume name to a unique ID.
 	VolumeIDFromName(name string) (string, error)
+	// ListVolumes lists all volumes
 	ListVolumes(opts volumes.ListOptsBuilder) ([]volumes.Volume, error)
 }

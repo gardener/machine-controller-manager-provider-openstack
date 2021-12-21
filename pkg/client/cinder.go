@@ -40,6 +40,7 @@ func newCinderV3(providerClient *gophercloud.ProviderClient, eo gophercloud.Endp
 	}, nil
 }
 
+// CreateVolume creates a Cinder volume.
 func (c *cinderV3) CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume, error) {
 	v, err := volumes.Create(c.serviceClient, opts).Extract()
 	onCall(cinderService)
@@ -50,10 +51,12 @@ func (c *cinderV3) CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume
 	return v, nil
 }
 
+// GetVolume retrieves information about a volume.
 func (c *cinderV3) GetVolume(id string) (*volumes.Volume, error) {
 	return volumes.Get(c.serviceClient, id).Extract()
 }
 
+// DeleteVolume deletes a volume
 func (c *cinderV3) DeleteVolume(id string) error {
 	err := volumes.Delete(c.serviceClient, id, volumes.DeleteOpts{}).ExtractErr()
 	onCall(cinderService)
@@ -64,7 +67,7 @@ func (c *cinderV3) DeleteVolume(id string) error {
 	return nil
 }
 
-// GroupIDFromName resolves the given security group name to a unique ID.
+// VolumeIDFromName resolves the given volume name to a unique ID.
 func (c *cinderV3) VolumeIDFromName(name string) (string, error) {
 	id, err := utilGroups.IDFromName(c.serviceClient, name)
 
@@ -76,6 +79,7 @@ func (c *cinderV3) VolumeIDFromName(name string) (string, error) {
 	return id, nil
 }
 
+// ListVolumes lists all volumes
 func (c *cinderV3) ListVolumes(opts volumes.ListOptsBuilder) ([]volumes.Volume, error) {
 	vols, err := volumes.List(c.serviceClient, opts).AllPages()
 	onCall(cinderService)
