@@ -15,15 +15,21 @@ import (
 
 const (
 	cinderService = "cinder"
-	// VolumeStatusCreating is the status of a volume in creation.
-	VolumeStatusCreating = "creating"
-	// VolumeStatusInUse is the status of a volume that is currently used by an instance.
-	VolumeStatusInUse = "in-use"
-	// VolumeStatusAvailable denotees that he volume is available to be attached.
+	// VolumeStatusAvailable indicates that he volume is available to be attached.
 	VolumeStatusAvailable = "available"
-	// VolumeStatusError denotes that the volume is in error state.
+	// VolumeStatusCreating indicates that the volume is being created.
+	VolumeStatusCreating = "creating"
+	// VolumeStatusDownloading indicates that the volume is in downloading state.
+	VolumeStatusDownloading = "downloading"
+	// VolumeStatusDeleting indicates that the volume is in the process of being deleted.
+	VolumeStatusDeleting = "deleting"
+	// VolumeStatusError indicates that the volume is in error state.
 	VolumeStatusError = "error"
+	// VolumeStatusInUse indicates that the volume is currently in use.
+	VolumeStatusInUse = "in-use"
 )
+
+var _ Storage = &cinderV3{}
 
 type cinderV3 struct {
 	serviceClient *gophercloud.ServiceClient

@@ -95,7 +95,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		}
 	}
 
-	err = ex.waitForStatus(server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 600)
+	err = ex.waitForServerStatus(server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 600)
 	if err != nil {
 		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %w", server.ID, err))
 	}
@@ -158,9 +158,9 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 	return serverNetworks, nil
 }
 
-// waitForStatus blocks until the server with the specified ID reaches one of the target status.
-// waitForStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
-func (ex *Executor) waitForStatus(serverID string, pending []string, target []string, secs int) error {
+// waitForServerStatus blocks until the server with the specified ID reaches one of the target status.
+// waitForServerStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
+func (ex *Executor) waitForServerStatus(serverID string, pending []string, target []string, secs int) error {
 	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
 		current, err := ex.Compute.GetServer(serverID)
 		if err != nil {
@@ -198,7 +198,6 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 	availabilityZone := ex.Config.Spec.AvailabilityZone
 	metadata := ex.Config.Spec.Tags
 	rootDiskSize := ex.Config.Spec.RootDiskSize
-	rootDiskType := ex.Config.Spec.RootDiskType
 	useConfigDrive := ex.Config.Spec.UseConfigDrive
 	flavorName := ex.Config.Spec.FlavorName
 
@@ -251,38 +250,61 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
-		var (
-			blockDevices []bootfromvolume.BlockDevice
-			err          error
-		)
-
-		if rootDiskType != nil {
-			blockDevices, err = ex.instanceBlockDeviceWithType(machineName, imageID)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			blockDevices = instanceBlockDevice(rootDiskSize, imageRef)
-		}
-
-		createOpts = &bootfromvolume.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			BlockDevice:       blockDevices,
-		}
-		return ex.Compute.BootFromVolume(createOpts)
+		return ex.bootFromVolume(machineName, imageID, createOpts)
 	}
 
 	return ex.Compute.CreateServer(createOpts)
 }
 
-func (ex *Executor) instanceBlockDeviceWithType(name, imageID string) ([]bootfromvolume.BlockDevice, error) {
-	volume, err := ex.Storage.GetVolume(name)
+func (ex *Executor) bootFromVolume(machineName, imageID string, createOpts servers.CreateOptsBuilder) (*servers.Server, error) {
+	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
+
+	if ex.Config.Spec.RootDiskType != nil {
+		volumeID, err := ex.ensureVolume(machineName, imageID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to ensure volume [Name=%q]: %s", machineName, err)
+		}
+
+		blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+			UUID:                volumeID,
+			VolumeSize:          ex.Config.Spec.RootDiskSize,
+			BootIndex:           0,
+			DeleteOnTermination: true,
+			SourceType:          "volume",
+			DestinationType:     "volume",
+		}
+	} else {
+		blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+			UUID:                imageID,
+			VolumeSize:          ex.Config.Spec.RootDiskSize,
+			BootIndex:           0,
+			DeleteOnTermination: true,
+			SourceType:          "image",
+			DestinationType:     "volume",
+		}
+	}
+
+	klog.V(3).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
+	createOpts = &bootfromvolume.CreateOptsExt{
+		CreateOptsBuilder: createOpts,
+		BlockDevice:       blockDeviceOpts,
+	}
+	return ex.Compute.BootFromVolume(createOpts)
+}
+
+func (ex *Executor) ensureVolume(name, imageID string) (string, error) {
+	var (
+		volumeID string
+		err      error
+	)
+
+	volumeID, err = ex.Storage.VolumeIDFromName(name)
 	if err != nil && !client.IsNotFoundError(err) {
-		return nil, err
+		return "", err
 	}
 
 	if client.IsNotFoundError(err) {
-		volume, err = ex.Storage.CreateVolume(volumes.CreateOpts{
+		volume, err := ex.Storage.CreateVolume(volumes.CreateOpts{
 			Name:             name,
 			VolumeType:       *ex.Config.Spec.RootDiskType,
 			Size:             ex.Config.Spec.RootDiskSize,
@@ -291,33 +313,23 @@ func (ex *Executor) instanceBlockDeviceWithType(name, imageID string) ([]bootfro
 			Metadata:         ex.Config.Spec.Tags,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to created volume [Name=%s]: %v", name, err)
+			return "", fmt.Errorf("failed to created volume [Name=%s]: %v", name, err)
 		}
+		volumeID = volume.ID
 	}
 
-	err = ex.volumeWaitForStatus(volume.ID, []string{client.VolumeStatusCreating}, []string{client.VolumeStatusAvailable}, 600)
-	if err != nil {
-		return nil, err
+	if err := ex.waitForVolumeStatus(volumeID, []string{client.VolumeStatusCreating}, []string{client.VolumeStatusAvailable}, 600); err != nil {
+		return "", err
 	}
 
-	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
-	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
-		UUID:                volume.ID,
-		VolumeSize:          ex.Config.Spec.RootDiskSize,
-		BootIndex:           0,
-		DeleteOnTermination: true,
-		SourceType:          "volume",
-		DestinationType:     "volume",
-	}
-
-	return blockDeviceOpts, nil
+	return volumeID, nil
 }
 
-func (ex *Executor) volumeWaitForStatus(volumeID string, pending, target []string, secs int) error {
+func (ex *Executor) waitForVolumeStatus(volumeID string, pending, target []string, secs int) error {
 	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
 		current, err := ex.Storage.GetVolume(volumeID)
 		if err != nil {
-			if client.IsNotFoundError(err) && strSliceContains(target, client.ServerStatusDeleted) {
+			if client.IsNotFoundError(err) {
 				return true, nil
 			}
 			return false, err
@@ -332,28 +344,13 @@ func (ex *Executor) volumeWaitForStatus(volumeID string, pending, target []strin
 			return false, nil
 		}
 
-		retErr := fmt.Errorf("server [ID=%q] reached status %q. Retrying until status reaches %q", volumeID, current.Status, target)
-		if current.Status == client.ServerStatusError {
+		retErr := fmt.Errorf("volume [ID=%q] reached status %q. Retrying until status reaches %q", volumeID, current.Status, target)
+		if current.Status == client.VolumeStatusError {
 			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Status)
 		}
 
 		return false, retErr
 	})
-}
-
-func instanceBlockDevice(rootDiskSize int, imageID string) []bootfromvolume.BlockDevice {
-	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
-	blockDeviceOpts[0] = bootfromvolume.BlockDevice{
-		UUID:                imageID,
-		VolumeSize:          rootDiskSize,
-		BootIndex:           0,
-		DeleteOnTermination: true,
-		SourceType:          "image",
-		DestinationType:     "volume",
-	}
-
-	klog.V(3).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
-	return blockDeviceOpts
 }
 
 // patchServerPortsForPodNetwork updates a server's ports with rules for whitelisting the pod network CIDR.
@@ -455,7 +452,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 			return err
 		}
 
-		if err = ex.waitForStatus(server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
+		if err = ex.waitForServerStatus(server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
 			return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 		}
 	} else if !errors.Is(err, ErrNotFound) {
