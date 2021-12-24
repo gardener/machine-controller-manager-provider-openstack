@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
@@ -34,6 +35,7 @@ var _ = Describe("Executor", func() {
 		ctrl    *gomock.Controller
 		compute *mocks.MockCompute
 		network *mocks.MockNetwork
+		storage *mocks.MockStorage
 		tags    map[string]string
 		cfg     *openstack.MachineProviderConfig
 		ctx     context.Context
@@ -44,6 +46,7 @@ var _ = Describe("Executor", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		compute = mocks.NewMockCompute(ctrl)
 		network = mocks.NewMockNetwork(ctrl)
+		storage = mocks.NewMockStorage(ctrl)
 
 		tags = map[string]string{
 			fmt.Sprintf("%sfoo", cloudprovider.ServerTagClusterPrefix): "1",
@@ -140,6 +143,45 @@ var _ = Describe("Executor", func() {
 			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
 			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
 			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
+			)
+			network.EXPECT().ListPorts(&ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+			network.EXPECT().UpdatePort(portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+
+			providerId, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).To(BeNil())
+			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
+		})
+
+		It("should succeed when spec contains rootDisksize", func() {
+			var (
+				diskType = "standard_hdd"
+				diskSize = 50
+				volumeID = "volumeID"
+			)
+			cfg.Spec.RootDiskType = &diskType
+			cfg.Spec.RootDiskSize = diskSize
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Storage: storage,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
+			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
+			storage.EXPECT().VolumeIDFromName(machineName).Return("", gophercloud.ErrResourceNotFound{})
+			gomock.InOrder(
+				storage.EXPECT().GetVolume(volumeID).Return(&volumes.Volume{ID: volumeID, Status: client.VolumeStatusCreating}, nil),
+				storage.EXPECT().GetVolume(volumeID).Return(&volumes.Volume{ID: volumeID, Status: client.VolumeStatusAvailable}, nil),
+			)
+			storage.EXPECT().CreateVolume(gomock.Any()).Return(&volumes.Volume{ID: volumeID}, nil)
+			compute.EXPECT().BootFromVolume(gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
 				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
 				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
