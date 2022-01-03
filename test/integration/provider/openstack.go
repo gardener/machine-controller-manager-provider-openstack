@@ -103,7 +103,7 @@ func getOrphanedDisks(machineclass *v1alpha1.MachineClass, factory *client.Facto
 		if err := storage.DeleteVolume(v.ID); err != nil {
 			orphans = append(orphans, v.Name)
 		} else {
-			fmt.Printf("deleted orphan port: %s", v.Name)
+			fmt.Printf("deleted orphan volume: %s", v.Name)
 		}
 	}
 	return orphans, nil
