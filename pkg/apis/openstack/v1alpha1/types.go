@@ -46,6 +46,9 @@ type MachineProviderConfigSpec struct {
 	PodNetworkCidr string `json:"podNetworkCidr"`
 	// The size of the root disk used for the instance.
 	RootDiskSize int `json:"rootDiskSize,omitempty"` // in GB
+	// The type of the root disk used for the instance.
+	// +optional
+	RootDiskType *string `json:"rootDiskType,omitempty"`
 	// UseConfigDrive enables the use of configuration drives for the instance.
 	UseConfigDrive *bool `json:"useConfigDrive,omitempty"`
 	// ServerGroupID is the ID of the server group this instance should belong to.

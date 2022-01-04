@@ -43,6 +43,8 @@ type MachineProviderConfigSpec struct {
 	PodNetworkCidr string
 	// The size of the root disk used for the instance.
 	RootDiskSize int
+	// The type of the root disk type used for the instance
+	RootDiskType *string
 	// UseConfigDrive enables the use of configuration drives for the instance.
 	UseConfigDrive *bool
 	// ServerGroupID is the ID of the server group this instance should belong to.

@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 )
@@ -78,6 +79,31 @@ func getOrphanedNICs(machineclass *v1alpha1.MachineClass, factory *client.Factor
 			orphans = append(orphans, port.Name)
 		} else {
 			fmt.Printf("deleted orphan port: %s", port.Name)
+		}
+	}
+	return orphans, nil
+}
+
+func getOrphanedDisks(machineclass *v1alpha1.MachineClass, factory *client.Factory) ([]string, error) {
+	storage, err := factory.Storage()
+	if err != nil {
+		return nil, err
+	}
+
+	vols, err := storage.ListVolumes(volumes.ListOpts{})
+	if err != nil {
+		return nil, err
+	}
+
+	orphans := []string{}
+	for _, v := range vols {
+		if _, ok := v.Metadata[ITResourceTagKey]; !ok {
+			continue
+		}
+		if err := storage.DeleteVolume(v.ID); err != nil {
+			orphans = append(orphans, v.Name)
+		} else {
+			fmt.Printf("deleted orphan volume: %s", v.Name)
 		}
 	}
 	return orphans, nil

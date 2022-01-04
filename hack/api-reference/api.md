@@ -172,6 +172,18 @@ int
 </tr>
 <tr>
 <td>
+<code>rootDiskType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The type of the root disk used for the instance.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>useConfigDrive</code></br>
 <em>
 bool
@@ -360,6 +372,18 @@ int
 </td>
 <td>
 <p>The size of the root disk used for the instance.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rootDiskType</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The type of the root disk used for the instance.</p>
 </td>
 </tr>
 <tr>
