@@ -17,7 +17,7 @@ import (
 	"github.com/gophercloud/utils/client"
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // Factory can create clients for Nova and Neutron OpenStack services.
@@ -115,7 +115,7 @@ func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*g
 		Transport: transport,
 	}
 
-	if klog.V(6) {
+	if klog.V(6).Enabled() {
 		provider.HTTPClient.Transport = &client.RoundTripper{
 			Rt:     provider.HTTPClient.Transport,
 			Logger: &logger{},
@@ -134,7 +134,7 @@ type logger struct{}
 
 func (l logger) Printf(format string, args ...interface{}) {
 	// extra check in case, when verbosity has been changed dynamically
-	if klog.V(6) {
+	if klog.V(6).Enabled() {
 		var skip int
 		var found bool
 		gc := "/github.com/gophercloud/gophercloud"
