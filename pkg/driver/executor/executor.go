@@ -250,7 +250,7 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
-		return ex.bootFromVolume(machineName, imageID, createOpts)
+		return ex.bootFromVolume(machineName, imageRef, createOpts)
 	}
 
 	return ex.Compute.CreateServer(createOpts)
