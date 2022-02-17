@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/install"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"

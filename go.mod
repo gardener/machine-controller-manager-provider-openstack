@@ -18,7 +18,7 @@ require (
 	k8s.io/apimachinery v0.22.2
 	k8s.io/code-generator v0.22.2
 	k8s.io/component-base v0.22.2
-	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.9.0
 	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
 )
 
@@ -102,7 +102,7 @@ require (
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible // indirect
 	k8s.io/cluster-bootstrap v0.22.2 // indirect
 	k8s.io/gengo v0.0.0-20201113003025-83324d819ded // indirect
-	k8s.io/klog/v2 v2.9.0 // indirect
+	k8s.io/klog v1.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20211005045149-78ce10e2ebad // indirect
 	sigs.k8s.io/controller-tools v0.7.0 // indirect
