@@ -11,7 +11,7 @@ RUN make install
 RUN ls -la /go/bin
 
 #############      base                                     #############
-FROM eu.gcr.io/gardener-project/3rd/alpine:3.15.4 AS base
+FROM alpine:3.15.4 AS base
 
 RUN apk add --update bash curl tzdata
 WORKDIR /
