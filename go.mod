@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/gardener/gardener v1.35.1
-	github.com/gardener/machine-controller-manager v0.44.1
+	github.com/gardener/machine-controller-manager v0.45.0
 	github.com/golang/mock v1.6.0
 	github.com/gophercloud/gophercloud v0.20.0
 	github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d
@@ -14,12 +14,12 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616
-	k8s.io/api v0.22.2
-	k8s.io/apimachinery v0.22.2
-	k8s.io/code-generator v0.22.2
-	k8s.io/component-base v0.22.2
+	k8s.io/api v0.22.9
+	k8s.io/apimachinery v0.22.9
+	k8s.io/code-generator v0.22.9
+	k8s.io/component-base v0.22.9
 	k8s.io/klog/v2 v2.9.0
-	k8s.io/utils v0.0.0-20210819203725-bdf08cb9a70a
+	k8s.io/utils v0.0.0-20211116205334-6203023598ed
 )
 
 require (
@@ -43,6 +43,7 @@ require (
 	github.com/go-logr/zapr v0.4.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.5 // indirect
+	github.com/go-openapi/spec v0.19.5 // indirect
 	github.com/go-openapi/swag v0.19.14 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gobuffalo/flect v0.2.3 // indirect
@@ -80,9 +81,9 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.19.0 // indirect
-	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b // indirect
+	golang.org/x/crypto v0.0.0-20211202192323-5770296d904e // indirect
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
+	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/term v0.0.0-20210220032956-6a3ed077a48d // indirect
@@ -97,16 +98,16 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
-	k8s.io/apiextensions-apiserver v0.22.2 // indirect
-	k8s.io/apiserver v0.22.2 // indirect
+	k8s.io/apiextensions-apiserver v0.22.9 // indirect
+	k8s.io/apiserver v0.22.9 // indirect
 	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible // indirect
-	k8s.io/cluster-bootstrap v0.22.2 // indirect
+	k8s.io/cluster-bootstrap v0.22.9 // indirect
 	k8s.io/gengo v0.0.0-20201214224949-b6c5ce23f027 // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20210421082810-95288971da7e // indirect
+	k8s.io/kube-openapi v0.0.0-20211110012726-3cc51fd1e909 // indirect
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20211005045149-78ce10e2ebad // indirect
 	sigs.k8s.io/controller-tools v0.7.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.1.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
