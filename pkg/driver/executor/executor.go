@@ -318,8 +318,8 @@ func (ex *Executor) ensureVolume(name, imageID string) (string, error) {
 		volumeID = volume.ID
 	}
 
-	pendingStatuses = []string{client.VolumeStatusCreating, client.VolumeStatusDownloading}
-	targetStatuses = []string{client.VolumeStatusAvailable}
+	pendingStatuses := []string{client.VolumeStatusCreating, client.VolumeStatusDownloading}
+	targetStatuses := []string{client.VolumeStatusAvailable}
 	if err := ex.waitForVolumeStatus(volumeID, pendingStatuses, targetStatuses, 600); err != nil {
 		return "", err
 	}
