@@ -8,13 +8,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
-	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
 func getOrphanedInstances(machineClass *v1alpha1.MachineClass, factory *client.Factory) ([]string, error) {
@@ -76,7 +77,7 @@ func getOrphanedNICs(machineclass *v1alpha1.MachineClass, factory *client.Factor
 	orphans := []string{}
 	for _, port := range ports {
 		if err := network.DeletePort(port.ID); err != nil {
-			orphans = append(orphans, port.Name)
+			orphans = append(orphans, port.ID)
 		} else {
 			fmt.Printf("deleted orphan port: %s", port.Name)
 		}
@@ -101,10 +102,71 @@ func getOrphanedDisks(machineclass *v1alpha1.MachineClass, factory *client.Facto
 			continue
 		}
 		if err := storage.DeleteVolume(v.ID); err != nil {
-			orphans = append(orphans, v.Name)
+			orphans = append(orphans, v.ID)
 		} else {
 			fmt.Printf("deleted orphan volume: %s", v.Name)
 		}
 	}
 	return orphans, nil
+}
+
+func cleanOrphanResources(orphanVms []string, orphanVolumes []string, orphanNICs []string, machineClass *v1alpha1.MachineClass, secretData map[string][]byte) (delErrOrphanVms []string, delErrOrphanVolumes []string, delErrOrphanNICs []string) {
+	factory, err := client.NewFactoryFromSecretData(secretData)
+	if err != nil {
+		fmt.Printf("failed to create Openstack client: %v", err)
+		if len(orphanVms) != 0 {
+			delErrOrphanVms = orphanVms
+		}
+		if len(orphanNICs) != 0 {
+			delErrOrphanNICs = orphanNICs
+		}
+		if len(orphanVolumes) != 0 {
+			delErrOrphanVolumes = orphanVolumes
+		}
+		return
+	}
+
+	if len(orphanVms) != 0 {
+		compute, err := factory.Compute()
+		if err == nil {
+			for _, instanceID := range orphanVms {
+				if err := compute.DeleteServer(instanceID); err != nil {
+					fmt.Printf("failed to delete instance %v: %v", instanceID, err)
+					delErrOrphanVms = append(delErrOrphanVms, instanceID)
+				}
+			}
+		} else {
+			delErrOrphanVms = orphanVms
+		}
+	}
+
+	if len(orphanNICs) != 0 {
+		network, err := factory.Network()
+		if err == nil {
+			for _, portID := range orphanNICs {
+				if err := network.DeletePort(portID); err != nil {
+					fmt.Printf("failed to delete port %v: %v", portID, err)
+					delErrOrphanNICs = append(delErrOrphanNICs, portID)
+				}
+			}
+		} else {
+			delErrOrphanNICs = orphanNICs
+		}
+	}
+
+	if len(orphanVolumes) != 0 {
+		storage, err := factory.Storage()
+		if err == nil {
+			for _, volumeID := range orphanVolumes {
+				if err := storage.DeleteVolume(volumeID); err != nil {
+					fmt.Printf("failed to delete volume %v: %v", volumeID, err)
+					delErrOrphanNICs = append(delErrOrphanVolumes, volumeID)
+				}
+			}
+		} else {
+			delErrOrphanVolumes = orphanVolumes
+		}
+	}
+
+	return
 }

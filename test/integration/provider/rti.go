@@ -7,8 +7,9 @@ package provider
 import (
 	"fmt"
 
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
+
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
-	v1alpha1 "github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 )
 
 // ITResourceTagKey is specifically used for integration test
@@ -24,18 +25,24 @@ type ResourcesTrackerImpl struct {
 
 // InitializeResourcesTracker initializes the type ResourcesTrackerImpl variable and tries
 // to delete the orphan resources present before the actual IT runs.
+// create a cleanup function to delete the list of orphan resources.
+// 1. get list of orphan resources.
+// 2. Mark them for deletion and call cleanup.
+// 3. Print the orphan resources which got error in deletion.
 func (r *ResourcesTrackerImpl) InitializeResourcesTracker(machineClass *v1alpha1.MachineClass, secretData map[string][]byte, _ string) error {
+
 	r.MachineClass = machineClass
 	r.SecretData = secretData
 
-	initialVMs, initialNICs, initialDisks, initialMachines, err := r.probeResources()
+	initialVMs, initialNICs, initialVolumes, initialMachines, err := r.probeResources()
 	if err != nil {
 		fmt.Printf("Error in initial probe of orphaned resources: %s", err.Error())
 		return err
 	}
 
-	if len(initialVMs) != 0 || len(initialMachines) != 0 || len(initialNICs) != 0 || len(initialDisks) != 0 {
-		err := fmt.Errorf("orphan resources are available. Clean them up before proceeding with the test.\nvirtual machines: %v\nmcm machines: %v\nnics: %v", initialVMs, initialMachines, initialNICs)
+	delErrOrphanVMs, delErrOrphanVolumes, delErrOrphanNICs := cleanOrphanResources(initialVMs, initialVolumes, initialNICs, r.MachineClass, r.SecretData)
+	if len(delErrOrphanVMs) != 0 || len(delErrOrphanVolumes) != 0 || len(initialMachines) != 0 || len(delErrOrphanNICs) != 0 {
+		err = fmt.Errorf("error in cleaning the following orphan resources. Clean them up before proceeding with the test.\nvirtual machines: %v\ndisks: %v\nmcm machines: %v\nnics: %v", delErrOrphanVMs, delErrOrphanVolumes, initialMachines, delErrOrphanNICs)
 		return err
 	}
 	return nil
@@ -81,6 +88,7 @@ func (r *ResourcesTrackerImpl) IsOrphanedResourcesAvailable() bool {
 	}
 
 	if len(afterTestExecutionVMs) != 0 || len(afterTestExecutionAvailmachines) != 0 || len(afterTestExecutionNICs) != 0 || len(afterTestExecutionDisks) != 0 {
+		fmt.Printf("The following resources are orphans ... trying to delete them \n")
 		fmt.Printf("Virtual Machines: %v\nNICs: %v\nMCM Machines: %v\n", afterTestExecutionVMs, afterTestExecutionNICs, afterTestExecutionAvailmachines)
 		return true
 	}
