@@ -19,7 +19,7 @@ machine-controller-manager-provider-openstack:
         component_descriptor: ~
         version: ~
         cronjob:
-          interval: '5m'
+          interval: '24h'
         update_component_deps: ~
     head-update:
       traits:

@@ -7,7 +7,7 @@ if [ -z "${MAIN_REPO_DIR:-}" ]; then
 	export MAIN_REPO_DIR
 fi
 
-echo "repo-dir: $(MAIN_REPO_DIR)"
+echo "repo-dir: ${MAIN_REPO_DIR}"
 
 if [ "${DEPENDENCY_NAME}" != "github.com/gardener/machine-controller-manager" ]; then 
 	echo "error: do not know how to upgrade ${DEPENDENCY_NAME}"
@@ -31,8 +31,10 @@ echo "set dependency-version of ${DEPENDENCY_NAME} to ${DEPENDENCY_VERSION}"
 
 cd ${MAIN_REPO_DIR}
 old_version=$(cat go.mod | grep "github.com/gardener/machine-controller-manager v" | xargs)
-new_version="github.com/gardener/machine-controller-manager${DEPENDENCY_VERSION}"
+new_version="github.com/gardener/machine-controller-manager ${DEPENDENCY_VERSION}"
 
 sed -i -- 's#'"${old_version}"'#'"${new_version}"'#g' go.mod
 apk add --no-cache go make
-make revendor
+
+go mod tidy -v
+go mod vendor -v

@@ -120,8 +120,8 @@ test-integration:
 
 .PHONY: revendor
 revendor:
-	@env GO111MODULE=on go mod vendor -v
 	@env GO111MODULE=on go mod tidy -v
+	@env GO111MODULE=on go mod vendor -v
 	@chmod +x $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/*
 	@chmod +x $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/.ci/*
 
