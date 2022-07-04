@@ -14,6 +14,13 @@ machine-controller-manager-provider-openstack:
             image: 'eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack'
             target: machine-controller
   jobs:
+    create-upgrade-prs:
+      traits:
+        component_descriptor: ~
+        version: ~
+        cronjob:
+          interval: '5m'
+        update_component_deps: ~
     head-update:
       traits:
         component_descriptor: ~

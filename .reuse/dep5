@@ -17,6 +17,7 @@ Files:
   .ci/**
   .github/workflows/**
   .dockerignore
+  MCM_VERSION
 Copyright: 2020 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
