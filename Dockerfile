@@ -14,7 +14,7 @@ FROM gcr.io/distroless/static-debian11:nonroot AS base
 
 
 ############# machine-controller-manager-provider-openstack #############
-FROM base AS machine-controller-manager-provider-openstack
+FROM base AS machine-controller
 WORKDIR /
 
 COPY --from=builder /go/bin/machine-controller /machine-controller
