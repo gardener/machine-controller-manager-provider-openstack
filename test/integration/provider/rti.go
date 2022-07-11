@@ -88,7 +88,7 @@ func (r *ResourcesTrackerImpl) IsOrphanedResourcesAvailable() bool {
 	}
 
 	if len(afterTestExecutionVMs) != 0 || len(afterTestExecutionAvailmachines) != 0 || len(afterTestExecutionNICs) != 0 || len(afterTestExecutionDisks) != 0 {
-		fmt.Printf("The following resources are orphans ... trying to delete them \n")
+		fmt.Printf("The following resources are orphans ... waiting for them to be deleted \n")
 		fmt.Printf("Virtual Machines: %v\nNICs: %v\nMCM Machines: %v\n", afterTestExecutionVMs, afterTestExecutionNICs, afterTestExecutionAvailmachines)
 		return true
 	}
