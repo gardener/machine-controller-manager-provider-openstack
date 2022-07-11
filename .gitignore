@@ -3,6 +3,7 @@
 /.kube-secrets
 /tmp/*
 /dev
+/hack/tools/bin
 
 .vscode
 .idea
