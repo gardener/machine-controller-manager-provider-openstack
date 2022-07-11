@@ -11,8 +11,8 @@ NAME                := machine-controller-manager-provider-openstack
 IMAGE_NAME          := $(IMAGE_PREFIX)/$(NAME)
 VERSION             := $(shell cat VERSION)
 CONTROL_NAMESPACE   := default
-CONTROL_KUBECONFIG  := dev/control-kubeconfig.yaml
-TARGET_KUBECONFIG   := dev/target-kubeconfig.yaml
+CONTROL_KUBECONFIG  ?= dev/control-kubeconfig.yaml
+TARGET_KUBECONFIG   ?= dev/target-kubeconfig.yaml
 
 # Below ones are used in tests
 MACHINECLASS_V1 	:= dev/machineclassv1.yaml
