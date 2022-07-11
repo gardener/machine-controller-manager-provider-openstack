@@ -60,17 +60,17 @@ func (r *ResourcesTrackerImpl) probeResources() ([]string, []string, []string, [
 		return nil, nil, nil, nil, fmt.Errorf("failed to find available machines: %s", err)
 	}
 
-	orphanVMs, err := getOrphanedInstances(r.MachineClass, factory)
+	orphanVMs, err := getOrphanedInstances(factory)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to find orphaned instances: %s", err)
 	}
 
-	orphanNICs, err := getOrphanedNICs(r.MachineClass, factory)
+	orphanNICs, err := getOrphanedNICs(factory)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to find available ports: %s", err)
 	}
 
-	orphanDisks, err := getOrphanedDisks(r.MachineClass, factory)
+	orphanDisks, err := getOrphanedDisks(factory)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to find available disks: %s", err)
 	}

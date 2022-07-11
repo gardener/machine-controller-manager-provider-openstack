@@ -18,21 +18,17 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
-func getOrphanedInstances(machineClass *v1alpha1.MachineClass, factory *client.Factory) ([]string, error) {
+func getOrphanedInstances(factory *client.Factory) ([]string, error) {
 	compute, err := factory.Compute()
 	if err != nil {
 		return nil, err
 	}
 	instances, err := compute.ListServers(&servers.ListOpts{})
 
-	orphans := []string{}
+	var orphans []string
 	for _, instance := range instances {
 		if _, ok := instance.Metadata[ITResourceTagKey]; ok {
-			if err := compute.DeleteServer(instance.ID); err != nil {
-				orphans = append(orphans, instance.ID)
-			} else {
-				fmt.Printf("deleted orphan VM: %s", instance.Name)
-			}
+			orphans = append(orphans, instance.ID)
 		}
 	}
 	return orphans, nil
@@ -62,7 +58,7 @@ func getMachines(machineClass *v1alpha1.MachineClass, factory *client.Factory) (
 	return machines, nil
 }
 
-func getOrphanedNICs(machineclass *v1alpha1.MachineClass, factory *client.Factory) ([]string, error) {
+func getOrphanedNICs(factory *client.Factory) ([]string, error) {
 	network, err := factory.Network()
 	if err != nil {
 		return nil, err
@@ -74,18 +70,14 @@ func getOrphanedNICs(machineclass *v1alpha1.MachineClass, factory *client.Factor
 	if err != nil {
 		return nil, err
 	}
-	orphans := []string{}
+	var orphans []string
 	for _, port := range ports {
-		if err := network.DeletePort(port.ID); err != nil {
-			orphans = append(orphans, port.ID)
-		} else {
-			fmt.Printf("deleted orphan port: %s", port.Name)
-		}
+		orphans = append(orphans, port.ID)
 	}
 	return orphans, nil
 }
 
-func getOrphanedDisks(machineclass *v1alpha1.MachineClass, factory *client.Factory) ([]string, error) {
+func getOrphanedDisks(factory *client.Factory) ([]string, error) {
 	storage, err := factory.Storage()
 	if err != nil {
 		return nil, err
@@ -96,16 +88,12 @@ func getOrphanedDisks(machineclass *v1alpha1.MachineClass, factory *client.Facto
 		return nil, err
 	}
 
-	orphans := []string{}
+	var orphans []string
 	for _, v := range vols {
 		if _, ok := v.Metadata[ITResourceTagKey]; !ok {
 			continue
 		}
-		if err := storage.DeleteVolume(v.ID); err != nil {
-			orphans = append(orphans, v.ID)
-		} else {
-			fmt.Printf("deleted orphan volume: %s", v.Name)
-		}
+		orphans = append(orphans, v.ID)
 	}
 	return orphans, nil
 }
