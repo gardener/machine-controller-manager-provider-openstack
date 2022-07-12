@@ -155,6 +155,10 @@ Files: vendor/github.com/google/gofuzz/*
 Copyright: 2014 Google Inc.
 License: Apache-2.0
 
+Files: vendor/github.com/google/pprof/*
+Copyright: 2014 Google Inc.
+License: Apache-2.0
+
 Files: vendor/github.com/googleapis/gnostic/*
 Copyright: 2017 Google Inc.
 License: Apache-2.0
