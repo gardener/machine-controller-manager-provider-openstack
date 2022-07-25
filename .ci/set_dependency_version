@@ -36,5 +36,4 @@ new_version="github.com/gardener/machine-controller-manager ${DEPENDENCY_VERSION
 sed -i -- 's#'"${old_version}"'#'"${new_version}"'#g' go.mod
 apk add --no-cache go make
 
-go mod tidy -v
-go mod vendor -v
+make revendor
