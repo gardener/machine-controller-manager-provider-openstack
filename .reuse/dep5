@@ -197,6 +197,10 @@ Files: vendor/github.com/mailru/easyjson/*
 Copyright: 2016 Mail.Ru Group
 License: MIT
 
+Files: vendor/github.com/Masterminds/semver/*
+Copyright: 2014-2019, Matt Butcher and Matt Farina
+License: MIT
+
 Files: vendor/github.com/mattn/go-colorable/*
 Copyright: 2016 Yasuhiro Matsumoto
 License: MIT
