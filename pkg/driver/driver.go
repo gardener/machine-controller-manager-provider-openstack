@@ -36,27 +36,11 @@ const (
 // Also make sure each method return appropriate errors mentioned in `https://github.com/gardener/machine-controller-manager/blob/master/docs/development/machine_error_codes.md`
 
 // CreateMachine handles a machine creation request
-// REQUIRED METHOD
-//
-// REQUEST PARAMETERS (driver.CreateMachineRequest)
-// Machine               *v1alpha1.Machine        Machine object from whom VM is to be created
-// MachineClass          *v1alpha1.MachineClass   MachineClass backing the machine object
-// Secret                *corev1.Secret           Kubernetes secret that contains any sensitive data/credentials
-//
-// RESPONSE PARAMETERS (driver.CreateMachineResponse)
-// ProviderID            string                   Unique identification of the VM at the cloud provider. This could be the same/different from req.MachineName.
-//                                                ProviderID typically matches with the node.Spec.ProviderID on the node object.
-//                                                Eg: gce://project-name/region/vm-ProviderID
-// NodeName              string                   Returns the name of the node-object that the VM register's with Kubernetes.
-//                                                This could be different from req.MachineName as well
-// LastKnownState        string                   (Optional) Last known state of VM during the current operation.
-//                                                Could be helpful to continue operations in future requests.
 //
 // OPTIONAL IMPLEMENTATION LOGIC
 // It is optionally expected by the safety controller to use an identification mechanism to map the VM Created by a providerSpec.
 // These could be done using tag(s)/resource-groups etc.
 // This logic is used by safety controller to delete orphan VMs which are not backed by any machine CRD
-//
 func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateMachineRequest) (*driver.CreateMachineResponse, error) {
 	klog.V(2).Infof("CreateMachine request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("CreateMachine request has been processed for %q", req.Machine.Name)
@@ -102,16 +86,6 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 }
 
 // DeleteMachine handles a machine deletion request
-//
-// REQUEST PARAMETERS (driver.DeleteMachineRequest)
-// Machine               *v1alpha1.Machine        Machine object from whom VM is to be deleted
-// MachineClass          *v1alpha1.MachineClass   MachineClass backing the machine object
-// Secret                *corev1.Secret           Kubernetes secret that contains any sensitive data/credentials
-//
-// RESPONSE PARAMETERS (driver.DeleteMachineResponse)
-// LastKnownState        bytes(blob)              (Optional) Last known state of VM during the current operation.
-//                                                Could be helpful to continue operations in future requests.
-//
 func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteMachineRequest) (*driver.DeleteMachineResponse, error) {
 	// Log messages to track delete request
 	klog.V(2).Infof("DeleteMachine request has been received for %q", req.Machine.Name)
@@ -153,21 +127,6 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 }
 
 // GetMachineStatus handles a machine get status request
-// OPTIONAL METHOD
-//
-// REQUEST PARAMETERS (driver.GetMachineStatusRequest)
-// Machine               *v1alpha1.Machine        Machine object from whom VM status needs to be returned
-// MachineClass          *v1alpha1.MachineClass   MachineClass backing the machine object
-// Secret                *corev1.Secret           Kubernetes secret that contains any sensitive data/credentials
-//
-// RESPONSE PARAMETERS (driver.GetMachineStatueResponse)
-// ProviderID            string                   Unique identification of the VM at the cloud provider. This could be the same/different from req.MachineName.
-//                                                ProviderID typically matches with the node.Spec.ProviderID on the node object.
-//                                                Eg: gce://project-name/region/vm-ProviderID
-// NodeName             string                    Returns the name of the node-object that the VM register's with Kubernetes.
-//                                                This could be different from req.MachineName as well
-//
-// The request should return a NOT_FOUND (5) status error code if the machine is not existing
 func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("GetMachineStatus request has been received for %q", req.Machine.Name)
@@ -179,16 +138,6 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 // ListMachines lists all the machines possibly created by a providerSpec
 // Identifying machines created by a given providerSpec depends on the OPTIONAL IMPLEMENTATION LOGIC
 // you have used to identify machines created by a providerSpec. It could be tags/resource-groups etc
-// OPTIONAL METHOD
-//
-// REQUEST PARAMETERS (driver.ListMachinesRequest)
-// MachineClass          *v1alpha1.MachineClass   MachineClass based on which VMs created have to be listed
-// Secret                *corev1.Secret           Kubernetes secret that contains any sensitive data/credentials
-//
-// RESPONSE PARAMETERS (driver.ListMachinesResponse)
-// MachineList           map<string,string>  A map containing the keys as the MachineID and value as the MachineName
-//                                           for all machine's who where possibility created by this ProviderSpec
-//
 func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMachinesRequest) (*driver.ListMachinesResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("ListMachines request has been received for %q", req.MachineClass.Name)
@@ -237,13 +186,6 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 }
 
 // GetVolumeIDs returns a list of Volume IDs for all PV Specs for whom an provider volume was found
-//
-// REQUEST PARAMETERS (driver.GetVolumeIDsRequest)
-// PVSpecList            []*corev1.PersistentVolumeSpec       PVSpecsList is a list PV specs for whom volume-IDs are required.
-//
-// RESPONSE PARAMETERS (driver.GetVolumeIDsResponse)
-// VolumeIDs             []string                             VolumeIDs is a repeated list of VolumeIDs.
-//
 func (p *OpenstackDriver) GetVolumeIDs(_ context.Context, req *driver.GetVolumeIDsRequest) (*driver.GetVolumeIDsResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("GetVolumeIDs request has been received for %q", req.PVSpecs)
@@ -271,16 +213,8 @@ func (p *OpenstackDriver) GetVolumeIDs(_ context.Context, req *driver.GetVolumeI
 // 1. Validate if the incoming classSpec is valid one for migration (e.g. has the right kind).
 // 2. Migrate/Copy over all the fields/spec from req.ProviderSpecificMachineClass to req.MachineClass
 // For an example refer
-//		https://github.com/prashanth26/machine-controller-manager-provider-gcp/blob/migration/pkg/gcp/machine_controller.go#L222-L233
 //
-// REQUEST PARAMETERS (driver.GenerateMachineClassForMigration)
-// ProviderSpecificMachineClass    interface{}                             ProviderSpecificMachineClass is provider specfic machine class object (E.g. AWSMachineClass). Typecasting is required here.
-// MachineClass 				   *v1alpha1.MachineClass                  MachineClass is the machine class object that is to be filled up by this method.
-// ClassSpec                       *v1alpha1.ClassSpec                     Somemore classSpec details useful while migration.
-//
-// RESPONSE PARAMETERS (driver.GenerateMachineClassForMigration)
-// NONE
-//
+//	https://github.com/prashanth26/machine-controller-manager-provider-gcp/blob/migration/pkg/gcp/machine_controller.go#L222-L233
 func (p *OpenstackDriver) GenerateMachineClassForMigration(_ context.Context, req *driver.GenerateMachineClassForMigrationRequest) (*driver.GenerateMachineClassForMigrationResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("MigrateMachineClass request has been received for %q", req.ClassSpec)
