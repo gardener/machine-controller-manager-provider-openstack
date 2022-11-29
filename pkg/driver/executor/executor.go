@@ -537,11 +537,13 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 		return fmt.Errorf("error deleting port [Name=%q]: %s", machineName, err)
 	}
 	if len(portList) == 0 {
-		klog.V(3).Infof("port [Name=%q] was not found", machineName)
+		klog.V(2).Infof("port [Name=%q] was not found", machineName)
 		return nil
 	}
 
+	klog.V(2).Infof("deleting ports for machine [Name=%q]", machineName)
 	for _, p := range portList {
+		klog.V(2).Infof("deleting port [ID=%q]", p.ID)
 		err = ex.Network.DeletePort(p.ID)
 		if err != nil {
 			klog.Errorf("failed to delete port [ID=%q]: %s", p.ID, err)
