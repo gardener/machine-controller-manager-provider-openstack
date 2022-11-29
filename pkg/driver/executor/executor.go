@@ -530,23 +530,26 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 }
 
 func (ex *Executor) deletePort(_ context.Context, machineName string) error {
-	portID, err := ex.Network.PortIDFromName(machineName)
+	portList, err := ex.Network.ListPorts(ports.ListOpts{
+		Name: machineName,
+	})
 	if err != nil {
-		if client.IsNotFoundError(err) {
-			klog.V(3).Infof("port [Name=%q] was not found", machineName)
-			return nil
-		}
 		return fmt.Errorf("error deleting port [Name=%q]: %s", machineName, err)
 	}
-
-	klog.V(2).Infof("deleting port [Name=%q]", machineName)
-	err = ex.Network.DeletePort(portID)
-	if err != nil {
-		klog.Errorf("failed to delete port [Name=%q]: %s", machineName, err)
-		return err
+	if len(portList) == 0 {
+		klog.V(3).Infof("port [Name=%q] was not found", machineName)
+		return nil
 	}
 
-	klog.V(3).Infof("deleted port [Name=%q]", machineName)
+	for _, p := range portList {
+		err = ex.Network.DeletePort(p.ID)
+		if err != nil {
+			klog.Errorf("failed to delete port [ID=%q]: %s", p.ID, err)
+			return err
+		}
+		klog.V(3).Infof("deleted port [ID=%q]", p.ID)
+	}
+
 	return nil
 }
 
