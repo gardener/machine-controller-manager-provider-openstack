@@ -396,7 +396,7 @@ var _ = Describe("Executor", func() {
 				compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
 			)
 			gomock.InOrder(
-				network.EXPECT().PortIDFromName(machineName).Return(portID, nil),
+				network.EXPECT().ListPorts(ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: portID}}, nil),
 				network.EXPECT().DeletePort(portID).Return(nil),
 			)
 
@@ -409,10 +409,11 @@ var _ = Describe("Executor", func() {
 			Expect(err).To(BeNil())
 		})
 
-		It("should try to delete the port if we use specific subnetID", func() {
+		It("should delete all ports if multiple are found", func() {
 			var (
 				subnetID    = "subID1"
-				portID      = "portID"
+				portID1     = "portID1"
+				portID2     = "portID2"
 				machineName = "foo"
 			)
 
@@ -423,8 +424,9 @@ var _ = Describe("Executor", func() {
 				compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
 			)
 			gomock.InOrder(
-				network.EXPECT().PortIDFromName(machineName).Return(portID, nil),
-				network.EXPECT().DeletePort(portID).Return(nil),
+				network.EXPECT().ListPorts(ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: portID1}, {ID: portID2}}, nil),
+				network.EXPECT().DeletePort(portID1).Return(nil),
+				network.EXPECT().DeletePort(portID2).Return(nil),
 			)
 
 			ex := Executor{
