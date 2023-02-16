@@ -70,7 +70,7 @@ github.com/fsnotify/fsnotify
 github.com/gardener/gardener/hack
 github.com/gardener/gardener/hack/.ci
 github.com/gardener/gardener/hack/api-reference/template
-# github.com/gardener/machine-controller-manager v0.48.0
+# github.com/gardener/machine-controller-manager v0.48.1
 ## explicit; go 1.19
 github.com/gardener/machine-controller-manager/pkg/apis/machine
 github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1
