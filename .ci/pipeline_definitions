@@ -13,6 +13,15 @@ machine-controller-manager-provider-openstack:
             registry: 'gcr-readwrite'
             image: 'eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack'
             target: machine-controller
+            resource_labels:
+            - name: 'gardener.cloud/cve-categorisation'
+              value:
+                network_exposure: 'protected'
+                authentication_enforced: false
+                user_interaction: 'gardener-operator'
+                confidentiality_requirement: 'high'
+                integrity_requirement: 'high'
+                availability_requirement: 'low'
   jobs:
     create-upgrade-prs:
       traits:
