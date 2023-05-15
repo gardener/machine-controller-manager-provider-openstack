@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
@@ -202,32 +201,4 @@ func (p *OpenstackDriver) GetVolumeIDs(_ context.Context, req *driver.GetVolumeI
 		}
 	}
 	return &driver.GetVolumeIDsResponse{VolumeIDs: names}, nil
-}
-
-// GenerateMachineClassForMigration helps in migration of one kind of machineClass CR to another kind.
-// For instance an machineClass custom resource of `AWSMachineClass` to `MachineClass`.
-// Implement this functionality only if something like this is desired in your setup.
-// If you don't require this functionality leave is as is. (return Unimplemented)
-//
-// The following are the tasks typically expected out of this method
-// 1. Validate if the incoming classSpec is valid one for migration (e.g. has the right kind).
-// 2. Migrate/Copy over all the fields/spec from req.ProviderSpecificMachineClass to req.MachineClass
-// For an example refer
-//
-//	https://github.com/prashanth26/machine-controller-manager-provider-gcp/blob/migration/pkg/gcp/machine_controller.go#L222-L233
-func (p *OpenstackDriver) GenerateMachineClassForMigration(_ context.Context, req *driver.GenerateMachineClassForMigrationRequest) (*driver.GenerateMachineClassForMigrationResponse, error) {
-	// Log messages to track start and end of request
-	klog.V(2).Infof("MigrateMachineClass request has been received for %q", req.ClassSpec)
-	defer klog.V(2).Infof("MigrateMachineClass request has been processed for %q", req.ClassSpec)
-
-	if req.ClassSpec.Kind != openStackMachineClassKind {
-		return nil, status.Error(codes.Internal, "migration for this machineClass kind is not supported")
-	}
-
-	osMachineClass := req.ProviderSpecificMachineClass.(*v1alpha1.OpenStackMachineClass)
-	err := migrateMachineClass(osMachineClass, req.MachineClass)
-	if err != nil {
-		err = status.Error(codes.Internal, err.Error())
-	}
-	return &driver.GenerateMachineClassForMigrationResponse{}, err
 }

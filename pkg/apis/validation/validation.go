@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"strings"
 
-	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
-	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+
+	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
+	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 )
 
 // ValidateRequest validates a request received by the OpenStack driver.
