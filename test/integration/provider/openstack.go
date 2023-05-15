@@ -23,7 +23,11 @@ func getOrphanedInstances(factory *client.Factory) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	instances, err := compute.ListServers(&servers.ListOpts{})
+	if err != nil {
+		return nil, err
+	}
 
 	var orphans []string
 	for _, instance := range instances {
