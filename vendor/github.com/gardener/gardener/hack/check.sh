@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
-# Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+# Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,15 +31,6 @@ echo "> Check"
 
 echo "Executing golangci-lint"
 golangci-lint run $GOLANGCI_LINT_CONFIG_FILE --timeout 10m $@
-
-if [ -d "./vendor" ]; then
-  VET_MOD_OPTS=-mod=vendor
-else
-  VET_MOD_OPTS=-mod=readonly
-fi
-
-echo "Executing go vet"
-go vet ${VET_MOD_OPTS} $@
 
 echo "Executing gofmt/goimports"
 folders=()
