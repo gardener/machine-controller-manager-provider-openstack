@@ -7,17 +7,20 @@ Source: https://github.com/gardener/machine-controller-manager-provider-openstac
 # source code
 
 Files:
-  vendor/modules.txt
+  .ci/**
+  .dockerignore
+  .github/workflows/**
   .gitignore
+  .golangci.yaml
+  .idea/**
+  .vscode/**
   CODEOWNERS
+  MCM_VERSION
+  VERSION
+  dev/**
   go.mod
   go.sum
-  .golangci.yaml
-  VERSION
-  .ci/**
-  .github/workflows/**
-  .dockerignore
-  MCM_VERSION
+  vendor/modules.txt
 Copyright: 2020 SAP SE or an SAP affiliate company and Gardener contributors
 License: Apache-2.0
 
@@ -44,6 +47,14 @@ License: Apache-2.0
 
 Files: vendor/github.com/beorn7/perks/*
 Copyright: 2013 Blake Mizerany
+License: MIT
+
+Files: vendor/github.com/blang/semver/*
+Copyright: 2014 Benedikt Lang
+License: MIT
+
+Files: vendor/github.co/bronze1man/yaml2json/*
+Copyright: 2013 bronze1man
 License: MIT
 
 Files: vendor/github.com/cespare/xxhash/*
@@ -155,6 +166,14 @@ Files: vendor/github.com/google/gofuzz/*
 Copyright: 2014 Google Inc.
 License: Apache-2.0
 
+Files: vendor/github.com/google/gnostic/*
+Copyright: 2017 Google Inc.
+License: Apache-2.0
+
+Files: vendor/github.com/google/pprof/*
+Copyright: 2014 Google Inc.
+License: Apache-2.0
+
 Files: vendor/github.com/googleapis/gnostic/*
 Copyright: 2017 Google Inc.
 License: Apache-2.0
@@ -228,6 +247,10 @@ License: Apache-2.0
 Files: vendor/github.com/modern-go/reflect2/*
 Copyright: 2018 Tao Wen
 License: Apache-2.0
+
+Files: vendor/github.com/munnerz/goautoneg/*
+Copyright: 2011, Open Knowledge Foundation Ltd.
+License:
 
 Files: vendor/github.com/nxadm/tail/*
 Copyright: 2015 Hewlett Packard Enterprise Development LP
@@ -462,6 +485,10 @@ License: Apache-2.0
 
 Files: vendor/sigs.k8s.io/controller-runtime/*
 Copyright: 2019 The Kubernetes Authors
+License: Apache-2.0
+
+Files: vendor/sigs.k8s.io/json/*
+Copyright: 2011 The Kubernetes Authors
 License: Apache-2.0
 
 Files: vendor/sigs.k8s.io/structured-merge-diff/*
