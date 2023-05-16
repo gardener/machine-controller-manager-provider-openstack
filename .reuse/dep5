@@ -53,7 +53,7 @@ Files: vendor/github.com/blang/semver/*
 Copyright: 2014 Benedikt Lang
 License: MIT
 
-Files: vendor/github.co/bronze1man/yaml2json/*
+Files: vendor/github.com/bronze1man/yaml2json/*
 Copyright: 2013 bronze1man
 License: MIT
 
