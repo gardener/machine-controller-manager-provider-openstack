@@ -21,8 +21,7 @@ import (
 )
 
 const (
-	openStackMachineClassKind = "OpenStackMachineClass"
-	cinderDriverName          = "cinder.csi.openstack.org"
+	cinderDriverName = "cinder.csi.openstack.org"
 )
 
 // NOTE
