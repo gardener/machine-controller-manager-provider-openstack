@@ -4,6 +4,7 @@
 
 BINARY_PATH         := bin/
 REPO_ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+HACK_DIR            := $(REPO_ROOT)/hack
 COVERPROFILE        := test/output/coverprofile.out
 REGISTRY            := eu.gcr.io/gardener-project/gardener
 IMAGE_PREFIX        := $(REGISTRY)/extensions
@@ -25,6 +26,14 @@ LEADER_ELECT 	    := "true"
 # If Integration Test Suite is to be run locally against clusters then export the below variable
 # with MCM deployment name in the cluster
 MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME := machine-controller-manager
+
+#########################################
+# Tools
+#########################################
+
+TOOLS_DIR := hack/tools
+include vendor/github.com/gardener/gardener/hack/tools.mk
+
 #################################################
 # Rules for starting machine-controller locally
 #################################################
@@ -51,36 +60,28 @@ start:
 # Rules for verification, formatting, linting, testing and cleaning
 #####################################################################
 
-.PHONY: install-requirements
-install-requirements:
-	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/ahmetb/gen-crd-api-reference-docs
-	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/golang/mock/mockgen
-	@go install -mod=vendor $(REPO_ROOT)/vendor/github.com/onsi/ginkgo/ginkgo
-	@go install golang.org/x/tools/cmd/goimports@latest
-
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.50.0
-
 .PHONY: install
 install:
 	@LD_FLAGS="-w -X github.com/gardener/$(NAME)/pkg/version.Version=$(VERSION)" \
 	$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/install.sh ./...
 
 .PHONY: generate
-generate:
-	@env GOMODULE111=on go generate -mod=vendor ./pkg/...
+generate: $(CONTROLLER_GEN) $(GEN_CRD_API_REFERENCE_DOCS) $(HELM) $(MOCKGEN)
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/generate.sh ./charts/... ./cmd/... ./example/... ./pkg/...
+	$(MAKE) format
 
 .PHONY: check-generate
 check-generate:
 	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-generate.sh $(REPO_ROOT)
 
-.PHONY: check
-check:
-	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/...
-	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-charts.sh ./charts
-
 .PHONY: format
-format:
-	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/format.sh ./cmd ./pkg 
+format: $(GOIMPORTS) $(GOIMPORTSREVISER)
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/format.sh ./cmd ./pkg ./test
+
+.PHONY: check
+check: $(GOIMPORTS) $(GOLANGCI_LINT)
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
+	@$(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/check-charts.sh ./charts
 
 .PHONY: test
 test:
@@ -98,7 +99,7 @@ test-clean:
 verify: check format test
 
 .PHONY: verify-extended
-verify-extended: install-requirements check-generate check format test-cov test-clean
+verify-extended: check-generate check format test-cov test-clean
 
 .PHONY: clean
 clean:
@@ -126,6 +127,7 @@ revendor:
 	@env GO111MODULE=on go mod vendor -v
 	@chmod +x $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/*
 	@chmod +x $(REPO_ROOT)/vendor/github.com/gardener/gardener/hack/.ci/*
+	@ln -sf ../vendor/github.com/gardener/gardener/hack/cherry-pick-pull.sh $(HACK_DIR)/cherry-pick-pull.sh
 
 .PHONY: update-dependencies
 update-dependencies:
