@@ -106,8 +106,8 @@ github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/gardener/gardener v1.69.3 h1:IYpZuA4Hxb7qojE51qRkBaErpaI9X5lglxxUNV8I+Kk=
 github.com/gardener/gardener v1.69.3/go.mod h1:cqFadgATO9ptB8tpTQssDu8imWoehgvaWBO8vhnEGos=
-github.com/gardener/machine-controller-manager v0.49.1 h1:gzI0NrXIU4KWfpj89xyVSf2xZdPLh+DkvDDst01OLBw=
-github.com/gardener/machine-controller-manager v0.49.1/go.mod h1:ypFf18+Y6mJpohfZrOJI+vq7NQ3Yn7Ke4ujW23u/6nM=
+github.com/gardener/machine-controller-manager v0.49.3 h1:/ghxZVMij00SpeaORMZJlodosePWWByrIOr8fcp45sU=
+github.com/gardener/machine-controller-manager v0.49.3/go.mod h1:ypFf18+Y6mJpohfZrOJI+vq7NQ3Yn7Ke4ujW23u/6nM=
 github.com/gliderlabs/ssh v0.2.2 h1:6zsha5zo/TWhRhwqCD3+EarCAgZ2yN28ipRnGPnwkI0=
 github.com/gliderlabs/ssh v0.2.2/go.mod h1:U7qILu1NlMHj9FlMhZLlkCdDnU1DBEAqr0aevW3Awn0=
 github.com/go-git/gcfg v1.5.0 h1:Q5ViNfGF8zFgyJWPqYwA7qGFoMTEiBmdlkcfRmpIMa4=

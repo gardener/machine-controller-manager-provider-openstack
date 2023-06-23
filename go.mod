@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/gardener/gardener v1.69.3
-	github.com/gardener/machine-controller-manager v0.49.1
+	github.com/gardener/machine-controller-manager v0.49.3
 	github.com/golang/mock v1.6.0
 	github.com/gophercloud/gophercloud v0.20.0
 	github.com/gophercloud/utils v0.0.0-20210909165623-d7085207ff6d
