@@ -46,6 +46,10 @@ func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*opensta
 }
 
 func mapErrorToCode(err error) codes.Code {
+	if errors.Is(err, executor.ErrNoValidHost) {
+		return codes.ResourceExhausted
+	}
+
 	if errors.Is(err, executor.ErrNotFound) {
 		return codes.NotFound
 	}
@@ -58,10 +62,8 @@ func mapErrorToCode(err error) codes.Code {
 		return codes.Unauthenticated
 	}
 
-	// According to openstack docs (See https://specs.openstack.org/openstack/api-wg/guidelines/http/response-codes.html#failure-code-clarifications)
-	// 403 Forbidden is returned in case of quota exhaustion.
 	if client.IsUnauthorized(err) {
-		return codes.ResourceExhausted
+		return codes.PermissionDenied
 	}
 
 	return codes.Internal
