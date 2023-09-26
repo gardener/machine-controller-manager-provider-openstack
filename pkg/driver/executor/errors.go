@@ -8,6 +8,9 @@ import (
 	"fmt"
 )
 
+// NoValidHost is a part of the error message returned when there is no valid host in the zone to deploy a VM.
+const NoValidHost = "not enough hosts available"
+
 var (
 	// ErrNotFound is returned when the requested resource could not be found.
 	ErrNotFound = fmt.Errorf("resource not found")
