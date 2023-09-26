@@ -7,6 +7,7 @@ package driver
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,9 +47,6 @@ func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*opensta
 }
 
 func mapErrorToCode(err error) codes.Code {
-	if errors.Is(err, executor.ErrNoValidHost) {
-		return codes.ResourceExhausted
-	}
 
 	if errors.Is(err, executor.ErrNotFound) {
 		return codes.NotFound
@@ -66,5 +64,13 @@ func mapErrorToCode(err error) codes.Code {
 		return codes.PermissionDenied
 	}
 
+	return mapErrorMessageToCode(err)
+}
+
+func mapErrorMessageToCode(err error) codes.Code {
+	errorMessage := err.Error()
+	if strings.Contains(errorMessage, executor.NoValidHost) {
+		return codes.ResourceExhausted
+	}
 	return codes.Internal
 }

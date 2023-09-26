@@ -8,6 +8,9 @@ import (
 	"fmt"
 )
 
+// NoValidHost is a part of the error message returned when there is no valid host in the zone to deploy a VM.
+const NoValidHost = "not enough hosts available"
+
 var (
 	// ErrNotFound is returned when the requested resource could not be found.
 	ErrNotFound = fmt.Errorf("resource not found")
@@ -16,7 +19,4 @@ var (
 	// For example, reverse lookups from names to IDs may yield multiple matches because names are not unique in most
 	// OpenStack resources. In case this case, where a unique ID could not be determined an ErrMultipleFound is returned.
 	ErrMultipleFound = fmt.Errorf("multiple resources found")
-
-	// ErrNoValidHost is returned when there is no valid host in the zone to deploy a VM.
-	ErrNoValidHost = fmt.Errorf("not enough hosts available")
 )
