@@ -102,7 +102,7 @@ func getOrphanedDisks(factory *client.Factory) ([]string, error) {
 	return orphans, nil
 }
 
-func cleanOrphanResources(orphanVms []string, orphanVolumes []string, orphanNICs []string, machineClass *v1alpha1.MachineClass, secretData map[string][]byte) (delErrOrphanVms []string, delErrOrphanVolumes []string, delErrOrphanNICs []string) {
+func cleanOrphanResources(orphanVms []string, orphanVolumes []string, orphanNICs []string, _ *v1alpha1.MachineClass, secretData map[string][]byte) (delErrOrphanVms []string, delErrOrphanVolumes []string, delErrOrphanNICs []string) {
 	factory, err := client.NewFactoryFromSecretData(secretData)
 	if err != nil {
 		fmt.Printf("failed to create Openstack client: %v", err)

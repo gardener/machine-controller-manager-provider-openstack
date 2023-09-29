@@ -12,11 +12,11 @@ package openstack
 import (
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
 	volumes "github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	servers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	ports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	subnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockCompute is a mock of Compute interface.

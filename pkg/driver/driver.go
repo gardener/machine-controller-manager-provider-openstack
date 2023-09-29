@@ -125,7 +125,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 }
 
 // GetMachineStatus handles a machine get status request
-func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
+func (p *OpenstackDriver) GetMachineStatus(_ context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("GetMachineStatus request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("GetMachineStatus is not implemented")
