@@ -11,17 +11,7 @@ IMAGE_PREFIX        := $(REGISTRY)/extensions
 NAME                := machine-controller-manager-provider-openstack
 IMAGE_NAME          := $(IMAGE_PREFIX)/$(NAME)
 VERSION             := $(shell cat VERSION)
-CONTROL_NAMESPACE   := default
-CONTROL_KUBECONFIG  ?= dev/control-kubeconfig.yaml
-TARGET_KUBECONFIG   ?= dev/target-kubeconfig.yaml
 
-# Below ones are used in tests
-MACHINECLASS_V1 	:= dev/machineclassv1.yaml
-MACHINECLASS_V2 	:= 
-MCM_IMAGE			:= 
-MC_IMAGE			:= 
-# MCM_IMAGE			:= eu.gcr.io/gardener-project/gardener/machine-controller-manager:v0.42.0
-# MC_IMAGE			:= $(IMAGE_NAME):v0.6.0
 LEADER_ELECT 	    := "true"
 # If Integration Test Suite is to be run locally against clusters then export the below variable
 # with MCM deployment name in the cluster
@@ -33,6 +23,7 @@ MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME := machine-controller-manager
 
 TOOLS_DIR := hack/tools
 include vendor/github.com/gardener/gardener/hack/tools.mk
+include .env
 
 #################################################
 # Rules for starting machine-controller locally
