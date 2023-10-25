@@ -23,7 +23,7 @@ MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME := machine-controller-manager
 
 TOOLS_DIR := hack/tools
 include vendor/github.com/gardener/gardener/hack/tools.mk
-include .env
+-include .env
 
 #################################################
 # Rules for starting machine-controller locally
