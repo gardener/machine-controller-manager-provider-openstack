@@ -2,6 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+include vendor/github.com/gardener/gardener/hack/tools.mk
+-include .env
+
 BINARY_PATH         := bin/
 REPO_ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 HACK_DIR            := $(REPO_ROOT)/hack
@@ -22,8 +25,6 @@ MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME := machine-controller-manager
 #########################################
 
 TOOLS_DIR := hack/tools
-include vendor/github.com/gardener/gardener/hack/tools.mk
--include .env
 
 #################################################
 # Rules for starting machine-controller locally
