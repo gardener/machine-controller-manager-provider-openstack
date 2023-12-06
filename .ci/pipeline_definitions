@@ -4,12 +4,13 @@ machine-controller-manager-provider-openstack:
       version:
         preprocess: 'inject-commit-hash'
         inject_effective_version: true
-      component_descriptor: ~
+      component_descriptor:
+        ocm_repository: europe-docker.pkg.dev/gardener-project/snapshots
       publish:
         dockerimages:
           machine-controller-manager-provider-openstack:
             dockerfile: 'Dockerfile'
-            image: 'eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack'
+            image: europe-docker.pkg.dev/gardener-project/snapshots/gardener/machine-controller-manager-provider-openstack
             target: machine-controller
             resource_labels:
             - name: 'gardener.cloud/cve-categorisation'
@@ -30,17 +31,26 @@ machine-controller-manager-provider-openstack:
             image_reference: 'golang:1.20.5'
     head-update:
       traits:
+        component_descriptor:
+          ocm_repository_mappings:
+            - repository: europe-docker.pkg.dev/gardener-project/releases
         draft_release: ~
     pull-request:
       traits:
         pull-request: ~
+        component_descriptor:
+          ocm_repository_mappings:
+            - repository: europe-docker.pkg.dev/gardener-project/releases
     release:
       traits:
         version:
           preprocess: 'finalize'
+        component_descriptor:
+          ocm_repository: europe-docker.pkg.dev/gardener-project/releases
         release:
           nextversion: 'bump_minor'
         publish:
           dockerimages:
             machine-controller-manager-provider-openstack:
               tag_as_latest: true
+              image: europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager-provider-openstack
