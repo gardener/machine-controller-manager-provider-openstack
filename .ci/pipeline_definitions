@@ -1,16 +1,14 @@
 machine-controller-manager-provider-openstack:
-  template: 'default'
   base_definition:
-    repo: ~
     traits:
       version:
         preprocess: 'inject-commit-hash'
         inject_effective_version: true
+      component_descriptor: ~
       publish:
         dockerimages:
           machine-controller-manager-provider-openstack:
             dockerfile: 'Dockerfile'
-            registry: 'gcr-readwrite'
             image: 'eu.gcr.io/gardener-project/gardener/machine-controller-manager-provider-openstack'
             target: machine-controller
             resource_labels:
@@ -25,8 +23,6 @@ machine-controller-manager-provider-openstack:
   jobs:
     create-upgrade-prs:
       traits:
-        component_descriptor: ~
-        version: ~
         cronjob:
           interval: '24h'
         update_component_deps:
@@ -34,19 +30,16 @@ machine-controller-manager-provider-openstack:
             image_reference: 'golang:1.20.5'
     head-update:
       traits:
-        component_descriptor: ~
         draft_release: ~
     pull-request:
       traits:
         pull-request: ~
-        component_descriptor: ~
     release:
       traits:
         version:
           preprocess: 'finalize'
         release:
           nextversion: 'bump_minor'
-        component_descriptor: ~
         publish:
           dockerimages:
             machine-controller-manager-provider-openstack:
