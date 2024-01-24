@@ -30,7 +30,7 @@ machine-controller-manager-provider-openstack:
           ocm_repository: europe-docker.pkg.dev/gardener-project/releases
         update_component_deps:
           set_dependency_version_script_container_image:
-            image_reference: 'golang:1.20.5'
+            image_reference: 'golang:1.21.6'
     head-update:
       traits:
         component_descriptor:
