@@ -15,3 +15,4 @@ main
 # Output of the go coverage tool
 *coverprofile.out*
 .ci/controllers-test/logs/*
+test/integration/controller/controller.test
