@@ -34,7 +34,7 @@ package controller_test
 
 import (
 	"github.com/gardener/machine-controller-manager/pkg/test/integration/common"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/test/integration/provider"
 )
