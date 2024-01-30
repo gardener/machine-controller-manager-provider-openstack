@@ -14,7 +14,7 @@ IMAGE_PREFIX        := $(REGISTRY)/gardener/extensions
 NAME                := machine-controller-manager-provider-openstack
 IMAGE_NAME          := $(IMAGE_PREFIX)/$(NAME)
 VERSION             := $(shell cat VERSION)
-IS_CONTROL_CLUSTER_SEED 	:= true
+
 LEADER_ELECT 	    := "true"
 # If Integration Test Suite is to be run locally against clusters then export the below variable
 # with MCM deployment name in the cluster
@@ -107,7 +107,6 @@ test-integration:
 	export MCM_CONTAINER_IMAGE=$(MCM_IMAGE); \
 	export CONTROL_CLUSTER_NAMESPACE=$(CONTROL_NAMESPACE); \
 	export MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME=$(MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME); \
-	export IS_CONTROL_CLUSTER_SEED=$(IS_CONTROL_CLUSTER_SEED); \
 	.ci/local_integration_test
 
 #########################################
