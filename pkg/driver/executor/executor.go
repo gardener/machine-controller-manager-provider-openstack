@@ -89,13 +89,13 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 			return "", deleteOnFail(fmt.Errorf("failed to resolve server [Name=%q] networks: %w", machineName, err))
 		}
 
-		server, err = ex.deployServer(machineName, userData, serverNetworks)
+		server, err = ex.deployServer(ctx, machineName, userData, serverNetworks)
 		if err != nil {
 			return "", deleteOnFail(fmt.Errorf("failed to deploy server [Name=%q]: %w", machineName, err))
 		}
 	}
 
-	err = ex.waitForServerStatus(server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 600)
+	err = ex.waitForServerStatus(ctx, server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 600)
 	if err != nil {
 		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %w", server.ID, err))
 	}
@@ -160,37 +160,42 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 
 // waitForServerStatus blocks until the server with the specified ID reaches one of the target status.
 // waitForServerStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
-func (ex *Executor) waitForServerStatus(serverID string, pending []string, target []string, secs int) error {
-	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
-		current, err := ex.Compute.GetServer(serverID)
-		if err != nil {
-			if client.IsNotFoundError(err) && strSliceContains(target, client.ServerStatusDeleted) {
+func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pending []string, target []string, secs int) error {
+	return wait.PollUntilContextTimeout(
+		ctx,
+		time.Second,
+		time.Duration(secs)*time.Second,
+		false,
+		func(_ context.Context) (done bool, err error) {
+			current, err := ex.Compute.GetServer(serverID)
+			if err != nil {
+				if client.IsNotFoundError(err) && strSliceContains(target, client.ServerStatusDeleted) {
+					return true, nil
+				}
+				return false, err
+			}
+
+			klog.V(5).Infof("waiting for server [ID=%q] and current status %v, to reach status %v.", serverID, current.Status, target)
+			if strSliceContains(target, current.Status) {
 				return true, nil
 			}
-			return false, err
-		}
 
-		klog.V(5).Infof("waiting for server [ID=%q] and current status %v, to reach status %v.", serverID, current.Status, target)
-		if strSliceContains(target, current.Status) {
-			return true, nil
-		}
+			// if there is no pending statuses defined or current status is in the pending list, then continue polling
+			if len(pending) == 0 || strSliceContains(pending, current.Status) {
+				return false, nil
+			}
 
-		// if there is no pending statuses defined or current status is in the pending list, then continue polling
-		if len(pending) == 0 || strSliceContains(pending, current.Status) {
-			return false, nil
-		}
+			retErr := fmt.Errorf("server [ID=%q] reached unexpected status %q", serverID, current.Status)
+			if current.Status == client.ServerStatusError {
+				retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Fault)
+			}
 
-		retErr := fmt.Errorf("server [ID=%q] reached unexpected status %q", serverID, current.Status)
-		if current.Status == client.ServerStatusError {
-			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Fault)
-		}
-
-		return false, retErr
-	})
+			return false, retErr
+		})
 }
 
 // deployServer handles creating the server instance.
-func (ex *Executor) deployServer(machineName string, userData []byte, nws []servers.Network) (*servers.Server, error) {
+func (ex *Executor) deployServer(ctx context.Context, machineName string, userData []byte, nws []servers.Network) (*servers.Server, error) {
 	keyName := ex.Config.Spec.KeyName
 	imageName := ex.Config.Spec.ImageName
 	imageID := ex.Config.Spec.ImageID
@@ -250,17 +255,17 @@ func (ex *Executor) deployServer(machineName string, userData []byte, nws []serv
 
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
-		return ex.bootFromVolume(machineName, imageRef, createOpts)
+		return ex.bootFromVolume(ctx, machineName, imageRef, createOpts)
 	}
 
 	return ex.Compute.CreateServer(createOpts)
 }
 
-func (ex *Executor) bootFromVolume(machineName, imageID string, createOpts servers.CreateOptsBuilder) (*servers.Server, error) {
+func (ex *Executor) bootFromVolume(ctx context.Context, machineName, imageID string, createOpts servers.CreateOptsBuilder) (*servers.Server, error) {
 	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
 
 	if ex.Config.Spec.RootDiskType != nil {
-		volumeID, err := ex.ensureVolume(machineName, imageID)
+		volumeID, err := ex.ensureVolume(ctx, machineName, imageID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to ensure volume [Name=%q]: %s", machineName, err)
 		}
@@ -292,7 +297,7 @@ func (ex *Executor) bootFromVolume(machineName, imageID string, createOpts serve
 	return ex.Compute.BootFromVolume(createOpts)
 }
 
-func (ex *Executor) ensureVolume(name, imageID string) (string, error) {
+func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string) (string, error) {
 	var (
 		volumeID string
 		err      error
@@ -320,39 +325,44 @@ func (ex *Executor) ensureVolume(name, imageID string) (string, error) {
 
 	pendingStatuses := []string{client.VolumeStatusCreating, client.VolumeStatusDownloading}
 	targetStatuses := []string{client.VolumeStatusAvailable}
-	if err := ex.waitForVolumeStatus(volumeID, pendingStatuses, targetStatuses, 600); err != nil {
+	if err := ex.waitForVolumeStatus(ctx, volumeID, pendingStatuses, targetStatuses, 600); err != nil {
 		return "", err
 	}
 
 	return volumeID, nil
 }
 
-func (ex *Executor) waitForVolumeStatus(volumeID string, pending, target []string, secs int) error {
-	return wait.Poll(time.Second, time.Duration(secs)*time.Second, func() (done bool, err error) {
-		current, err := ex.Storage.GetVolume(volumeID)
-		if err != nil {
-			if client.IsNotFoundError(err) {
+func (ex *Executor) waitForVolumeStatus(ctx context.Context, volumeID string, pending, target []string, secs int) error {
+	return wait.PollUntilContextTimeout(
+		ctx,
+		time.Second,
+		time.Duration(secs)*time.Second,
+		false,
+		func(_ context.Context) (done bool, err error) {
+			current, err := ex.Storage.GetVolume(volumeID)
+			if err != nil {
+				if client.IsNotFoundError(err) {
+					return true, nil
+				}
+				return false, err
+			}
+
+			klog.V(3).Infof("waiting for volume[ID=%q] with current status %v, to reach status %v.", volumeID, current.Status, target)
+			if strSliceContains(target, current.Status) {
 				return true, nil
 			}
-			return false, err
-		}
 
-		klog.V(3).Infof("waiting for volume[ID=%q] with current status %v, to reach status %v.", volumeID, current.Status, target)
-		if strSliceContains(target, current.Status) {
-			return true, nil
-		}
+			if len(pending) == 0 || strSliceContains(pending, current.Status) {
+				return false, nil
+			}
 
-		if len(pending) == 0 || strSliceContains(pending, current.Status) {
-			return false, nil
-		}
+			retErr := fmt.Errorf("volume [ID=%q] reached status %q. Retrying until status reaches %q", volumeID, current.Status, target)
+			if current.Status == client.VolumeStatusError {
+				retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Status)
+			}
 
-		retErr := fmt.Errorf("volume [ID=%q] reached status %q. Retrying until status reaches %q", volumeID, current.Status, target)
-		if current.Status == client.VolumeStatusError {
-			retErr = fmt.Errorf("%s, fault: %+v", retErr, current.Status)
-		}
-
-		return false, retErr
-	})
+			return false, retErr
+		})
 }
 
 // patchServerPortsForPodNetwork updates a server's ports with rules for whitelisting the pod network CIDR.
@@ -454,7 +464,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 			return err
 		}
 
-		if err = ex.waitForServerStatus(server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
+		if err = ex.waitForServerStatus(ctx, server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
 			return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 		}
 	} else if !errors.Is(err, ErrNotFound) {
