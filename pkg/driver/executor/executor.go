@@ -163,7 +163,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pending []string, target []string, secs int) error {
 	return wait.PollUntilContextTimeout(
 		ctx,
-		time.Second,
+		10*time.Second,
 		time.Duration(secs)*time.Second,
 		false,
 		func(_ context.Context) (done bool, err error) {
@@ -335,7 +335,7 @@ func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string) (str
 func (ex *Executor) waitForVolumeStatus(ctx context.Context, volumeID string, pending, target []string, secs int) error {
 	return wait.PollUntilContextTimeout(
 		ctx,
-		time.Second,
+		10*time.Second,
 		time.Duration(secs)*time.Second,
 		false,
 		func(_ context.Context) (done bool, err error) {
