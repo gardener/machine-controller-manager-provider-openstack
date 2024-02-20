@@ -269,7 +269,7 @@ func (ex *Executor) bootFromVolume(machineName, imageID string, createOpts serve
 			UUID:                volumeID,
 			VolumeSize:          ex.Config.Spec.RootDiskSize,
 			BootIndex:           0,
-			DeleteOnTermination: true,
+			DeleteOnTermination: false,
 			SourceType:          "volume",
 			DestinationType:     "volume",
 		}
