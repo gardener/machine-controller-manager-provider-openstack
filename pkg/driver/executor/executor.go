@@ -165,7 +165,7 @@ func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pe
 		ctx,
 		10*time.Second,
 		time.Duration(secs)*time.Second,
-		false,
+		true,
 		func(_ context.Context) (done bool, err error) {
 			current, err := ex.Compute.GetServer(serverID)
 			if err != nil {
@@ -337,7 +337,7 @@ func (ex *Executor) waitForVolumeStatus(ctx context.Context, volumeID string, pe
 		ctx,
 		10*time.Second,
 		time.Duration(secs)*time.Second,
-		false,
+		true,
 		func(_ context.Context) (done bool, err error) {
 			current, err := ex.Storage.GetVolume(volumeID)
 			if err != nil {
