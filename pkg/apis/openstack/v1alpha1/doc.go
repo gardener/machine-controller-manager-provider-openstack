@@ -7,7 +7,8 @@
 // +k8s:defaulter-gen=TypeMeta
 // +k8s:openapi-gen=true
 // +groupName=openstack.machine.gardener.cloud
-//go:generate gen-crd-api-reference-docs -api-dir . -config ../../../../hack/api-reference/api.json -template-dir ../../../../vendor/github.com/gardener/gardener/hack/api-reference/template -out-file ../../../../hack/api-reference/api.md
+
+//go:generate sh -c "gen-crd-api-reference-docs -api-dir . -config ../../../../hack/api-reference/api.json -template-dir $GARDENER_HACK_DIR/api-reference/template -out-file ../../../../hack/api-reference/api.md"
 
 // Package v1alpha1 is a version of the API.
 package v1alpha1
