@@ -15,7 +15,7 @@ CODE_GEN_DIR=$(go list -m -f '{{.Dir}}' k8s.io/code-generator)
 
 rm -f $GOPATH/bin/*-gen
 
-bash "${CODE_GEN_DIR}/kube_codegen.sh" \
+bash "${CODE_GEN_DIR}/generate-internal-groups.sh" \
   deepcopy,defaulter \
   github.com/gardener/machine-controller-manager-provider-openstack/pkg/client \
   github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis \
@@ -23,7 +23,7 @@ bash "${CODE_GEN_DIR}/kube_codegen.sh" \
   "openstack:v1alpha1" \
   --go-header-file "${GARDENER_HACK_DIR}/LICENSE_BOILERPLATE.txt"
 
-bash "${CODE_GEN_DIR}/kube_codegen.sh" \
+bash "${CODE_GEN_DIR}/generate-internal-groups.sh" \
   conversion \
   github.com/gardener/machine-controller-manager-provider-openstack/pkg/client \
   github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis \

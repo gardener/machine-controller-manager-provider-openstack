@@ -1,3 +1,21 @@
+**How to categorize this PR?**
+<!--
+Please select area, kind, and priority for this pull request. This helps the community categorizing it.
+Replace below TODOs or exchange the existing identifiers with those that fit best in your opinion.
+If multiple identifiers make sense you can also state the commands multiple times, e.g.
+  /area control-plane
+  /area auto-scaling
+  ...
+
+"/area" identifiers:     audit-logging|auto-scaling|backup|compliance|control-plane-migration|control-plane|cost|delivery|dev-productivity|disaster-recovery|documentation|high-availability|logging|metering|monitoring|networking|open-source|ops-productivity|os|performance|quality|robustness|scalability|security|storage|testing|usability|user-management
+"/kind" identifiers:     api-change|bug|cleanup|discussion|enhancement|epic|flake|impediment|poc|post-mortem|question|regression|task|technical-debt|test
+
+For Gardener Enhancement Proposals (GEPs), please check the following [documentation](https://github.com/gardener/gardener/tree/master/docs/proposals/README.md) before submitting this pull request.
+-->
+/area TODO
+/kind TODO
+/platform aws
+
 **What this PR does / why we need it**:
 
 **Which issue(s) this PR fixes**:
@@ -13,9 +31,9 @@ Write your release note:
 
 Format of block header: <category> <target_group>
 Possible values:
-- category:       breaking|feature|bugfix|doc|other
+- category:       breaking|noteworthy|feature|bugfix|doc|other
 - target_group:   user|operator|developer|dependency
 -->
-```improvement user
+```other operator
 
 ```
