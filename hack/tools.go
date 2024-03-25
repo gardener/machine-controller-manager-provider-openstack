@@ -17,4 +17,5 @@ import (
 	_ "github.com/onsi/gomega"
 	_ "golang.org/x/lint/golint"
 	_ "k8s.io/code-generator"
+	_ "sigs.k8s.io/controller-runtime" // Needed to work around strange behaviour in check-generate. Without this explicit dependenc this package will always fail the check, either needing to be removed or added (depending on whether it is already present or not).
 )
