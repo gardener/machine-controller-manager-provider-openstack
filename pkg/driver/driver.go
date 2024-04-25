@@ -83,6 +83,11 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 	}, nil
 }
 
+// InitializeMachine handles VM initialization for openstack VM's. Currently, un-implemented.
+func (p *OpenstackDriver) InitializeMachine(_ context.Context, _ *driver.InitializeMachineRequest) (*driver.InitializeMachineResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Openstack Provider does not yet implement InitializeMachine")
+}
+
 // DeleteMachine handles a machine deletion request
 func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteMachineRequest) (*driver.DeleteMachineResponse, error) {
 	// Log messages to track delete request
