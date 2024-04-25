@@ -24,8 +24,8 @@ MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME := machine-controller-manager
 # Tools & Cleanup
 #########################################
 
-#TOOLS_DIR := $(HACK_DIR)/tools
-#include $(GARDENER_HACK_DIR)/tools.mk
+TOOLS_DIR := $(HACK_DIR)/tools
+include $(GARDENER_HACK_DIR)/tools.mk
 -include .env
 
 .PHONY: tidy
