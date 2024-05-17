@@ -38,4 +38,4 @@ new_version="github.com/gardener/machine-controller-manager ${DEPENDENCY_VERSION
 
 sed -i -- 's#'"${old_version}"'#'"${new_version}"'#g' go.mod
 
-make revendor
+make tidy
