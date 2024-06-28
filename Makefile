@@ -116,9 +116,10 @@ test-integration:
 .PHONY: release
 release: docker-image docker-push
 
+PLATFORM ?= linux/amd64
 .PHONY: docker-image
 docker-image:
-	docker image build -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
+	@docker buildx build --platform $(PLATFORM) -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
 
 .PHONY: docker-login
 docker-login:
