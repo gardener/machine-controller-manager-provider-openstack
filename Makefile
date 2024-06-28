@@ -116,9 +116,11 @@ test-integration:
 .PHONY: release
 release: docker-image docker-push
 
+platform ?= linux/amd64
 .PHONY: docker-image
 docker-image:
-	docker image build -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
+	@echo $(GARDENER_HACK_DIR)
+	@docker buildx build --platform $(platform) -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
 
 .PHONY: docker-login
 docker-login:
