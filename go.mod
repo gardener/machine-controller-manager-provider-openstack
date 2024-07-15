@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/gardener/gardener v1.86.0
-	github.com/gardener/machine-controller-manager v0.53.0
+	github.com/gardener/machine-controller-manager v0.53.1
 	github.com/gophercloud/gophercloud v1.11.0
 	github.com/gophercloud/utils v0.0.0-20230523080330-de873b9cf00d
 	github.com/onsi/ginkgo v1.16.5

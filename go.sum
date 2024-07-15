@@ -83,8 +83,8 @@ github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nos
 github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
 github.com/gardener/gardener v1.86.0 h1:r0DjNZbUc2F/feWDrySZ/AU/5LAr0LoKXdraFtPb6NQ=
 github.com/gardener/gardener v1.86.0/go.mod h1:8eHlXs2EkaghrgQwK8qEiVw3dZGpNJaq+I9IkPpReA4=
-github.com/gardener/machine-controller-manager v0.53.0 h1:g2O0F7nEYZ9LjyPY6Gew8+q0n+rU88deexNq5k8CKks=
-github.com/gardener/machine-controller-manager v0.53.0/go.mod h1:XWXHaTy32TU0qmLjWqOgtw8NncdB0HfFzXhUUrcpr7Y=
+github.com/gardener/machine-controller-manager v0.53.1 h1:4P9qtzoD+989Lhc8XaI6Zo3X2TaQVXgHHrbEpuhJcrI=
+github.com/gardener/machine-controller-manager v0.53.1/go.mod h1:XWXHaTy32TU0qmLjWqOgtw8NncdB0HfFzXhUUrcpr7Y=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
