@@ -14,7 +14,7 @@ For Gardener Enhancement Proposals (GEPs), please check the following [documenta
 -->
 /area TODO
 /kind TODO
-/platform aws
+/platform openstack
 
 **What this PR does / why we need it**:
 

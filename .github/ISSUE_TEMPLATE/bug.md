@@ -18,7 +18,7 @@ If multiple identifiers make sense you can also state the commands multiple time
 -->
 /area TODO
 /kind bug
-/platform aws
+/platform openstack
 
 **What happened**:
 

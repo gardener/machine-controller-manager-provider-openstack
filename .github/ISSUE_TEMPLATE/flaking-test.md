@@ -21,7 +21,7 @@ If multiple identifiers make sense you can also state the commands multiple time
 -->
 /area testing
 /kind flake
-/platform aws
+/platform openstack
 
 **Which test(s)/suite(s) are flaking**:
 
