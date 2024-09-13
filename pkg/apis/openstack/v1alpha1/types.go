@@ -43,7 +43,12 @@ type MachineProviderConfigSpec struct {
 	// +optional
 	SubnetID *string `json:"subnetID,omitempty"`
 	// PodNetworkCidr is the CIDR range for the pods assigned to this instance.
+	// Deprecated: use PodNetworkCIDRs instead
+	// +optional
 	PodNetworkCidr string `json:"podNetworkCidr"`
+	// PodNetworkCIDRs is the CIDR ranges for the pods assigned to this instance.
+	// +optional
+	PodNetworkCIDRs []string `json:"podNetworkCIDRs"`
 	// The size of the root disk used for the instance.
 	RootDiskSize int `json:"rootDiskSize,omitempty"` // in GB
 	// The type of the root disk used for the instance.

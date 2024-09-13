@@ -57,20 +57,20 @@ func validateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 	if "" == providerConfig.Spec.NetworkID && len(providerConfig.Spec.Networks) == 0 {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networkID"), "both \"networks\" and \"networkID\" should not be empty"))
 	}
-	if "" == providerConfig.Spec.PodNetworkCidr {
-		allErrs = append(allErrs, field.Required(fldPath.Child("podNetworkCidr"), "PodNetworkCidr is required"))
+	if len(providerConfig.Spec.PodNetworkCIDRs) == 0 && len(providerConfig.Spec.PodNetworkCidr) == 0 {
+		allErrs = append(allErrs, field.Required(fldPath.Child("PodNetworkCIDRs"), "PodNetworkCIDRs is required"))
 	}
 	if providerConfig.Spec.RootDiskSize < 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("rootDiskSize"), "RootDiskSize can not be negative"))
 	}
 
-	allErrs = append(allErrs, validateNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, field.NewPath("spec.networks"))...)
+	allErrs = append(allErrs, validateNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, providerConfig.Spec.PodNetworkCIDRs, field.NewPath("spec.networks"))...)
 	allErrs = append(allErrs, validateClassSpecTags(providerConfig.Spec.Tags, field.NewPath("spec.tags"))...)
 
 	return allErrs
 }
 
-func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr string, fldPath *field.Path) field.ErrorList {
+func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr string, podNetworkCIDRs []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	for index, network := range networks {
@@ -81,7 +81,7 @@ func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr stri
 		if "" != network.Id && "" != network.Name {
 			allErrs = append(allErrs, field.Forbidden(fldPath, "simultaneous use of network \"id\" and \"name\" is forbidden"))
 		}
-		if "" == podNetworkCidr && network.PodNetwork {
+		if len(podNetworkCIDRs) == 0 && len(podNetworkCidr) == 0 && network.PodNetwork {
 			allErrs = append(allErrs, field.Required(fldPath.Child("podNetwork"), "\"podNetwork\" switch should not be used in absence of \"spec.podNetworkCidr\""))
 		}
 	}
