@@ -40,7 +40,10 @@ type MachineProviderConfigSpec struct {
 	// SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified
 	SubnetID *string
 	// PodNetworkCidr is the CIDR range for the pods assigned to this instance.
+	// Deprecated - use `PodNetworkCIDRs` instead.
 	PodNetworkCidr string
+	// PodNetworkCidr is the CIDR ranges for the pods assigned to this instance.
+	PodNetworkCIDRs []string
 	// The size of the root disk used for the instance.
 	RootDiskSize int
 	// The type of the root disk type used for the instance

@@ -19,7 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/client"
@@ -134,7 +134,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 		return serverNetworks, nil
 	}
 
-	if !isEmptyString(pointer.StringPtr(networkID)) {
+	if !isEmptyString(ptr.To(networkID)) {
 		klog.V(3).Infof("deploying in network [ID=%q]", networkID)
 		serverNetworks = append(serverNetworks, servers.Network{UUID: ex.Config.Spec.NetworkID})
 		return serverNetworks, nil
@@ -145,7 +145,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 			resolvedNetworkID string
 			err               error
 		)
-		if isEmptyString(pointer.StringPtr(network.Id)) {
+		if isEmptyString(ptr.To(network.Id)) {
 			resolvedNetworkID, err = ex.Network.NetworkIDFromName(network.Name)
 			if err != nil {
 				return nil, err
@@ -383,27 +383,34 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 		return fmt.Errorf("failed to resolve network IDs for the pod network %v", err)
 	}
 
+	// coalesce all pod network CIDRs into a single slice.
+	podCIDRs := sets.NewString(ex.Config.Spec.PodNetworkCIDRs...)
+	if ex.Config.Spec.PodNetworkCidr != "" {
+		podCIDRs.Insert(ex.Config.Spec.PodNetworkCidr)
+	}
+
 	for _, port := range allPorts {
-		if podNetworkIDs.Has(port.NetworkID) {
-			addressPairFound := false
+		// if the port is not part of the networks we care about, continue.
+		if !podNetworkIDs.Has(port.NetworkID) {
+			continue
+		}
 
-			for _, pair := range port.AllowedAddressPairs {
-				if pair.IPAddress == ex.Config.Spec.PodNetworkCidr {
-					klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
-					addressPairFound = true
-					// break inner loop if target found
-					break
+		for _, cidr := range podCIDRs.List() {
+			if err := func() error {
+				for _, pair := range port.AllowedAddressPairs {
+					if pair.IPAddress == cidr {
+						klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
+						return nil
+					}
 				}
-			}
-			// continue outer loop if target found
-			if addressPairFound {
-				continue
-			}
-
-			if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
-				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
-			}); err != nil {
-				return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
+				if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
+					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: cidr}},
+				}); err != nil {
+					return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
+				}
+				return nil
+			}(); err != nil {
+				return err
 			}
 		}
 	}
@@ -411,14 +418,14 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 }
 
 // resolveNetworkIDsForPodNetwork resolves the networks that accept traffic from the pod CIDR range.
-func (ex *Executor) resolveNetworkIDsForPodNetwork() (sets.String, error) {
+func (ex *Executor) resolveNetworkIDsForPodNetwork() (sets.Set[string], error) {
 	var (
 		networkID     = ex.Config.Spec.NetworkID
 		networks      = ex.Config.Spec.Networks
-		podNetworkIDs = sets.NewString()
+		podNetworkIDs = sets.New[string]()
 	)
 
-	if !isEmptyString(pointer.StringPtr(networkID)) {
+	if !isEmptyString(ptr.To(networkID)) {
 		podNetworkIDs.Insert(networkID)
 		return podNetworkIDs, nil
 	}
@@ -428,7 +435,7 @@ func (ex *Executor) resolveNetworkIDsForPodNetwork() (sets.String, error) {
 			resolvedNetworkID string
 			err               error
 		)
-		if isEmptyString(pointer.StringPtr(network.Id)) {
+		if isEmptyString(ptr.To(network.Id)) {
 			resolvedNetworkID, err = ex.Network.NetworkIDFromName(network.Name)
 			if err != nil {
 				return nil, err
@@ -451,7 +458,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 		err    error
 	)
 
-	if !isEmptyString(pointer.StringPtr(providerID)) {
+	if !isEmptyString(ptr.To(providerID)) {
 		serverID := decodeProviderID(providerID)
 		server, err = ex.getMachineByID(ctx, serverID)
 	} else {
@@ -514,11 +521,10 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 	}
 
 	port, err := ex.Network.CreatePort(&ports.CreateOpts{
-		Name:                machineName,
-		NetworkID:           ex.Config.Spec.NetworkID,
-		FixedIPs:            []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
-		AllowedAddressPairs: []ports.AddressPair{{IPAddress: ex.Config.Spec.PodNetworkCidr}},
-		SecurityGroups:      &securityGroupIDs,
+		Name:           machineName,
+		NetworkID:      ex.Config.Spec.NetworkID,
+		FixedIPs:       []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
+		SecurityGroups: &securityGroupIDs,
 	})
 	if err != nil {
 		return "", err
@@ -695,5 +701,5 @@ func (ex *Executor) listServers(_ context.Context) ([]servers.Server, error) {
 
 // isUserManagedNetwork returns true if the port used by the machine will be created and managed by MCM.
 func (ex *Executor) isUserManagedNetwork() bool {
-	return !isEmptyString(pointer.StringPtr(ex.Config.Spec.NetworkID)) && !isEmptyString(ex.Config.Spec.SubnetID)
+	return !isEmptyString(ptr.To(ex.Config.Spec.NetworkID)) && !isEmptyString(ex.Config.Spec.SubnetID)
 }

@@ -36,13 +36,13 @@ var _ = Describe("Validation", func() {
 						fmt.Sprintf("%s-foo", ServerTagRolePrefix):    "1",
 						fmt.Sprintf("%s-foo", ServerTagClusterPrefix): "1",
 					},
-					NetworkID:      "networkID",
-					SubnetID:       nil,
-					PodNetworkCidr: "10.0.0.1/8",
-					RootDiskSize:   0,
-					UseConfigDrive: nil,
-					ServerGroupID:  nil,
-					Networks:       nil,
+					NetworkID:       "networkID",
+					SubnetID:        nil,
+					PodNetworkCIDRs: []string{"10.0.0.1/8"},
+					RootDiskSize:    0,
+					UseConfigDrive:  nil,
+					ServerGroupID:   nil,
+					Networks:        nil,
 				},
 			}
 		})
@@ -59,7 +59,7 @@ var _ = Describe("Validation", func() {
 				spec.FlavorName = ""
 				spec.AvailabilityZone = ""
 				spec.KeyName = ""
-				spec.PodNetworkCidr = ""
+				spec.PodNetworkCIDRs = nil
 				err := validateMachineProviderConfig(machineProviderConfig)
 
 				Expect(err).To(ConsistOf(
@@ -81,7 +81,7 @@ var _ = Describe("Validation", func() {
 					})),
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  BeEquivalentTo("FieldValueRequired"),
-						"Field": Equal("spec.podNetworkCidr"),
+						"Field": Equal("spec.PodNetworkCIDRs"),
 					})),
 				))
 			})

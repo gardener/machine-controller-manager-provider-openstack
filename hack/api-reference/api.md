@@ -156,7 +156,21 @@ string
 </em>
 </td>
 <td>
-<p>PodNetworkCidr is the CIDR range for the pods assigned to this instance.</p>
+<em>(Optional)</em>
+<p>PodNetworkCidr is the CIDR range for the pods assigned to this instance.
+Deprecated: use PodNetworkCIDRs instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podNetworkCIDRs</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodNetworkCIDRs is the CIDR ranges for the pods assigned to this instance.</p>
 </td>
 </tr>
 <tr>
@@ -360,7 +374,21 @@ string
 </em>
 </td>
 <td>
-<p>PodNetworkCidr is the CIDR range for the pods assigned to this instance.</p>
+<em>(Optional)</em>
+<p>PodNetworkCidr is the CIDR range for the pods assigned to this instance.
+Deprecated: use PodNetworkCIDRs instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podNetworkCIDRs</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PodNetworkCIDRs is the CIDR ranges for the pods assigned to this instance.</p>
 </td>
 </tr>
 <tr>

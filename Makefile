@@ -19,6 +19,7 @@ LEADER_ELECT 	    := "true"
 # If Integration Test Suite is to be run locally against clusters then export the below variable
 # with MCM deployment name in the cluster
 MACHINE_CONTROLLER_MANAGER_DEPLOYMENT_NAME := machine-controller-manager
+PLATFORM ?= linux/amd64
 
 #########################################
 # Tools & Cleanup
@@ -116,7 +117,6 @@ test-integration:
 .PHONY: release
 release: docker-image docker-push
 
-PLATFORM ?= linux/amd64
 .PHONY: docker-image
 docker-image:
 	@docker buildx build --platform $(PLATFORM) -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
