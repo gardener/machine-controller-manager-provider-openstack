@@ -80,9 +80,11 @@ format: $(GOIMPORTS) $(GOIMPORTSREVISER)
 	@bash $(GARDENER_HACK_DIR)/format.sh ./cmd ./pkg ./test
 
 .PHONY: check
-check: $(GOIMPORTS) $(GOLANGCI_LINT)
+check: $(GO_ADD_LICENSE) $(GOIMPORTS) $(GOLANGCI_LINT)
 	@bash $(GARDENER_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
+
 	@bash $(GARDENER_HACK_DIR)/check-charts.sh ./charts
+	@bash $(GARDENER_HACK_DIR)/check-license-header.sh
 
 .PHONY: test
 test:
@@ -109,6 +111,10 @@ clean:
 .PHONY: test-integration
 test-integration:
 	.ci/local_integration_test
+
+.PHONY: add-license-headers
+add-license-headers: $(GO_ADD_LICENSE)
+	@bash $(GARDENER_HACK_DIR)/add-license-header.sh
 
 #########################################
 # Rules for build/release
