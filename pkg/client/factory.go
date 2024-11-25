@@ -55,7 +55,7 @@ func NewFactoryFromSecret(secret *corev1.Secret) (*Factory, error) {
 }
 
 func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*gophercloud.ProviderClient, error) {
-	config := &tls.Config{}
+	config := &tls.Config{} // #nosec: G402 -- Can be parameterized.
 
 	if credentials.CACert != nil {
 		caCertPool := x509.NewCertPool()
