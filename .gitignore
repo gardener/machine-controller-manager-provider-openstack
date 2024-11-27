@@ -16,3 +16,6 @@ main
 *coverprofile.out*
 .ci/controllers-test/logs/*
 test/integration/controller/controller.test
+
+# gosec
+gosec-report.sarif

@@ -55,7 +55,9 @@ func NewFactoryFromSecret(secret *corev1.Secret) (*Factory, error) {
 }
 
 func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*gophercloud.ProviderClient, error) {
-	config := &tls.Config{}
+	config := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
 
 	if credentials.CACert != nil {
 		caCertPool := x509.NewCertPool()
