@@ -95,7 +95,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		}
 	}
 
-	err = ex.waitForServerStatus(ctx, server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 600)
+	err = ex.waitForServerStatus(ctx, server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 1200)
 	if err != nil {
 		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %w", server.ID, err))
 	}
@@ -325,7 +325,7 @@ func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string) (str
 
 	pendingStatuses := []string{client.VolumeStatusCreating, client.VolumeStatusDownloading}
 	targetStatuses := []string{client.VolumeStatusAvailable}
-	if err := ex.waitForVolumeStatus(ctx, volumeID, pendingStatuses, targetStatuses, 600); err != nil {
+	if err := ex.waitForVolumeStatus(ctx, volumeID, pendingStatuses, targetStatuses, 1200); err != nil {
 		return "", err
 	}
 
@@ -471,7 +471,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 			return err
 		}
 
-		if err = ex.waitForServerStatus(ctx, server.ID, nil, []string{client.ServerStatusDeleted}, 300); err != nil {
+		if err = ex.waitForServerStatus(ctx, server.ID, nil, []string{client.ServerStatusDeleted}, 1200); err != nil {
 			return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 		}
 	} else if !errors.Is(err, ErrNotFound) {
