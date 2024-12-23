@@ -4,7 +4,7 @@ go 1.23.1
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
-	github.com/gardener/gardener v1.110.0
+	github.com/gardener/gardener v1.110.1
 	github.com/gardener/machine-controller-manager v0.55.1
 	github.com/gophercloud/gophercloud v1.11.0
 	github.com/gophercloud/utils v0.0.0-20230523080330-de873b9cf00d
