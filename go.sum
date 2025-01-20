@@ -27,8 +27,8 @@ github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nos
 github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
 github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv5E=
 github.com/fxamacker/cbor/v2 v2.7.0/go.mod h1:pxXPTn3joSm21Gbwsv0w9OSA2y1HFR9qXEeXQVeNoDQ=
-github.com/gardener/gardener v1.110.1 h1:KJFiVMlzeuJR6aToUUTlXJN6v88ACH/cWOsvX/ftX5s=
-github.com/gardener/gardener v1.110.1/go.mod h1:Ge2wQMWm0NmQZP3L/WMejpfXsnGbfTFBEZud819P3vU=
+github.com/gardener/gardener v1.110.4 h1:0ZsJtvOQ8wb079+39RTurpy6wdX3nhPUpa797kZpboA=
+github.com/gardener/gardener v1.110.4/go.mod h1:Ge2wQMWm0NmQZP3L/WMejpfXsnGbfTFBEZud819P3vU=
 github.com/gardener/machine-controller-manager v0.55.1 h1:d6mTnuYko+jWeIi7tAFWgWnL1nR5hGcI6pRCDcH0TGY=
 github.com/gardener/machine-controller-manager v0.55.1/go.mod h1:eCng7De6OE15rndmMm6Q1fwMQI39esASCd3WKZ/lLmY=
 github.com/go-logr/logr v0.1.0/go.mod h1:ixOQHD9gLJUVQQ2ZOR7zLEifBX6tGkNJF4QyIY7sIas=
