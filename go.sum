@@ -29,8 +29,8 @@ github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv
 github.com/fxamacker/cbor/v2 v2.7.0/go.mod h1:pxXPTn3joSm21Gbwsv0w9OSA2y1HFR9qXEeXQVeNoDQ=
 github.com/gardener/gardener v1.110.0 h1:Ix/NeYJyYIIDRHqO0126JYPGNVKy2kDEco7RyXuCYwo=
 github.com/gardener/gardener v1.110.0/go.mod h1:Ge2wQMWm0NmQZP3L/WMejpfXsnGbfTFBEZud819P3vU=
-github.com/gardener/machine-controller-manager v0.55.1 h1:d6mTnuYko+jWeIi7tAFWgWnL1nR5hGcI6pRCDcH0TGY=
-github.com/gardener/machine-controller-manager v0.55.1/go.mod h1:eCng7De6OE15rndmMm6Q1fwMQI39esASCd3WKZ/lLmY=
+github.com/gardener/machine-controller-manager v0.57.0 h1:YLdy2MjJnq7l42mXVtr0lZ2ck8gl5y/DjGcc7+FE304=
+github.com/gardener/machine-controller-manager v0.57.0/go.mod h1:eCng7De6OE15rndmMm6Q1fwMQI39esASCd3WKZ/lLmY=
 github.com/go-logr/logr v0.1.0/go.mod h1:ixOQHD9gLJUVQQ2ZOR7zLEifBX6tGkNJF4QyIY7sIas=
 github.com/go-logr/logr v0.2.0/go.mod h1:z6/tIYblkpsD+a4lm/fGIIU9mZ+XfAiaFtq7xTgseGU=
 github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
