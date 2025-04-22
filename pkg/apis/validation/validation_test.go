@@ -272,7 +272,7 @@ var _ = Describe("Validation", func() {
 			secret.Data[OpenStackInsecure] = []byte("foo")
 
 			err := validateSecret(secret).ToAggregate()
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -292,7 +292,7 @@ var _ = Describe("Validation", func() {
 			secret = &corev1.Secret{}
 
 			err := validateUserData(secret).ToAggregate()
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 
 		It("should pass if user data found", func() {

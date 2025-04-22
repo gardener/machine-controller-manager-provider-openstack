@@ -225,7 +225,7 @@ var _ = Describe("Executor", func() {
 			)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
