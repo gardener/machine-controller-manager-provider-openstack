@@ -33,28 +33,28 @@ func validateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 
 	fldPath := field.NewPath("spec")
 
-	if "" == providerConfig.Spec.ImageID {
-		if "" == providerConfig.Spec.ImageName {
+	if providerConfig.Spec.ImageID == "" {
+		if providerConfig.Spec.ImageName == "" {
 			allErrs = append(allErrs, field.Required(fldPath.Child("imageName"), "ImageName is required if no ImageID is given"))
 		}
 	}
 
-	if "" == providerConfig.Spec.Region {
+	if providerConfig.Spec.Region == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("region"), "Region is required"))
 	}
-	if "" == providerConfig.Spec.FlavorName {
+	if providerConfig.Spec.FlavorName == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("flavorName"), "Flavor is required"))
 	}
-	if "" == providerConfig.Spec.AvailabilityZone {
+	if providerConfig.Spec.AvailabilityZone == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("availabilityZone"), "AvailabilityZone name is required"))
 	}
-	if "" == providerConfig.Spec.KeyName {
+	if providerConfig.Spec.KeyName == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("keyName"), "KeyName is required"))
 	}
-	if "" != providerConfig.Spec.NetworkID && len(providerConfig.Spec.Networks) > 0 {
+	if providerConfig.Spec.NetworkID != "" && len(providerConfig.Spec.Networks) > 0 {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks"), "\"networks\" list should not be specified along with \"providerConfig.Spec.NetworkID\""))
 	}
-	if "" == providerConfig.Spec.NetworkID && len(providerConfig.Spec.Networks) == 0 {
+	if providerConfig.Spec.NetworkID == "" && len(providerConfig.Spec.Networks) == 0 {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networkID"), "both \"networks\" and \"networkID\" should not be empty"))
 	}
 	if len(providerConfig.Spec.PodNetworkCIDRs) == 0 && len(providerConfig.Spec.PodNetworkCidr) == 0 {
@@ -75,10 +75,10 @@ func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr stri
 
 	for index, network := range networks {
 		fldPath := fldPath.Index(index)
-		if "" == network.Id && "" == network.Name {
+		if network.Id == "" && network.Name == "" {
 			allErrs = append(allErrs, field.Required(fldPath, "at least one of network \"id\" or \"name\" is required"))
 		}
-		if "" != network.Id && "" != network.Name {
+		if network.Id != "" && network.Name != "" {
 			allErrs = append(allErrs, field.Forbidden(fldPath, "simultaneous use of network \"id\" and \"name\" is forbidden"))
 		}
 		if len(podNetworkCIDRs) == 0 && len(podNetworkCidr) == 0 && network.PodNetwork {

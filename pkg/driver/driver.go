@@ -45,7 +45,7 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 
 	// Check if incoming provider in the MachineClass is a provider we support
 	if req.MachineClass.Provider != openstackProvider {
-		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -96,7 +96,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 
 	// Check if incoming provider in the MachineClass is a provider we support
 	if req.MachineClass.Provider != openstackProvider {
-		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
@@ -148,7 +148,7 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 
 	// Check if incoming provider in the MachineClass is a provider we support
 	if req.MachineClass.Provider != openstackProvider {
-		err := fmt.Errorf("Requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
