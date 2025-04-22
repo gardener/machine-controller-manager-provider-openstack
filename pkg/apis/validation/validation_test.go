@@ -50,7 +50,7 @@ var _ = Describe("Validation", func() {
 		Context("required fields", func() {
 			It("should return no error", func() {
 				err := validateMachineProviderConfig(machineProviderConfig).ToAggregate()
-				Expect(err).To(BeNil())
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("should return error if required fields are missing", func() {
@@ -178,7 +178,7 @@ var _ = Describe("Validation", func() {
 
 		It("should not fail", func() {
 			err := validateSecret(secret).ToAggregate()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should fail if required fields are missing", func() {
@@ -245,7 +245,7 @@ var _ = Describe("Validation", func() {
 			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
 
 			err := validateSecret(secret).ToAggregate()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should succeed if application credentials are used (id + name + secret)", func() {
@@ -256,7 +256,7 @@ var _ = Describe("Validation", func() {
 			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
 
 			err := validateSecret(secret).ToAggregate()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should succeed if application credentials are used (username + name + secret)", func() {
@@ -265,14 +265,14 @@ var _ = Describe("Validation", func() {
 			secret.Data[OpenStackApplicationCredentialSecret] = []byte("app-secret")
 
 			err := validateSecret(secret).ToAggregate()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should fail if Insecure has erroneous value", func() {
 			secret.Data[OpenStackInsecure] = []byte("foo")
 
 			err := validateSecret(secret).ToAggregate()
-			Expect(err).NotTo(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 
@@ -292,12 +292,12 @@ var _ = Describe("Validation", func() {
 			secret = &corev1.Secret{}
 
 			err := validateUserData(secret).ToAggregate()
-			Expect(err).To(Not(BeNil()))
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should pass if user data found", func() {
 			err := validateUserData(secret).ToAggregate()
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
