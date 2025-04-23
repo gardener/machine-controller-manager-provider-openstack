@@ -30,7 +30,6 @@ type ResourcesTrackerImpl struct {
 // 2. Mark them for deletion and call cleanup.
 // 3. Print the orphan resources which got error in deletion.
 func (r *ResourcesTrackerImpl) InitializeResourcesTracker(machineClass *v1alpha1.MachineClass, secretData map[string][]byte, _ string) error {
-
 	r.MachineClass = machineClass
 	r.SecretData = secretData
 

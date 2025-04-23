@@ -10,11 +10,15 @@ import (
 )
 
 // onCall records a request to the specified service.
+//
+//nolint:unparam
 func onCall(service string) {
 	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": service}).Inc()
 }
 
 // onFailure records a failure in the request to the specified service.
+//
+//nolint:unparam
 func onFailure(service string) {
 	metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": service}).Inc()
 }

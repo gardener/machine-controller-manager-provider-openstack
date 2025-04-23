@@ -14,7 +14,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
-	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -121,7 +120,7 @@ var _ = Describe("Executor", func() {
 			}).Return(nil)
 
 			providerId, err := ex.CreateMachine(ctx, machineName, nil)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
 		})
 
@@ -153,7 +152,7 @@ var _ = Describe("Executor", func() {
 			}).Return(nil)
 
 			providerId, err := ex.CreateMachine(ctx, machineName, nil)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
 		})
 
@@ -192,7 +191,7 @@ var _ = Describe("Executor", func() {
 			}).Return(nil)
 
 			providerId, err := ex.CreateMachine(ctx, machineName, nil)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
 		})
 
@@ -225,7 +224,7 @@ var _ = Describe("Executor", func() {
 			)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
-			Expect(err).NotTo(BeNil())
+			Expect(err).To(HaveOccurred())
 		})
 	})
 
@@ -257,7 +256,7 @@ var _ = Describe("Executor", func() {
 			}
 
 			res, err := ex.ListMachines(ctx)
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(HaveLen(2))
 			Expect(res).To(Equal(map[string]string{
 				encodeProviderID(region, "id1"): "foo",
@@ -302,26 +301,26 @@ var _ = Describe("Executor", func() {
 			}
 		})
 
-		table.DescribeTable("#Status", func(name string, expectedID string, expectedErr error) {
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: name}).Return(serverList, nil)
-			ex := Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
-			}
-			server, err := ex.getMachineByName(ctx, name)
-			if expectedErr != nil {
-				Expect(err).ToNot(BeNil())
-				Expect(errors.Is(err, expectedErr)).To(BeTrue())
-			} else {
-				Expect(err).To(BeNil())
-				Expect(server.ID).To(Equal(expectedID))
-			}
-		},
-			table.Entry("Should find the entry with matching metadata", "foo", "id1", nil),
-			table.Entry("Should return not found if name not exists", "unknown", "", ErrNotFound),
-			table.Entry("Should return not found if name exists without matching metadata", "baz", "", ErrNotFound),
-			table.Entry("Should detect multiple matching servers", "lorem", "", ErrMultipleFound),
+		DescribeTable("#Status",
+			func(name string, expectedID string, expectedErr error) {
+				compute.EXPECT().ListServers(&servers.ListOpts{Name: name}).Return(serverList, nil)
+				ex := Executor{
+					Compute: compute,
+					Network: network,
+					Config:  cfg,
+				}
+				server, err := ex.getMachineByName(ctx, name)
+				if expectedErr != nil {
+					Expect(errors.Is(err, expectedErr)).To(BeTrue())
+				} else {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(server.ID).To(Equal(expectedID))
+				}
+			},
+			Entry("Should find the entry with matching metadata", "foo", "id1", nil),
+			Entry("Should return not found if name not exists", "unknown", "", ErrNotFound),
+			Entry("Should return not found if name exists without matching metadata", "baz", "", ErrNotFound),
+			Entry("Should detect multiple matching servers", "lorem", "", ErrMultipleFound),
 		)
 	})
 
@@ -350,7 +349,7 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "unknown", "")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should return no error if delete is successful", func() {
@@ -363,7 +362,7 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "foo", "")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should try to find by ProviderID if supplied", func() {
@@ -379,7 +378,7 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, "", encodeProviderID(region, id))
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should try to delete the port if we use specific subnetID", func() {
@@ -406,7 +405,7 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, machineName, "")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("should delete all ports if multiple are found", func() {
@@ -435,7 +434,7 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 			err := ex.DeleteMachine(ctx, machineName, "")
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })

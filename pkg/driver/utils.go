@@ -47,7 +47,6 @@ func (p *OpenstackDriver) decodeProviderSpec(raw runtime.RawExtension) (*opensta
 }
 
 func mapErrorToCode(err error) codes.Code {
-
 	if errors.Is(err, executor.ErrNotFound) {
 		return codes.NotFound
 	}
