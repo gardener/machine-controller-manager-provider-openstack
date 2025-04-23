@@ -14,7 +14,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
-	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
@@ -302,26 +301,26 @@ var _ = Describe("Executor", func() {
 			}
 		})
 
-		table.DescribeTable("#Status", func(name string, expectedID string, expectedErr error) {
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: name}).Return(serverList, nil)
-			ex := Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
-			}
-			server, err := ex.getMachineByName(ctx, name)
-			if expectedErr != nil {
-				Expect(err).ToNot(HaveOccurred())
-				Expect(errors.Is(err, expectedErr)).To(BeTrue())
-			} else {
-				Expect(err).ToNot(HaveOccurred())
-				Expect(server.ID).To(Equal(expectedID))
-			}
-		},
-			table.Entry("Should find the entry with matching metadata", "foo", "id1", nil),
-			table.Entry("Should return not found if name not exists", "unknown", "", ErrNotFound),
-			table.Entry("Should return not found if name exists without matching metadata", "baz", "", ErrNotFound),
-			table.Entry("Should detect multiple matching servers", "lorem", "", ErrMultipleFound),
+		DescribeTable("#Status",
+			func(name string, expectedID string, expectedErr error) {
+				compute.EXPECT().ListServers(&servers.ListOpts{Name: name}).Return(serverList, nil)
+				ex := Executor{
+					Compute: compute,
+					Network: network,
+					Config:  cfg,
+				}
+				server, err := ex.getMachineByName(ctx, name)
+				if expectedErr != nil {
+					Expect(errors.Is(err, expectedErr)).To(BeTrue())
+				} else {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(server.ID).To(Equal(expectedID))
+				}
+			},
+			Entry("Should find the entry with matching metadata", "foo", "id1", nil),
+			Entry("Should return not found if name not exists", "unknown", "", ErrNotFound),
+			Entry("Should return not found if name exists without matching metadata", "baz", "", ErrNotFound),
+			Entry("Should detect multiple matching servers", "lorem", "", ErrMultipleFound),
 		)
 	})
 
