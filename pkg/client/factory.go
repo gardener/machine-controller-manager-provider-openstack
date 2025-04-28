@@ -73,7 +73,6 @@ func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*g
 			return nil, fmt.Errorf("failed to create X509 key pair: %v", err)
 		}
 		config.Certificates = []tls.Certificate{cert}
-		config.BuildNameToCertificate()
 	}
 
 	clientOpts := new(clientconfig.ClientOpts)
