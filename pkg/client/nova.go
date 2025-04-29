@@ -101,46 +101,41 @@ func (c *novaV2) ImageIDFromName(ctx context.Context, name string) (images.Image
 	listOpts := images.ListOpts{
 		Name: name,
 	}
-	page, err := images.List(c.serviceClient, listOpts).AllPages(ctx)
-	onCall("nova")
-	if err != nil {
-		if !IsNotFoundError(err) {
+
+	listFunc := func(ctx context.Context) ([]images.Image, error) {
+		allPages, err := images.List(c.serviceClient, listOpts).AllPages(ctx)
+		onCall("nova")
+		if err != nil {
 			onFailure("nova")
+			return nil, err
 		}
-		return images.Image{}, fmt.Errorf("unable to list images: %w", err)
-	}
-	foundImages, err := images.ExtractImages(page)
-	if err != nil {
-		return images.Image{}, fmt.Errorf("unable to extract images: %w", err)
+		return images.ExtractImages(allPages)
 	}
 
-	if len(foundImages) == 0 {
-		return images.Image{}, fmt.Errorf("image with name %s not found", name)
+	getNameFunc := func(image images.Image) string {
+		return image.Name
 	}
 
-	return foundImages[0], nil
+	return findSingleByName(ctx, listFunc, getNameFunc, name)
 }
 
 // FlavorIDFromName resolves the given flavor name to a unique ID.
 func (c *novaV2) FlavorIDFromName(ctx context.Context, name string) (string, error) {
-	allPages, err := flavors.ListDetail(c.serviceClient, nil).AllPages(ctx)
-	onCall("nova")
-	if err != nil {
-		if !IsNotFoundError(err) {
+	listFunc := func(ctx context.Context) ([]flavors.Flavor, error) {
+		allPages, err := flavors.ListDetail(c.serviceClient, nil).AllPages(ctx)
+		onCall("nova")
+		if err != nil {
 			onFailure("nova")
+			return nil, err
 		}
-		return "", fmt.Errorf("unable to list flavors: %w", err)
-	}
-	allFlavors, err := flavors.ExtractFlavors(allPages)
-	if err != nil {
-		return "", fmt.Errorf("unable to extract flavors: %w", err)
+		return flavors.ExtractFlavors(allPages)
 	}
 
-	for _, flavor := range allFlavors {
-		if flavor.Name == name {
-			return flavor.ID, nil
-		}
+	getNameFunc := func(flavor flavors.Flavor) string {
+		return flavor.Name
 	}
 
-	return "", fmt.Errorf("flavor with name %q not found", name)
+	flavor, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+
+	return flavor.ID, err
 }

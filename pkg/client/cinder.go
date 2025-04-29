@@ -75,31 +75,27 @@ func (c *cinderV3) DeleteVolume(ctx context.Context, id string) error {
 
 // VolumeIDFromName resolves the given volume name to a unique ID.
 func (c *cinderV3) VolumeIDFromName(ctx context.Context, name string) (string, error) {
-	opts := volumes.ListOpts{
+	listOpts := volumes.ListOpts{
 		Name: name,
 	}
 
-	allPages, err := volumes.List(c.serviceClient, opts).AllPages(ctx)
-	onCall(cinderService)
-
-	if err != nil {
-		onFailure(cinderService)
-		return "", fmt.Errorf("failed to list volumes: %w", err)
-	}
-
-	allVolumes, err := volumes.ExtractVolumes(allPages)
-	if err != nil {
-		onFailure(cinderService)
-		return "", fmt.Errorf("failed to extract volumes: %w", err)
-	}
-
-	for _, vol := range allVolumes {
-		if vol.Name == name {
-			return vol.ID, nil
+	listFunc := func(ctx context.Context) ([]volumes.Volume, error) {
+		allPages, err := volumes.List(c.serviceClient, listOpts).AllPages(ctx)
+		onCall(cinderService)
+		if err != nil {
+			onFailure(cinderService)
+			return nil, err
 		}
+		return volumes.ExtractVolumes(allPages)
 	}
 
-	return "", fmt.Errorf("no network found with name: %s", name)
+	getNameFunc := func(volume volumes.Volume) string {
+		return volume.Name
+	}
+
+	volume, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+
+	return volume.ID, err
 }
 
 // ListVolumes lists all volumes

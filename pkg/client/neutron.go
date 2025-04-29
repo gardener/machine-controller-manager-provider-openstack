@@ -100,30 +100,27 @@ func (n *neutronV2) DeletePort(ctx context.Context, id string) error {
 
 // NetworkIDFromName resolves the given network name to a unique ID.
 func (n *neutronV2) NetworkIDFromName(ctx context.Context, name string) (string, error) {
-	opts := networks.ListOpts{
+	listOpts := networks.ListOpts{
 		Name: name,
 	}
 
-	allPages, err := networks.List(n.serviceClient, opts).AllPages(ctx)
-	onCall("neutron")
-	if err != nil {
-		onFailure("neutron")
-		return "", fmt.Errorf("failed to list networks: %w", err)
-	}
-
-	allNetworks, err := networks.ExtractNetworks(allPages)
-	if err != nil {
-		onFailure("neutron")
-		return "", fmt.Errorf("failed to extract networks: %w", err)
-	}
-
-	for _, net := range allNetworks {
-		if net.Name == name {
-			return net.ID, nil
+	listFunc := func(ctx context.Context) ([]networks.Network, error) {
+		allPages, err := networks.List(n.serviceClient, listOpts).AllPages(ctx)
+		onCall("neutron")
+		if err != nil {
+			onFailure("neutron")
+			return nil, err
 		}
+		return networks.ExtractNetworks(allPages)
 	}
 
-	return "", fmt.Errorf("no network found with name: %s", name)
+	getNameFunc := func(network networks.Network) string {
+		return network.Name
+	}
+
+	network, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+
+	return network.ID, err
 }
 
 // GroupIDFromName resolves the given security group name to a unique ID.
@@ -132,53 +129,48 @@ func (n *neutronV2) GroupIDFromName(ctx context.Context, name string) (string, e
 		Name: name,
 	}
 
-	allPages, err := groups.List(n.serviceClient, listOpts).AllPages(ctx)
-	onCall("neutron")
-	if err != nil {
-		onFailure("neutron")
-		return "", fmt.Errorf("failed to list security groups: %w", err)
-	}
-
-	allGroups, err := groups.ExtractGroups(allPages)
-	if err != nil {
-		return "", fmt.Errorf("failed to extract security groups: %w", err)
-	}
-
-	for _, group := range allGroups {
-		if group.Name == name {
-			return group.ID, nil
+	listFunc := func(ctx context.Context) ([]groups.SecGroup, error) {
+		allPages, err := groups.List(n.serviceClient, listOpts).AllPages(ctx)
+		onCall("neutron")
+		if err != nil {
+			onFailure("neutron")
+			return nil, err
 		}
+		return groups.ExtractGroups(allPages)
 	}
 
-	return "", fmt.Errorf("no security group found with name: %s", name)
+	getNameFunc := func(sg groups.SecGroup) string {
+		return sg.Name
+	}
+
+	sg, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+
+	return sg.ID, err
 }
 
 // PortIDFromName resolves the given port name to a unique ID.
 func (n *neutronV2) PortIDFromName(ctx context.Context, name string) (string, error) {
-	opts := ports.ListOpts{
+	listOpts := ports.ListOpts{
 		Name: name,
 	}
 
-	allPages, err := ports.List(n.serviceClient, opts).AllPages(ctx)
-	onCall("neutron")
-	if err != nil {
-		onFailure("neutron")
-		return "", fmt.Errorf("failed to list ports: %w", err)
-	}
-
-	allPorts, err := ports.ExtractPorts(allPages)
-	if err != nil {
-		onFailure("neutron")
-		return "", fmt.Errorf("failed to extract ports: %w", err)
-	}
-
-	for _, port := range allPorts {
-		if port.Name == name {
-			return port.ID, nil
+	listFunc := func(ctx context.Context) ([]ports.Port, error) {
+		allPages, err := ports.List(n.serviceClient, listOpts).AllPages(ctx)
+		onCall("neutron")
+		if err != nil {
+			onFailure("neutron")
+			return nil, err
 		}
+		return ports.ExtractPorts(allPages)
 	}
 
-	return "", fmt.Errorf("no port found with name: %s", name)
+	getNameFunc := func(port ports.Port) string {
+		return port.Name
+	}
+
+	port, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+
+	return port.ID, err
 }
 
 func (n *neutronV2) TagPort(ctx context.Context, id string, tags []string) error {
