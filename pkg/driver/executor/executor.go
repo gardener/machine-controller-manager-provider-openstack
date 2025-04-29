@@ -205,9 +205,9 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 	flavorName := ex.Config.Spec.FlavorName
 
 	var (
-		imageRef string
-		err      error
-		hintOpts volumes.SchedulerHintOpts
+		imageRef       string
+		err            error
+		serverHintOpts servers.SchedulerHintOpts
 	)
 
 	// use imageID if provided, otherwise try to resolve the imageName to an imageID
@@ -238,16 +238,14 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 	}
 
 	if ex.Config.Spec.ServerGroupID != nil {
-		hintOpts = volumes.SchedulerHintOpts{
-			AdditionalProperties: map[string]interface{}{
-				"group": []string{*ex.Config.Spec.ServerGroupID},
-			},
+		serverHintOpts = servers.SchedulerHintOpts{
+			Group: *ex.Config.Spec.ServerGroupID,
 		}
 	}
 
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
-		createOpts, err = ex.addBlockDeviceOpts(ctx, machineName, imageRef, createOpts, hintOpts)
+		createOpts, err = ex.addBlockDeviceOpts(ctx, machineName, imageRef, createOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error adding block device opts %w", err)
 		}
@@ -258,15 +256,15 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 		KeyName:           keyName,
 	}
 
-	return ex.Compute.CreateServer(ctx, createOptsBuilder, hintOpts)
+	return ex.Compute.CreateServer(ctx, createOptsBuilder, serverHintOpts)
 }
 
-func (ex *Executor) addBlockDeviceOpts(ctx context.Context, machineName, imageID string,
-	createOpts *servers.CreateOpts, hintOpts servers.SchedulerHintOptsBuilder) (*servers.CreateOpts, error) {
+func (ex *Executor) addBlockDeviceOpts(ctx context.Context, machineName,
+	imageID string, createOpts *servers.CreateOpts) (*servers.CreateOpts, error) {
 	createOpts.BlockDevice = make([]servers.BlockDevice, 1)
 
 	if ex.Config.Spec.RootDiskType != nil {
-		volumeID, err := ex.ensureVolume(ctx, machineName, imageID, hintOpts)
+		volumeID, err := ex.ensureVolume(ctx, machineName, imageID, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to ensure volume [Name=%q]: %s", machineName, err)
 		}
