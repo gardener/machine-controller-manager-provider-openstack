@@ -5,6 +5,7 @@
 package client
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -12,10 +13,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/utils/client"
-	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
@@ -29,13 +28,13 @@ type Factory struct {
 type Option func(opts gophercloud.EndpointOpts) gophercloud.EndpointOpts
 
 // NewFactoryFromSecretData can create a Factory from the a kubernetes secret's data.
-func NewFactoryFromSecretData(data map[string][]byte) (*Factory, error) {
+func NewFactoryFromSecretData(ctx context.Context, data map[string][]byte) (*Factory, error) {
 	if data == nil {
 		return nil, fmt.Errorf("secret does not contain any data")
 	}
 
 	creds := extractCredentialsFromSecretData(data)
-	provider, err := newAuthenticatedProviderClientFromCredentials(creds)
+	provider, err := newAuthenticatedProviderClientFromCredentials(ctx, creds)
 	if err != nil {
 		return nil, fmt.Errorf("error creating OpenStack client from credentials: %w", err)
 	}
@@ -46,84 +45,76 @@ func NewFactoryFromSecretData(data map[string][]byte) (*Factory, error) {
 }
 
 // NewFactoryFromSecret can create a Factory from the a kubernetes secret.
-func NewFactoryFromSecret(secret *corev1.Secret) (*Factory, error) {
+func NewFactoryFromSecret(ctx context.Context, secret *corev1.Secret) (*Factory, error) {
 	if secret == nil {
 		return nil, fmt.Errorf("secret cannot be nil")
 	}
 
-	return NewFactoryFromSecretData(secret.Data)
+	return NewFactoryFromSecretData(ctx, secret.Data)
 }
 
-func newAuthenticatedProviderClientFromCredentials(credentials *credentials) (*gophercloud.ProviderClient, error) {
-	config := &tls.Config{} // #nosec: G402 -- Can be parameterized.
+func newAuthenticatedProviderClientFromCredentials(ctx context.Context, credentials *credentials) (*gophercloud.ProviderClient, error) {
+	authOpts := gophercloud.AuthOptions{
+		IdentityEndpoint: credentials.AuthURL,
+		// AllowReauth should be set to true if you grant permission for Gophercloud to
+		// cache your credentials in memory, and to allow Gophercloud to attempt to
+		// re-authenticate automatically if/when your token expires.
+		AllowReauth: true,
+	}
 
+	if credentials.ApplicationCredentialID != "" {
+		authOpts.ApplicationCredentialID = credentials.ApplicationCredentialID
+		authOpts.ApplicationCredentialName = credentials.ApplicationCredentialName
+		authOpts.ApplicationCredentialSecret = credentials.ApplicationCredentialSecret
+	} else {
+		authOpts.Username = credentials.Username
+		authOpts.Password = credentials.Password
+		authOpts.DomainName = credentials.DomainName
+		authOpts.TenantName = credentials.TenantName
+	}
+
+	tlsConfig := &tls.Config{} // #nosec: G402 -- Can be parameterized.
 	if credentials.CACert != nil {
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(credentials.CACert)
-		config.RootCAs = caCertPool
+		tlsConfig.RootCAs = caCertPool
 	}
-
 	if credentials.Insecure {
-		config.InsecureSkipVerify = true
+		tlsConfig.InsecureSkipVerify = true
 	}
-
 	if credentials.ClientCert != nil {
 		cert, err := tls.X509KeyPair(credentials.ClientCert, credentials.ClientKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create X509 key pair: %v", err)
 		}
-		config.Certificates = []tls.Certificate{cert}
+		tlsConfig.Certificates = []tls.Certificate{cert}
 	}
 
-	clientOpts := new(clientconfig.ClientOpts)
-	authInfo := &clientconfig.AuthInfo{
-		AuthURL:                     credentials.AuthURL,
-		Username:                    credentials.Username,
-		Password:                    credentials.Password,
-		DomainName:                  credentials.DomainName,
-		DomainID:                    credentials.DomainID,
-		ProjectName:                 credentials.TenantName,
-		ProjectID:                   credentials.TenantID,
-		UserDomainName:              credentials.UserDomainName,
-		UserDomainID:                credentials.UserDomainID,
-		ApplicationCredentialID:     credentials.ApplicationCredentialID,
-		ApplicationCredentialName:   credentials.ApplicationCredentialName,
-		ApplicationCredentialSecret: credentials.ApplicationCredentialSecret,
+	transport := &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig: tlsConfig,
 	}
-	clientOpts.AuthInfo = authInfo
-
-	if clientOpts.AuthInfo.ApplicationCredentialSecret != "" {
-		clientOpts.AuthType = clientconfig.AuthV3ApplicationCredential
-	}
-
-	ao, err := clientconfig.AuthOptions(clientOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client auth options: %w", err)
-	}
-
-	provider, err := openstack.NewClient(ao.IdentityEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create authenticated client: %w", err)
-	}
-
-	// Set UserAgent
-	provider.UserAgent.Prepend("Machine Controller Provider Openstack")
-
-	transport := &http.Transport{Proxy: http.ProxyFromEnvironment, TLSClientConfig: config}
-	provider.HTTPClient = http.Client{
+	httpClient := http.Client{
 		Transport: transport,
 	}
 
+	provider, err := config.NewProviderClient(
+		ctx,
+		authOpts,
+		config.WithTLSConfig(tlsConfig),
+		config.WithHTTPClient(httpClient),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider client: %w", err)
+	}
+
+	provider.UserAgent.Prepend("Machine Controller Provider Openstack")
+
 	if klog.V(6).Enabled() {
-		provider.HTTPClient.Transport = &client.RoundTripper{
+		provider.HTTPClient.Transport = &loggingRoundTripper{
 			Rt:     provider.HTTPClient.Transport,
 			Logger: &logger{},
 		}
-	}
-
-	err = openstack.Authenticate(provider, *ao)
-	if err != nil {
-		return nil, err
 	}
 
 	return provider, nil

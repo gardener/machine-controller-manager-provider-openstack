@@ -15,12 +15,14 @@
 package openstack
 
 import (
+	context "context"
 	reflect "reflect"
 
-	volumes "github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	servers "github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	ports "github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	subnets "github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
+	volumes "github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	servers "github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	images "github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
+	ports "github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
+	subnets "github.com/gophercloud/gophercloud/v2/openstack/networking/v2/subnets"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -48,108 +50,93 @@ func (m *MockCompute) EXPECT() *MockComputeMockRecorder {
 	return m.recorder
 }
 
-// BootFromVolume mocks base method.
-func (m *MockCompute) BootFromVolume(opts servers.CreateOptsBuilder) (*servers.Server, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BootFromVolume", opts)
-	ret0, _ := ret[0].(*servers.Server)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// BootFromVolume indicates an expected call of BootFromVolume.
-func (mr *MockComputeMockRecorder) BootFromVolume(opts any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BootFromVolume", reflect.TypeOf((*MockCompute)(nil).BootFromVolume), opts)
-}
-
 // CreateServer mocks base method.
-func (m *MockCompute) CreateServer(opts servers.CreateOptsBuilder) (*servers.Server, error) {
+func (m *MockCompute) CreateServer(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder) (*servers.Server, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateServer", opts)
+	ret := m.ctrl.Call(m, "CreateServer", ctx, opts, hintOpts)
 	ret0, _ := ret[0].(*servers.Server)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateServer indicates an expected call of CreateServer.
-func (mr *MockComputeMockRecorder) CreateServer(opts any) *gomock.Call {
+func (mr *MockComputeMockRecorder) CreateServer(ctx, opts, hintOpts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateServer", reflect.TypeOf((*MockCompute)(nil).CreateServer), opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateServer", reflect.TypeOf((*MockCompute)(nil).CreateServer), ctx, opts, hintOpts)
 }
 
 // DeleteServer mocks base method.
-func (m *MockCompute) DeleteServer(id string) error {
+func (m *MockCompute) DeleteServer(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteServer", id)
+	ret := m.ctrl.Call(m, "DeleteServer", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteServer indicates an expected call of DeleteServer.
-func (mr *MockComputeMockRecorder) DeleteServer(id any) *gomock.Call {
+func (mr *MockComputeMockRecorder) DeleteServer(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteServer", reflect.TypeOf((*MockCompute)(nil).DeleteServer), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteServer", reflect.TypeOf((*MockCompute)(nil).DeleteServer), ctx, id)
 }
 
 // FlavorIDFromName mocks base method.
-func (m *MockCompute) FlavorIDFromName(name string) (string, error) {
+func (m *MockCompute) FlavorIDFromName(ctx context.Context, name string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FlavorIDFromName", name)
+	ret := m.ctrl.Call(m, "FlavorIDFromName", ctx, name)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FlavorIDFromName indicates an expected call of FlavorIDFromName.
-func (mr *MockComputeMockRecorder) FlavorIDFromName(name any) *gomock.Call {
+func (mr *MockComputeMockRecorder) FlavorIDFromName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlavorIDFromName", reflect.TypeOf((*MockCompute)(nil).FlavorIDFromName), name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FlavorIDFromName", reflect.TypeOf((*MockCompute)(nil).FlavorIDFromName), ctx, name)
 }
 
 // GetServer mocks base method.
-func (m *MockCompute) GetServer(id string) (*servers.Server, error) {
+func (m *MockCompute) GetServer(ctx context.Context, id string) (*servers.Server, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetServer", id)
+	ret := m.ctrl.Call(m, "GetServer", ctx, id)
 	ret0, _ := ret[0].(*servers.Server)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetServer indicates an expected call of GetServer.
-func (mr *MockComputeMockRecorder) GetServer(id any) *gomock.Call {
+func (mr *MockComputeMockRecorder) GetServer(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServer", reflect.TypeOf((*MockCompute)(nil).GetServer), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetServer", reflect.TypeOf((*MockCompute)(nil).GetServer), ctx, id)
 }
 
 // ImageIDFromName mocks base method.
-func (m *MockCompute) ImageIDFromName(name string) (string, error) {
+func (m *MockCompute) ImageIDFromName(ctx context.Context, name string) (images.Image, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ImageIDFromName", name)
-	ret0, _ := ret[0].(string)
+	ret := m.ctrl.Call(m, "ImageIDFromName", ctx, name)
+	ret0, _ := ret[0].(images.Image)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ImageIDFromName indicates an expected call of ImageIDFromName.
-func (mr *MockComputeMockRecorder) ImageIDFromName(name any) *gomock.Call {
+func (mr *MockComputeMockRecorder) ImageIDFromName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageIDFromName", reflect.TypeOf((*MockCompute)(nil).ImageIDFromName), name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageIDFromName", reflect.TypeOf((*MockCompute)(nil).ImageIDFromName), ctx, name)
 }
 
 // ListServers mocks base method.
-func (m *MockCompute) ListServers(opts servers.ListOptsBuilder) ([]servers.Server, error) {
+func (m *MockCompute) ListServers(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListServers", opts)
+	ret := m.ctrl.Call(m, "ListServers", ctx, opts)
 	ret0, _ := ret[0].([]servers.Server)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListServers indicates an expected call of ListServers.
-func (mr *MockComputeMockRecorder) ListServers(opts any) *gomock.Call {
+func (mr *MockComputeMockRecorder) ListServers(ctx, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListServers", reflect.TypeOf((*MockCompute)(nil).ListServers), opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListServers", reflect.TypeOf((*MockCompute)(nil).ListServers), ctx, opts)
 }
 
 // MockNetwork is a mock of Network interface.
@@ -177,135 +164,135 @@ func (m *MockNetwork) EXPECT() *MockNetworkMockRecorder {
 }
 
 // CreatePort mocks base method.
-func (m *MockNetwork) CreatePort(opts ports.CreateOptsBuilder) (*ports.Port, error) {
+func (m *MockNetwork) CreatePort(ctx context.Context, opts ports.CreateOptsBuilder) (*ports.Port, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePort", opts)
+	ret := m.ctrl.Call(m, "CreatePort", ctx, opts)
 	ret0, _ := ret[0].(*ports.Port)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreatePort indicates an expected call of CreatePort.
-func (mr *MockNetworkMockRecorder) CreatePort(opts any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) CreatePort(ctx, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePort", reflect.TypeOf((*MockNetwork)(nil).CreatePort), opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePort", reflect.TypeOf((*MockNetwork)(nil).CreatePort), ctx, opts)
 }
 
 // DeletePort mocks base method.
-func (m *MockNetwork) DeletePort(id string) error {
+func (m *MockNetwork) DeletePort(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeletePort", id)
+	ret := m.ctrl.Call(m, "DeletePort", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeletePort indicates an expected call of DeletePort.
-func (mr *MockNetworkMockRecorder) DeletePort(id any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) DeletePort(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePort", reflect.TypeOf((*MockNetwork)(nil).DeletePort), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePort", reflect.TypeOf((*MockNetwork)(nil).DeletePort), ctx, id)
 }
 
 // GetSubnet mocks base method.
-func (m *MockNetwork) GetSubnet(id string) (*subnets.Subnet, error) {
+func (m *MockNetwork) GetSubnet(ctx context.Context, id string) (*subnets.Subnet, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSubnet", id)
+	ret := m.ctrl.Call(m, "GetSubnet", ctx, id)
 	ret0, _ := ret[0].(*subnets.Subnet)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSubnet indicates an expected call of GetSubnet.
-func (mr *MockNetworkMockRecorder) GetSubnet(id any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) GetSubnet(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnet", reflect.TypeOf((*MockNetwork)(nil).GetSubnet), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubnet", reflect.TypeOf((*MockNetwork)(nil).GetSubnet), ctx, id)
 }
 
 // GroupIDFromName mocks base method.
-func (m *MockNetwork) GroupIDFromName(name string) (string, error) {
+func (m *MockNetwork) GroupIDFromName(ctx context.Context, name string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GroupIDFromName", name)
+	ret := m.ctrl.Call(m, "GroupIDFromName", ctx, name)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GroupIDFromName indicates an expected call of GroupIDFromName.
-func (mr *MockNetworkMockRecorder) GroupIDFromName(name any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) GroupIDFromName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GroupIDFromName", reflect.TypeOf((*MockNetwork)(nil).GroupIDFromName), name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GroupIDFromName", reflect.TypeOf((*MockNetwork)(nil).GroupIDFromName), ctx, name)
 }
 
 // ListPorts mocks base method.
-func (m *MockNetwork) ListPorts(opts ports.ListOptsBuilder) ([]ports.Port, error) {
+func (m *MockNetwork) ListPorts(ctx context.Context, opts ports.ListOptsBuilder) ([]ports.Port, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListPorts", opts)
+	ret := m.ctrl.Call(m, "ListPorts", ctx, opts)
 	ret0, _ := ret[0].([]ports.Port)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListPorts indicates an expected call of ListPorts.
-func (mr *MockNetworkMockRecorder) ListPorts(opts any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) ListPorts(ctx, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPorts", reflect.TypeOf((*MockNetwork)(nil).ListPorts), opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPorts", reflect.TypeOf((*MockNetwork)(nil).ListPorts), ctx, opts)
 }
 
 // NetworkIDFromName mocks base method.
-func (m *MockNetwork) NetworkIDFromName(name string) (string, error) {
+func (m *MockNetwork) NetworkIDFromName(ctx context.Context, name string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NetworkIDFromName", name)
+	ret := m.ctrl.Call(m, "NetworkIDFromName", ctx, name)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NetworkIDFromName indicates an expected call of NetworkIDFromName.
-func (mr *MockNetworkMockRecorder) NetworkIDFromName(name any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) NetworkIDFromName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkIDFromName", reflect.TypeOf((*MockNetwork)(nil).NetworkIDFromName), name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetworkIDFromName", reflect.TypeOf((*MockNetwork)(nil).NetworkIDFromName), ctx, name)
 }
 
 // PortIDFromName mocks base method.
-func (m *MockNetwork) PortIDFromName(name string) (string, error) {
+func (m *MockNetwork) PortIDFromName(ctx context.Context, name string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PortIDFromName", name)
+	ret := m.ctrl.Call(m, "PortIDFromName", ctx, name)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PortIDFromName indicates an expected call of PortIDFromName.
-func (mr *MockNetworkMockRecorder) PortIDFromName(name any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) PortIDFromName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PortIDFromName", reflect.TypeOf((*MockNetwork)(nil).PortIDFromName), name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PortIDFromName", reflect.TypeOf((*MockNetwork)(nil).PortIDFromName), ctx, name)
 }
 
 // TagPort mocks base method.
-func (m *MockNetwork) TagPort(id string, tags []string) error {
+func (m *MockNetwork) TagPort(ctx context.Context, id string, tags []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TagPort", id, tags)
+	ret := m.ctrl.Call(m, "TagPort", ctx, id, tags)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // TagPort indicates an expected call of TagPort.
-func (mr *MockNetworkMockRecorder) TagPort(id, tags any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) TagPort(ctx, id, tags any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TagPort", reflect.TypeOf((*MockNetwork)(nil).TagPort), id, tags)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TagPort", reflect.TypeOf((*MockNetwork)(nil).TagPort), ctx, id, tags)
 }
 
 // UpdatePort mocks base method.
-func (m *MockNetwork) UpdatePort(id string, opts ports.UpdateOptsBuilder) error {
+func (m *MockNetwork) UpdatePort(ctx context.Context, id string, opts ports.UpdateOptsBuilder) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdatePort", id, opts)
+	ret := m.ctrl.Call(m, "UpdatePort", ctx, id, opts)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdatePort indicates an expected call of UpdatePort.
-func (mr *MockNetworkMockRecorder) UpdatePort(id, opts any) *gomock.Call {
+func (mr *MockNetworkMockRecorder) UpdatePort(ctx, id, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePort", reflect.TypeOf((*MockNetwork)(nil).UpdatePort), id, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePort", reflect.TypeOf((*MockNetwork)(nil).UpdatePort), ctx, id, opts)
 }
 
 // MockStorage is a mock of Storage interface.
@@ -333,75 +320,75 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // CreateVolume mocks base method.
-func (m *MockStorage) CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume, error) {
+func (m *MockStorage) CreateVolume(ctx context.Context, opts volumes.CreateOptsBuilder, hintOpts volumes.SchedulerHintOptsBuilder) (*volumes.Volume, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateVolume", opts)
+	ret := m.ctrl.Call(m, "CreateVolume", ctx, opts, hintOpts)
 	ret0, _ := ret[0].(*volumes.Volume)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateVolume indicates an expected call of CreateVolume.
-func (mr *MockStorageMockRecorder) CreateVolume(opts any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateVolume(ctx, opts, hintOpts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateVolume", reflect.TypeOf((*MockStorage)(nil).CreateVolume), opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateVolume", reflect.TypeOf((*MockStorage)(nil).CreateVolume), ctx, opts, hintOpts)
 }
 
 // DeleteVolume mocks base method.
-func (m *MockStorage) DeleteVolume(id string) error {
+func (m *MockStorage) DeleteVolume(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteVolume", id)
+	ret := m.ctrl.Call(m, "DeleteVolume", ctx, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteVolume indicates an expected call of DeleteVolume.
-func (mr *MockStorageMockRecorder) DeleteVolume(id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteVolume(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVolume", reflect.TypeOf((*MockStorage)(nil).DeleteVolume), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteVolume", reflect.TypeOf((*MockStorage)(nil).DeleteVolume), ctx, id)
 }
 
 // GetVolume mocks base method.
-func (m *MockStorage) GetVolume(id string) (*volumes.Volume, error) {
+func (m *MockStorage) GetVolume(ctx context.Context, id string) (*volumes.Volume, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetVolume", id)
+	ret := m.ctrl.Call(m, "GetVolume", ctx, id)
 	ret0, _ := ret[0].(*volumes.Volume)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetVolume indicates an expected call of GetVolume.
-func (mr *MockStorageMockRecorder) GetVolume(id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetVolume(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVolume", reflect.TypeOf((*MockStorage)(nil).GetVolume), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetVolume", reflect.TypeOf((*MockStorage)(nil).GetVolume), ctx, id)
 }
 
 // ListVolumes mocks base method.
-func (m *MockStorage) ListVolumes(opts volumes.ListOptsBuilder) ([]volumes.Volume, error) {
+func (m *MockStorage) ListVolumes(ctx context.Context, opts volumes.ListOptsBuilder) ([]volumes.Volume, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListVolumes", opts)
+	ret := m.ctrl.Call(m, "ListVolumes", ctx, opts)
 	ret0, _ := ret[0].([]volumes.Volume)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListVolumes indicates an expected call of ListVolumes.
-func (mr *MockStorageMockRecorder) ListVolumes(opts any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListVolumes(ctx, opts any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVolumes", reflect.TypeOf((*MockStorage)(nil).ListVolumes), opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListVolumes", reflect.TypeOf((*MockStorage)(nil).ListVolumes), ctx, opts)
 }
 
 // VolumeIDFromName mocks base method.
-func (m *MockStorage) VolumeIDFromName(name string) (string, error) {
+func (m *MockStorage) VolumeIDFromName(ctx context.Context, name string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VolumeIDFromName", name)
+	ret := m.ctrl.Call(m, "VolumeIDFromName", ctx, name)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // VolumeIDFromName indicates an expected call of VolumeIDFromName.
-func (mr *MockStorageMockRecorder) VolumeIDFromName(name any) *gomock.Call {
+func (mr *MockStorageMockRecorder) VolumeIDFromName(ctx, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VolumeIDFromName", reflect.TypeOf((*MockStorage)(nil).VolumeIDFromName), name)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VolumeIDFromName", reflect.TypeOf((*MockStorage)(nil).VolumeIDFromName), ctx, name)
 }

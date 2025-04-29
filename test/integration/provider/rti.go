@@ -5,6 +5,7 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
@@ -13,11 +14,11 @@ import (
 )
 
 // ITResourceTagKey is specifically used for integration test
-// primarily to avoid orphan collection of resources when the control cluster is
-// non seed cluster
+// primarily to avoid orphan collection of resources when the control cluster is non-seed cluster
 var ITResourceTagKey = "kubernetes.io-role-integration-test"
 
-// ResourcesTrackerImpl type keeps a note of resources which are initialized in MCM IT suite and are used in provider IT
+// ResourcesTrackerImpl type keeps a note of resources which are
+// initialized in MCM IT suite and are used in provider IT
 type ResourcesTrackerImpl struct {
 	MachineClass *v1alpha1.MachineClass
 	SecretData   map[string][]byte
@@ -33,13 +34,13 @@ func (r *ResourcesTrackerImpl) InitializeResourcesTracker(machineClass *v1alpha1
 	r.MachineClass = machineClass
 	r.SecretData = secretData
 
-	initialVMs, initialNICs, initialVolumes, initialMachines, err := r.probeResources()
+	initialVMs, initialNICs, initialVolumes, initialMachines, err := r.probeResources(context.Background())
 	if err != nil {
 		fmt.Printf("Error in initial probe of orphaned resources: %s", err.Error())
 		return err
 	}
 
-	delErrOrphanVMs, delErrOrphanVolumes, delErrOrphanNICs := cleanOrphanResources(initialVMs, initialVolumes, initialNICs, r.MachineClass, r.SecretData)
+	delErrOrphanVMs, delErrOrphanVolumes, delErrOrphanNICs := cleanOrphanResources(context.Background(), initialVMs, initialVolumes, initialNICs, r.MachineClass, r.SecretData)
 	if len(delErrOrphanVMs) != 0 || len(delErrOrphanVolumes) != 0 || len(initialMachines) != 0 || len(delErrOrphanNICs) != 0 {
 		err = fmt.Errorf("error in cleaning the following orphan resources. Clean them up before proceeding with the test.\nvirtual machines: %v\ndisks: %v\nmcm machines: %v\nnics: %v", delErrOrphanVMs, delErrOrphanVolumes, initialMachines, delErrOrphanNICs)
 		return err
@@ -48,8 +49,8 @@ func (r *ResourcesTrackerImpl) InitializeResourcesTracker(machineClass *v1alpha1
 }
 
 // probeResources will look for resources currently available and returns them
-func (r *ResourcesTrackerImpl) probeResources() ([]string, []string, []string, []string, error) {
-	factory, err := client.NewFactoryFromSecretData(r.SecretData)
+func (r *ResourcesTrackerImpl) probeResources(ctx context.Context) ([]string, []string, []string, []string, error) {
+	factory, err := client.NewFactoryFromSecretData(ctx, r.SecretData)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -59,17 +60,17 @@ func (r *ResourcesTrackerImpl) probeResources() ([]string, []string, []string, [
 		return nil, nil, nil, nil, fmt.Errorf("failed to find available machines: %s", err)
 	}
 
-	orphanVMs, err := getOrphanedInstances(factory)
+	orphanVMs, err := getOrphanedInstances(ctx, factory)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to find orphaned instances: %s", err)
 	}
 
-	orphanNICs, err := getOrphanedNICs(factory)
+	orphanNICs, err := getOrphanedNICs(ctx, factory)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to find available ports: %s", err)
 	}
 
-	orphanDisks, err := getOrphanedDisks(factory)
+	orphanDisks, err := getOrphanedDisks(ctx, factory)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("failed to find available disks: %s", err)
 	}
@@ -80,7 +81,7 @@ func (r *ResourcesTrackerImpl) probeResources() ([]string, []string, []string, [
 // IsOrphanedResourcesAvailable checks whether there are any orphaned resources left.
 // If yes, then prints them and returns true. If not, then returns false
 func (r *ResourcesTrackerImpl) IsOrphanedResourcesAvailable() bool {
-	afterTestExecutionVMs, afterTestExecutionNICs, afterTestExecutionDisks, afterTestExecutionAvailmachines, err := r.probeResources()
+	afterTestExecutionVMs, afterTestExecutionNICs, afterTestExecutionDisks, afterTestExecutionAvailmachines, err := r.probeResources(context.Background())
 	if err != nil {
 		fmt.Printf("Error probing orphaned resources: %s", err.Error())
 		return true

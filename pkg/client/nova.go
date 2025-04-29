@@ -5,16 +5,14 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/gardener/machine-controller-manager/pkg/util/provider/metrics"
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/utils/openstack/compute/v2/flavors"
-	"github.com/gophercloud/utils/openstack/imageservice/v2/images"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/flavors"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
 )
 
 const (
@@ -49,38 +47,25 @@ func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.Endpoi
 }
 
 // CreateServer creates a server.
-func (c *novaV2) CreateServer(opts servers.CreateOptsBuilder) (*servers.Server, error) {
-	server, err := servers.Create(c.serviceClient, opts).Extract()
-
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+func (c *novaV2) CreateServer(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder) (*servers.Server, error) {
+	// TODO The CreateOptsExt struct has been removed and a BlockDevice field added to the CreateOpts struct in openstack/compute/v2/servers
+	server, err := servers.Create(ctx, c.serviceClient, opts, hintOpts).Extract()
+	onCall("nova")
 	if err != nil {
-		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
-		return nil, err
-	}
-
-	return server, nil
-}
-
-// BootFromVolume creates a server from a block device mapping.
-func (c *novaV2) BootFromVolume(opts servers.CreateOptsBuilder) (*servers.Server, error) {
-	server, err := bootfromvolume.Create(c.serviceClient, opts).Extract()
-
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
-	if err != nil {
-		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+		onFailure("nova")
 		return nil, err
 	}
 	return server, nil
 }
 
 // GetServer fetches server data from the supplied ID.
-func (c *novaV2) GetServer(id string) (*servers.Server, error) {
-	server, err := servers.Get(c.serviceClient, id).Extract()
+func (c *novaV2) GetServer(ctx context.Context, id string) (*servers.Server, error) {
+	server, err := servers.Get(ctx, c.serviceClient, id).Extract()
 
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+	onCall("nova")
 	if err != nil {
 		if !IsNotFoundError(err) {
-			metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+			onFailure("nova")
 		}
 		return nil, err
 	}
@@ -88,54 +73,74 @@ func (c *novaV2) GetServer(id string) (*servers.Server, error) {
 }
 
 // ListServers lists all servers based on opts constraints.
-func (c *novaV2) ListServers(opts servers.ListOptsBuilder) ([]servers.Server, error) {
-	pages, err := servers.List(c.serviceClient, opts).AllPages()
+func (c *novaV2) ListServers(ctx context.Context, opts servers.ListOptsBuilder) ([]servers.Server, error) {
+	pages, err := servers.List(c.serviceClient, opts).AllPages(ctx)
 
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+	onCall("nova")
 	if err != nil {
-		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+		onFailure("nova")
 		return nil, err
 	}
 	return servers.ExtractServers(pages)
 }
 
 // DeleteServer deletes a server with the supplied ID. If the server does not exist it returns nil.
-func (c *novaV2) DeleteServer(id string) error {
-	err := servers.Delete(c.serviceClient, id).ExtractErr()
+func (c *novaV2) DeleteServer(ctx context.Context, id string) error {
+	err := servers.Delete(ctx, c.serviceClient, id).ExtractErr()
 
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+	onCall("nova")
 	if err != nil && !IsNotFoundError(err) {
-		metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+		onFailure("nova")
 		return err
 	}
 	return nil
 }
 
 // ImageIDFromName resolves the given image name to a unique ID.
-func (c *novaV2) ImageIDFromName(name string) (string, error) {
-	id, err := images.IDFromName(c.serviceClient, name)
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+func (c *novaV2) ImageIDFromName(ctx context.Context, name string) (images.Image, error) {
+	listOpts := images.ListOpts{
+		Name: name,
+	}
+	page, err := images.List(c.serviceClient, listOpts).AllPages(ctx)
+	onCall("nova")
 	if err != nil {
 		if !IsNotFoundError(err) {
-			metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+			onFailure("nova")
 		}
-		return "", err
+		return images.Image{}, fmt.Errorf("unable to list images: %w", err)
+	}
+	foundImages, err := images.ExtractImages(page)
+	if err != nil {
+		return images.Image{}, fmt.Errorf("unable to extract images: %w", err)
 	}
 
-	return id, nil
+	if len(foundImages) == 0 {
+		return images.Image{}, fmt.Errorf("image with name %s not found", name)
+	}
+
+	return foundImages[0], nil
 }
 
 // FlavorIDFromName resolves the given flavor name to a unique ID.
-func (c *novaV2) FlavorIDFromName(name string) (string, error) {
-	id, err := flavors.IDFromName(c.serviceClient, name)
-
-	metrics.APIRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+func (c *novaV2) FlavorIDFromName(ctx context.Context, name string) (string, error) {
+	allPages, err := flavors.ListDetail(c.serviceClient, nil).AllPages(ctx)
+	onCall("nova")
 	if err != nil {
 		if !IsNotFoundError(err) {
-			metrics.APIFailedRequestCount.With(prometheus.Labels{"provider": "openstack", "service": "nova"}).Inc()
+			onFailure("nova")
 		}
-		return "", err
+		return "", fmt.Errorf("unable to list flavors: %w", err)
+	}
+	allFlavors, err := flavors.ExtractFlavors(allPages)
+	if err != nil {
+		return "", fmt.Errorf("unable to extract flavors: %w", err)
 	}
 
-	return id, nil
+	for _, flavor := range allFlavors {
+		if flavor.Name == name {
+			return flavor.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("flavor with name %q not found", name)
 }

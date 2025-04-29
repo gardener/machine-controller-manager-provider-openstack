@@ -6,8 +6,9 @@ package client
 
 import (
 	"errors"
+	"net/http"
 
-	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/v2"
 )
 
 // IsNotFoundError checks if an error returned by OpenStack service calls is caused by HTTP 404 status code.
@@ -16,12 +17,7 @@ func IsNotFoundError(err error) bool {
 		return false
 	}
 
-	if errors.As(err, &gophercloud.ErrDefault404{}) {
-		return true
-	}
-
-	var e gophercloud.Err404er
-	if errors.As(err, &e) {
+	if gophercloud.ResponseCodeIs(err, http.StatusNotFound) {
 		return true
 	}
 
@@ -32,30 +28,20 @@ func IsNotFoundError(err error) bool {
 	return false
 }
 
-// IsUnauthenticated checks if an error returned by OpenStack service calls is caused by HTTP 401 status code.
-func IsUnauthenticated(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	if errors.As(err, &gophercloud.ErrDefault401{}) {
-		return true
-	}
-
-	var e gophercloud.Err401er
-	return errors.As(err, &e)
-}
-
-// IsUnauthorized checks if an error returned by OpenStack service calls is caused by HTTP 403 status code.
+// IsUnauthorized checks if an error returned by OpenStack service calls is caused by HTTP 401 status code.
 func IsUnauthorized(err error) bool {
 	if err == nil {
 		return false
 	}
 
-	if errors.As(err, &gophercloud.ErrDefault403{}) {
-		return true
+	return gophercloud.ResponseCodeIs(err, http.StatusUnauthorized)
+}
+
+// IsForbidden checks if an error returned by OpenStack service calls is caused by HTTP 403 status code.
+func IsForbidden(err error) bool {
+	if err == nil {
+		return false
 	}
 
-	var e gophercloud.Err403er
-	return errors.As(err, &e)
+	return gophercloud.ResponseCodeIs(err, http.StatusForbidden)
 }
