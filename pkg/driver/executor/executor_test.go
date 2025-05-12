@@ -9,15 +9,16 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/subnets"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/mock/gomock"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
@@ -97,25 +98,25 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
-			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
-			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
-			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
 				ID: serverID,
 			}, nil)
 			gomock.InOrder(
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
 					ID:     serverID,
 					Status: client.ServerStatusBuild,
 				}, nil),
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
 					ID:     serverID,
 					Status: client.ServerStatusActive,
 				}, nil))
-			network.EXPECT().ListPorts(&ports.ListOpts{
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{
 				DeviceID: serverID,
 			}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
-			network.EXPECT().UpdatePort(portID, ports.UpdateOpts{
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
 
@@ -134,20 +135,20 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
-			network.EXPECT().GetSubnet(subnetID).Return(&subnets.Subnet{}, nil)
-			network.EXPECT().PortIDFromName(machineName).Return("", gophercloud.ErrResourceNotFound{})
-			network.EXPECT().CreatePort(gomock.Any()).Return(&ports.Port{ID: portID, Name: machineName}, nil)
-			network.EXPECT().TagPort(gomock.Any(), gomock.Any()).Return(nil)
-			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
-			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
-			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			network.EXPECT().GetSubnet(ctx, subnetID).Return(&subnets.Subnet{}, nil)
+			network.EXPECT().PortIDFromName(ctx, machineName).Return("", gophercloud.ErrResourceNotFound{})
+			network.EXPECT().CreatePort(ctx, gomock.Any()).Return(&ports.Port{ID: portID, Name: machineName}, nil)
+			network.EXPECT().TagPort(ctx, gomock.Any(), gomock.Any()).Return(nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
 			)
-			network.EXPECT().ListPorts(&ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
-			network.EXPECT().UpdatePort(portID, ports.UpdateOpts{
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
 
@@ -171,22 +172,24 @@ var _ = Describe("Executor", func() {
 				Config:  cfg,
 			}
 
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
-			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
-			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
-			storage.EXPECT().VolumeIDFromName(machineName).Return("", gophercloud.ErrResourceNotFound{})
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			storage.EXPECT().VolumeIDFromName(ctx, machineName).Return("", gophercloud.ErrResourceNotFound{})
 			gomock.InOrder(
-				storage.EXPECT().GetVolume(volumeID).Return(&volumes.Volume{ID: volumeID, Status: client.VolumeStatusCreating}, nil),
-				storage.EXPECT().GetVolume(volumeID).Return(&volumes.Volume{ID: volumeID, Status: client.VolumeStatusAvailable}, nil),
+				storage.EXPECT().GetVolume(ctx, volumeID).Return(&volumes.Volume{ID: volumeID, Status: client.VolumeStatusCreating}, nil),
+				storage.EXPECT().GetVolume(ctx, volumeID).Return(&volumes.Volume{ID: volumeID, Status: client.VolumeStatusAvailable}, nil),
 			)
-			storage.EXPECT().CreateVolume(gomock.Any()).Return(&volumes.Volume{ID: volumeID}, nil)
-			compute.EXPECT().BootFromVolume(gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			storage.EXPECT().CreateVolume(ctx, gomock.Any(), gomock.Any()).Return(&volumes.Volume{ID: volumeID}, nil)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
+				ID: serverID,
+			}, nil)
 			gomock.InOrder(
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
-				compute.EXPECT().GetServer(serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
 			)
-			network.EXPECT().ListPorts(&ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
-			network.EXPECT().UpdatePort(portID, ports.UpdateOpts{
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
 
@@ -208,19 +211,19 @@ var _ = Describe("Executor", func() {
 				Name:     machineName,
 			}
 
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
-			compute.EXPECT().ImageIDFromName(imageName).Return("imageID", nil)
-			compute.EXPECT().FlavorIDFromName(flavorName).Return("flavorID", nil)
-			compute.EXPECT().CreateServer(gomock.Any()).Return(&servers.Server{
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
 				ID: serverID,
 			}, nil)
 
 			gomock.InOrder(
 				// we return an error to avoid waiting for the wait.Poll timeout
-				compute.EXPECT().GetServer(serverID).Return(nil, fmt.Errorf("error fetching server")),
-				compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return([]servers.Server{*server}, nil),
-				compute.EXPECT().DeleteServer(serverID).Return(nil),
-				compute.EXPECT().GetServer(serverID).Do(func(_ string) { server.Status = client.ServerStatusDeleted }).Return(server, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(nil, fmt.Errorf("error fetching server")),
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{*server}, nil),
+				compute.EXPECT().DeleteServer(ctx, serverID).Return(nil),
+				compute.EXPECT().GetServer(ctx, serverID).Do(func(_ context.Context, _ string) { server.Status = client.ServerStatusDeleted }).Return(server, nil),
 			)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
@@ -230,7 +233,7 @@ var _ = Describe("Executor", func() {
 
 	Context("List", func() {
 		It("should filter the instances based on tags", func() {
-			compute.EXPECT().ListServers(gomock.Any()).Return(
+			compute.EXPECT().ListServers(ctx, gomock.Any()).Return(
 				[]servers.Server{
 					{
 						Metadata: tags,
@@ -303,7 +306,7 @@ var _ = Describe("Executor", func() {
 
 		DescribeTable("#Status",
 			func(name string, expectedID string, expectedErr error) {
-				compute.EXPECT().ListServers(&servers.ListOpts{Name: name}).Return(serverList, nil)
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: name}).Return(serverList, nil)
 				ex := Executor{
 					Compute: compute,
 					Network: network,
@@ -342,7 +345,7 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should return no error if NotFound", func() {
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: "unknown"}).Return(serverList, nil)
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: "unknown"}).Return(serverList, nil)
 			ex := Executor{
 				Compute: compute,
 				Network: network,
@@ -353,9 +356,9 @@ var _ = Describe("Executor", func() {
 		})
 
 		It("should return no error if delete is successful", func() {
-			compute.EXPECT().ListServers(&servers.ListOpts{Name: "foo"}).Return(serverList, nil)
-			compute.EXPECT().DeleteServer("id1").Return(nil)
-			compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil)
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: "foo"}).Return(serverList, nil)
+			compute.EXPECT().DeleteServer(ctx, "id1").Return(nil)
+			compute.EXPECT().GetServer(ctx, "id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil)
 			ex := Executor{
 				Compute: compute,
 				Network: network,
@@ -368,9 +371,9 @@ var _ = Describe("Executor", func() {
 		It("should try to find by ProviderID if supplied", func() {
 			id := "id"
 			gomock.InOrder(
-				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.ServerStatusActive, Metadata: tags}, nil),
-				compute.EXPECT().DeleteServer(id).Return(nil),
-				compute.EXPECT().GetServer(id).Return(&servers.Server{ID: id, Status: client.ServerStatusDeleted, Metadata: tags}, nil),
+				compute.EXPECT().GetServer(ctx, id).Return(&servers.Server{ID: id, Status: client.ServerStatusActive, Metadata: tags}, nil),
+				compute.EXPECT().DeleteServer(ctx, id).Return(nil),
+				compute.EXPECT().GetServer(ctx, id).Return(&servers.Server{ID: id, Status: client.ServerStatusDeleted, Metadata: tags}, nil),
 			)
 			ex := Executor{
 				Compute: compute,
@@ -388,15 +391,15 @@ var _ = Describe("Executor", func() {
 				machineName = "foo"
 			)
 
-			cfg.Spec.SubnetID = pointer.StringPtr(subnetID)
+			cfg.Spec.SubnetID = ptr.To(subnetID)
 			gomock.InOrder(
-				compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return(serverList, nil),
-				compute.EXPECT().DeleteServer("id1").Return(nil),
-				compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return(serverList, nil),
+				compute.EXPECT().DeleteServer(ctx, "id1").Return(nil),
+				compute.EXPECT().GetServer(ctx, "id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
 			)
 			gomock.InOrder(
-				network.EXPECT().ListPorts(ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: portID}}, nil),
-				network.EXPECT().DeletePort(portID).Return(nil),
+				network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: portID}}, nil),
+				network.EXPECT().DeletePort(ctx, portID).Return(nil),
 			)
 
 			ex := Executor{
@@ -416,16 +419,16 @@ var _ = Describe("Executor", func() {
 				machineName = "foo"
 			)
 
-			cfg.Spec.SubnetID = pointer.StringPtr(subnetID)
+			cfg.Spec.SubnetID = ptr.To(subnetID)
 			gomock.InOrder(
-				compute.EXPECT().ListServers(&servers.ListOpts{Name: machineName}).Return(serverList, nil),
-				compute.EXPECT().DeleteServer("id1").Return(nil),
-				compute.EXPECT().GetServer("id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return(serverList, nil),
+				compute.EXPECT().DeleteServer(ctx, "id1").Return(nil),
+				compute.EXPECT().GetServer(ctx, "id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
 			)
 			gomock.InOrder(
-				network.EXPECT().ListPorts(ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: portID1}, {ID: portID2}}, nil),
-				network.EXPECT().DeletePort(portID1).Return(nil),
-				network.EXPECT().DeletePort(portID2).Return(nil),
+				network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: portID1}, {ID: portID2}}, nil),
+				network.EXPECT().DeletePort(ctx, portID1).Return(nil),
+				network.EXPECT().DeletePort(ctx, portID2).Return(nil),
 			)
 
 			ex := Executor{
