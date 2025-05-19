@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
-	github.com/gardener/gardener v1.117.1
+	github.com/gardener/gardener v1.117.5
 	github.com/gardener/machine-controller-manager v0.58.0
 	github.com/gophercloud/gophercloud v1.14.1
 	github.com/gophercloud/utils v0.0.0-20230523080330-de873b9cf00d
