@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 #############      builder                                  #############
-FROM golang:1.24.2 AS builder
+FROM golang:1.24.3 AS builder
 
 WORKDIR /go/src/github.com/gardener/machine-controller-manager-provider-openstack
 COPY . .
 RUN make install
 
 #############      base                                     #############
-FROM gcr.io/distroless/static-debian11:nonroot AS base
+FROM gcr.io/distroless/static-debian12:nonroot AS base
 
 
 ############# machine-controller-manager-provider-openstack #############
