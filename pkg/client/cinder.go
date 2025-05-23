@@ -5,12 +5,12 @@
 package client
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/gophercloud/gophercloud"
-	"github.com/gophercloud/gophercloud/openstack"
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	utilGroups "github.com/gophercloud/utils/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2"
+	"github.com/gophercloud/gophercloud/v2/openstack"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
 )
 
 const (
@@ -47,8 +47,8 @@ func newCinderV3(providerClient *gophercloud.ProviderClient, eo gophercloud.Endp
 }
 
 // CreateVolume creates a Cinder volume.
-func (c *cinderV3) CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume, error) {
-	v, err := volumes.Create(c.serviceClient, opts).Extract()
+func (c *cinderV3) CreateVolume(ctx context.Context, opts volumes.CreateOptsBuilder, hintOpts volumes.SchedulerHintOptsBuilder) (*volumes.Volume, error) {
+	v, err := volumes.Create(ctx, c.serviceClient, opts, hintOpts).Extract()
 	onCall(cinderService)
 	if err != nil {
 		onFailure(cinderService)
@@ -58,13 +58,13 @@ func (c *cinderV3) CreateVolume(opts volumes.CreateOptsBuilder) (*volumes.Volume
 }
 
 // GetVolume retrieves information about a volume.
-func (c *cinderV3) GetVolume(id string) (*volumes.Volume, error) {
-	return volumes.Get(c.serviceClient, id).Extract()
+func (c *cinderV3) GetVolume(ctx context.Context, id string) (*volumes.Volume, error) {
+	return volumes.Get(ctx, c.serviceClient, id).Extract()
 }
 
 // DeleteVolume deletes a volume
-func (c *cinderV3) DeleteVolume(id string) error {
-	err := volumes.Delete(c.serviceClient, id, volumes.DeleteOpts{}).ExtractErr()
+func (c *cinderV3) DeleteVolume(ctx context.Context, id string) error {
+	err := volumes.Delete(ctx, c.serviceClient, id, volumes.DeleteOpts{}).ExtractErr()
 	onCall(cinderService)
 	if err != nil {
 		onFailure(cinderService)
@@ -74,20 +74,33 @@ func (c *cinderV3) DeleteVolume(id string) error {
 }
 
 // VolumeIDFromName resolves the given volume name to a unique ID.
-func (c *cinderV3) VolumeIDFromName(name string) (string, error) {
-	id, err := utilGroups.IDFromName(c.serviceClient, name)
-
-	onCall(cinderService)
-	if err != nil {
-		onFailure(cinderService)
-		return "", err
+func (c *cinderV3) VolumeIDFromName(ctx context.Context, name string) (string, error) {
+	listOpts := volumes.ListOpts{
+		Name: name,
 	}
-	return id, nil
+
+	listFunc := func(ctx context.Context) ([]volumes.Volume, error) {
+		allPages, err := volumes.List(c.serviceClient, listOpts).AllPages(ctx)
+		onCall(cinderService)
+		if err != nil {
+			onFailure(cinderService)
+			return nil, err
+		}
+		return volumes.ExtractVolumes(allPages)
+	}
+
+	getNameFunc := func(volume volumes.Volume) string {
+		return volume.Name
+	}
+
+	volume, err := findSingleByName(ctx, listFunc, getNameFunc, name, "volume")
+
+	return volume.ID, err
 }
 
 // ListVolumes lists all volumes
-func (c *cinderV3) ListVolumes(opts volumes.ListOptsBuilder) ([]volumes.Volume, error) {
-	vols, err := volumes.List(c.serviceClient, opts).AllPages()
+func (c *cinderV3) ListVolumes(ctx context.Context, opts volumes.ListOptsBuilder) ([]volumes.Volume, error) {
+	vols, err := volumes.List(c.serviceClient, opts).AllPages(ctx)
 	onCall(cinderService)
 	if err != nil {
 		onFailure(cinderService)

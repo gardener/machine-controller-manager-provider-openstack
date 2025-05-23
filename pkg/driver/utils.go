@@ -55,11 +55,11 @@ func mapErrorToCode(err error) codes.Code {
 		return codes.OutOfRange
 	}
 
-	if client.IsUnauthenticated(err) {
+	if client.IsUnauthorized(err) {
 		return codes.Unauthenticated
 	}
 
-	if client.IsUnauthorized(err) {
+	if client.IsForbidden(err) {
 		return codes.PermissionDenied
 	}
 
