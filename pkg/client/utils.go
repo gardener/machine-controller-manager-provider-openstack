@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/metrics"
+	"github.com/gophercloud/gophercloud/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -31,6 +32,7 @@ func findSingleByName[T any](
 	listFunc func(context.Context) ([]T, error),
 	getName func(T) string,
 	targetName string,
+	typeName string,
 ) (T, error) {
 	var zero T // zero value to return on failure
 
@@ -46,12 +48,12 @@ func findSingleByName[T any](
 		}
 	}
 
-	switch len(matches) {
+	switch count := len(matches); count {
 	case 0:
-		return zero, fmt.Errorf("no resource found with name: %s", targetName)
+		return zero, gophercloud.ErrResourceNotFound{Name: targetName, ResourceType: typeName}
 	case 1:
 		return matches[0], nil
 	default:
-		return zero, fmt.Errorf("multiple resources found with name: %s", targetName)
+		return zero, gophercloud.ErrMultipleResourcesFound{Name: targetName, Count: count, ResourceType: typeName}
 	}
 }

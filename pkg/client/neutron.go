@@ -118,7 +118,7 @@ func (n *neutronV2) NetworkIDFromName(ctx context.Context, name string) (string,
 		return network.Name
 	}
 
-	network, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+	network, err := findSingleByName(ctx, listFunc, getNameFunc, name, "network")
 
 	return network.ID, err
 }
@@ -143,7 +143,7 @@ func (n *neutronV2) GroupIDFromName(ctx context.Context, name string) (string, e
 		return sg.Name
 	}
 
-	sg, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+	sg, err := findSingleByName(ctx, listFunc, getNameFunc, name, "group")
 
 	return sg.ID, err
 }
@@ -168,7 +168,7 @@ func (n *neutronV2) PortIDFromName(ctx context.Context, name string) (string, er
 		return port.Name
 	}
 
-	port, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+	port, err := findSingleByName(ctx, listFunc, getNameFunc, name, "port")
 
 	return port.ID, err
 }

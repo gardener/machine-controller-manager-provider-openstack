@@ -93,7 +93,7 @@ func (c *cinderV3) VolumeIDFromName(ctx context.Context, name string) (string, e
 		return volume.Name
 	}
 
-	volume, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+	volume, err := findSingleByName(ctx, listFunc, getNameFunc, name, "volume")
 
 	return volume.ID, err
 }

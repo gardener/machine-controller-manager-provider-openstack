@@ -116,7 +116,7 @@ func (c *novaV2) ImageIDFromName(ctx context.Context, name string) (images.Image
 		return image.Name
 	}
 
-	return findSingleByName(ctx, listFunc, getNameFunc, name)
+	return findSingleByName(ctx, listFunc, getNameFunc, name, "image")
 }
 
 // FlavorIDFromName resolves the given flavor name to a unique ID.
@@ -135,7 +135,7 @@ func (c *novaV2) FlavorIDFromName(ctx context.Context, name string) (string, err
 		return flavor.Name
 	}
 
-	flavor, err := findSingleByName(ctx, listFunc, getNameFunc, name)
+	flavor, err := findSingleByName(ctx, listFunc, getNameFunc, name, "flavor")
 
 	return flavor.ID, err
 }
