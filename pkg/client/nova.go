@@ -48,7 +48,6 @@ func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.Endpoi
 
 // CreateServer creates a server.
 func (c *novaV2) CreateServer(ctx context.Context, opts servers.CreateOptsBuilder, hintOpts servers.SchedulerHintOptsBuilder) (*servers.Server, error) {
-	// TODO The CreateOptsExt struct has been removed and a BlockDevice field added to the CreateOpts struct in openstack/compute/v2/servers
 	server, err := servers.Create(ctx, c.serviceClient, opts, hintOpts).Extract()
 	onCall("nova")
 	if err != nil {
