@@ -10,12 +10,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/schedulerhints"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
+	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/keypairs"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
+	"github.com/gophercloud/gophercloud/v2/openstack/networking/v2/ports"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
@@ -100,7 +98,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %w", server.ID, err))
 	}
 
-	if err := ex.patchServerPortsForPodNetwork(server.ID); err != nil {
+	if err := ex.patchServerPortsForPodNetwork(ctx, server.ID); err != nil {
 		return "", deleteOnFail(fmt.Errorf("failed to patch server [ID=%q] ports: %s", server.ID, err))
 	}
 
@@ -120,7 +118,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
 	if ex.isUserManagedNetwork() {
 		// check if the subnet exists
-		if _, err := ex.Network.GetSubnet(*subnetID); err != nil {
+		if _, err := ex.Network.GetSubnet(ctx, *subnetID); err != nil {
 			return nil, err
 		}
 
@@ -146,7 +144,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 			err               error
 		)
 		if isEmptyString(ptr.To(network.Id)) {
-			resolvedNetworkID, err = ex.Network.NetworkIDFromName(network.Name)
+			resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
 			if err != nil {
 				return nil, err
 			}
@@ -167,7 +165,7 @@ func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pe
 		time.Duration(secs)*time.Second,
 		true,
 		func(_ context.Context) (done bool, err error) {
-			current, err := ex.Compute.GetServer(serverID)
+			current, err := ex.Compute.GetServer(ctx, serverID)
 			if err != nil {
 				if client.IsNotFoundError(err) && strSliceContains(target, client.ServerStatusDeleted) {
 					return true, nil
@@ -207,26 +205,27 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 	flavorName := ex.Config.Spec.FlavorName
 
 	var (
-		imageRef   string
-		createOpts servers.CreateOptsBuilder
-		err        error
+		imageRef       string
+		err            error
+		serverHintOpts servers.SchedulerHintOpts
 	)
 
 	// use imageID if provided, otherwise try to resolve the imageName to an imageID
 	if imageID != "" {
 		imageRef = imageID
 	} else {
-		imageRef, err = ex.Compute.ImageIDFromName(imageName)
+		image, err := ex.Compute.ImageIDFromName(ctx, imageName)
 		if err != nil {
 			return nil, fmt.Errorf("error resolving image ID from image name %q: %v", imageName, err)
 		}
+		imageRef = image.ID
 	}
-	flavorRef, err := ex.Compute.FlavorIDFromName(flavorName)
+	flavorRef, err := ex.Compute.FlavorIDFromName(ctx, flavorName)
 	if err != nil {
 		return nil, fmt.Errorf("error resolving flavor ID from flavor name %q: %v", imageName, err)
 	}
 
-	createOpts = &servers.CreateOpts{
+	createOpts := &servers.CreateOpts{
 		Name:             machineName,
 		FlavorRef:        flavorRef,
 		ImageRef:         imageRef,
@@ -238,39 +237,39 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 		ConfigDrive:      useConfigDrive,
 	}
 
-	createOpts = &keypairs.CreateOptsExt{
-		CreateOptsBuilder: createOpts,
-		KeyName:           keyName,
-	}
-
 	if ex.Config.Spec.ServerGroupID != nil {
-		hints := schedulerhints.SchedulerHints{
+		serverHintOpts = servers.SchedulerHintOpts{
 			Group: *ex.Config.Spec.ServerGroupID,
-		}
-		createOpts = schedulerhints.CreateOptsExt{
-			CreateOptsBuilder: createOpts,
-			SchedulerHints:    hints,
 		}
 	}
 
 	// If a custom block_device (root disk size is provided) we need to boot from volume
 	if rootDiskSize > 0 {
-		return ex.bootFromVolume(ctx, machineName, imageRef, createOpts)
+		createOpts, err = ex.addBlockDeviceOpts(ctx, machineName, imageRef, createOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error adding block device opts %w", err)
+		}
 	}
 
-	return ex.Compute.CreateServer(createOpts)
+	createOptsBuilder := &keypairs.CreateOptsExt{
+		CreateOptsBuilder: createOpts,
+		KeyName:           keyName,
+	}
+
+	return ex.Compute.CreateServer(ctx, createOptsBuilder, serverHintOpts)
 }
 
-func (ex *Executor) bootFromVolume(ctx context.Context, machineName, imageID string, createOpts servers.CreateOptsBuilder) (*servers.Server, error) {
-	blockDeviceOpts := make([]bootfromvolume.BlockDevice, 1)
+func (ex *Executor) addBlockDeviceOpts(ctx context.Context, machineName,
+	imageID string, createOpts *servers.CreateOpts) (*servers.CreateOpts, error) {
+	createOpts.BlockDevice = make([]servers.BlockDevice, 1)
 
 	if ex.Config.Spec.RootDiskType != nil {
-		volumeID, err := ex.ensureVolume(ctx, machineName, imageID)
+		volumeID, err := ex.ensureVolume(ctx, machineName, imageID, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to ensure volume [Name=%q]: %s", machineName, err)
 		}
 
-		blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+		createOpts.BlockDevice[0] = servers.BlockDevice{
 			UUID:                volumeID,
 			VolumeSize:          ex.Config.Spec.RootDiskSize,
 			BootIndex:           0,
@@ -279,7 +278,7 @@ func (ex *Executor) bootFromVolume(ctx context.Context, machineName, imageID str
 			DestinationType:     "volume",
 		}
 	} else {
-		blockDeviceOpts[0] = bootfromvolume.BlockDevice{
+		createOpts.BlockDevice[0] = servers.BlockDevice{
 			UUID:                imageID,
 			VolumeSize:          ex.Config.Spec.RootDiskSize,
 			BootIndex:           0,
@@ -289,34 +288,32 @@ func (ex *Executor) bootFromVolume(ctx context.Context, machineName, imageID str
 		}
 	}
 
-	klog.V(3).Infof("[DEBUG] Block Device Options: %+v", blockDeviceOpts)
-	createOpts = &bootfromvolume.CreateOptsExt{
-		CreateOptsBuilder: createOpts,
-		BlockDevice:       blockDeviceOpts,
-	}
-	return ex.Compute.BootFromVolume(createOpts)
+	klog.V(3).Infof("[DEBUG] Block Device Options: %+v", createOpts.BlockDevice[0])
+
+	return createOpts, nil
 }
 
-func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string) (string, error) {
+func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string,
+	hintOpts volumes.SchedulerHintOptsBuilder) (string, error) {
 	var (
 		volumeID string
 		err      error
 	)
 
-	volumeID, err = ex.Storage.VolumeIDFromName(name)
+	volumeID, err = ex.Storage.VolumeIDFromName(ctx, name)
 	if err != nil && !client.IsNotFoundError(err) {
 		return "", err
 	}
 
 	if client.IsNotFoundError(err) {
-		volume, err := ex.Storage.CreateVolume(volumes.CreateOpts{
+		volume, err := ex.Storage.CreateVolume(ctx, volumes.CreateOpts{
 			Name:             name,
 			VolumeType:       *ex.Config.Spec.RootDiskType,
 			Size:             ex.Config.Spec.RootDiskSize,
 			ImageID:          imageID,
 			AvailabilityZone: ex.Config.Spec.AvailabilityZone,
 			Metadata:         ex.Config.Spec.Tags,
-		})
+		}, hintOpts)
 		if err != nil {
 			return "", fmt.Errorf("failed to created volume [Name=%s]: %v", name, err)
 		}
@@ -339,7 +336,7 @@ func (ex *Executor) waitForVolumeStatus(ctx context.Context, volumeID string, pe
 		time.Duration(secs)*time.Second,
 		true,
 		func(_ context.Context) (done bool, err error) {
-			current, err := ex.Storage.GetVolume(volumeID)
+			current, err := ex.Storage.GetVolume(ctx, volumeID)
 			if err != nil {
 				if client.IsNotFoundError(err) {
 					return true, nil
@@ -366,8 +363,8 @@ func (ex *Executor) waitForVolumeStatus(ctx context.Context, volumeID string, pe
 }
 
 // patchServerPortsForPodNetwork updates a server's ports with rules for whitelisting the pod network CIDR.
-func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
-	allPorts, err := ex.Network.ListPorts(&ports.ListOpts{
+func (ex *Executor) patchServerPortsForPodNetwork(ctx context.Context, serverID string) error {
+	allPorts, err := ex.Network.ListPorts(ctx, &ports.ListOpts{
 		DeviceID: serverID,
 	})
 	if err != nil {
@@ -378,7 +375,7 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 		return fmt.Errorf("got an empty port list for server %q", serverID)
 	}
 
-	podNetworkIDs, err := ex.resolveNetworkIDsForPodNetwork()
+	podNetworkIDs, err := ex.resolveNetworkIDsForPodNetwork(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to resolve network IDs for the pod network %v", err)
 	}
@@ -403,7 +400,7 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 						return nil
 					}
 				}
-				if err := ex.Network.UpdatePort(port.ID, ports.UpdateOpts{
+				if err := ex.Network.UpdatePort(ctx, port.ID, ports.UpdateOpts{
 					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: cidr}},
 				}); err != nil {
 					return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
@@ -418,7 +415,7 @@ func (ex *Executor) patchServerPortsForPodNetwork(serverID string) error {
 }
 
 // resolveNetworkIDsForPodNetwork resolves the networks that accept traffic from the pod CIDR range.
-func (ex *Executor) resolveNetworkIDsForPodNetwork() (sets.Set[string], error) {
+func (ex *Executor) resolveNetworkIDsForPodNetwork(ctx context.Context) (sets.Set[string], error) {
 	var (
 		networkID     = ex.Config.Spec.NetworkID
 		networks      = ex.Config.Spec.Networks
@@ -436,7 +433,7 @@ func (ex *Executor) resolveNetworkIDsForPodNetwork() (sets.Set[string], error) {
 			err               error
 		)
 		if isEmptyString(ptr.To(network.Id)) {
-			resolvedNetworkID, err = ex.Network.NetworkIDFromName(network.Name)
+			resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
 			if err != nil {
 				return nil, err
 			}
@@ -467,7 +464,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 
 	if err == nil {
 		klog.V(1).Infof("deleting server [Name=%s, ID=%s]", server.Name, server.ID)
-		if err := ex.Compute.DeleteServer(server.ID); err != nil {
+		if err := ex.Compute.DeleteServer(ctx, server.ID); err != nil {
 			return err
 		}
 
@@ -492,13 +489,13 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	return nil
 }
 
-func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (string, error) {
+func (ex *Executor) getOrCreatePort(ctx context.Context, machineName string) (string, error) {
 	var (
 		err              error
 		securityGroupIDs []string
 	)
 
-	portID, err := ex.Network.PortIDFromName(machineName)
+	portID, err := ex.Network.PortIDFromName(ctx, machineName)
 	if err == nil {
 		klog.V(2).Infof("found port [Name=%q, ID=%q]... skipping creation", machineName, portID)
 		return portID, nil
@@ -513,14 +510,14 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 	klog.V(3).Infof("creating port [Name=%q]... ", machineName)
 
 	for _, securityGroup := range ex.Config.Spec.SecurityGroups {
-		securityGroupID, err := ex.Network.GroupIDFromName(securityGroup)
+		securityGroupID, err := ex.Network.GroupIDFromName(ctx, securityGroup)
 		if err != nil {
 			return "", err
 		}
 		securityGroupIDs = append(securityGroupIDs, securityGroupID)
 	}
 
-	port, err := ex.Network.CreatePort(&ports.CreateOpts{
+	port, err := ex.Network.CreatePort(ctx, &ports.CreateOpts{
 		Name:           machineName,
 		NetworkID:      ex.Config.Spec.NetworkID,
 		FixedIPs:       []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
@@ -537,7 +534,7 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 	}
 
 	portTags := []string{searchClusterName, searchNodeRole}
-	if err := ex.Network.TagPort(port.ID, portTags); err != nil {
+	if err := ex.Network.TagPort(ctx, port.ID, portTags); err != nil {
 		return "", err
 	}
 
@@ -545,8 +542,8 @@ func (ex *Executor) getOrCreatePort(_ context.Context, machineName string) (stri
 	return port.ID, nil
 }
 
-func (ex *Executor) deletePort(_ context.Context, machineName string) error {
-	portList, err := ex.Network.ListPorts(ports.ListOpts{
+func (ex *Executor) deletePort(ctx context.Context, machineName string) error {
+	portList, err := ex.Network.ListPorts(ctx, ports.ListOpts{
 		Name: machineName,
 	})
 	if err != nil {
@@ -560,7 +557,7 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	klog.V(2).Infof("deleting ports for machine [Name=%q]", machineName)
 	for _, p := range portList {
 		klog.V(2).Infof("deleting port [ID=%q]", p.ID)
-		err = ex.Network.DeletePort(p.ID)
+		err = ex.Network.DeletePort(ctx, p.ID)
 		if err != nil {
 			klog.Errorf("failed to delete port [ID=%q]: %s", p.ID, err)
 			return err
@@ -571,8 +568,8 @@ func (ex *Executor) deletePort(_ context.Context, machineName string) error {
 	return nil
 }
 
-func (ex *Executor) deleteVolume(_ context.Context, machineName string) error {
-	volumeID, err := ex.Storage.VolumeIDFromName(machineName)
+func (ex *Executor) deleteVolume(ctx context.Context, machineName string) error {
+	volumeID, err := ex.Storage.VolumeIDFromName(ctx, machineName)
 	if err != nil {
 		if client.IsNotFoundError(err) {
 			return nil
@@ -581,7 +578,7 @@ func (ex *Executor) deleteVolume(_ context.Context, machineName string) error {
 	}
 
 	klog.V(2).Infof("deleting volume [Name=%q]", machineName)
-	err = ex.Storage.DeleteVolume(volumeID)
+	err = ex.Storage.DeleteVolume(ctx, volumeID)
 	if err != nil {
 		klog.Errorf("failed to delete port [Name=%q]", machineName)
 		return err
@@ -590,9 +587,9 @@ func (ex *Executor) deleteVolume(_ context.Context, machineName string) error {
 }
 
 // getMachineByProviderID fetches the data for a server based on a provider-encoded ID.
-func (ex *Executor) getMachineByID(_ context.Context, serverID string) (*servers.Server, error) {
+func (ex *Executor) getMachineByID(ctx context.Context, serverID string) (*servers.Server, error) {
 	klog.V(2).Infof("finding server with [ID=%q]", serverID)
-	server, err := ex.Compute.GetServer(serverID)
+	server, err := ex.Compute.GetServer(ctx, serverID)
 	if err != nil {
 		klog.V(2).Infof("error finding server [ID=%q]: %v", serverID, err)
 		if client.IsNotFoundError(err) {
@@ -624,14 +621,14 @@ func (ex *Executor) getMachineByID(_ context.Context, serverID string) (*servers
 // The current approach is weak because the tags are currently stored as server metadata. Later Nova versions allow
 // to store tags in a respective field and do a server-side filtering. To avoid incompatibility with older versions
 // we will continue making the filtering clientside.
-func (ex *Executor) getMachineByName(_ context.Context, machineName string) (*servers.Server, error) {
+func (ex *Executor) getMachineByName(ctx context.Context, machineName string) (*servers.Server, error) {
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
 	if !ok {
 		klog.Warningf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
 		return nil, fmt.Errorf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)
 	}
 
-	listedServers, err := ex.Compute.ListServers(&servers.ListOpts{
+	listedServers, err := ex.Compute.ListServers(ctx, &servers.ListOpts{
 		Name: machineName,
 	})
 	if err != nil {
@@ -675,14 +672,14 @@ func (ex *Executor) ListMachines(ctx context.Context) (map[string]string, error)
 }
 
 // ListServers lists all servers with the appropriate tags.
-func (ex *Executor) listServers(_ context.Context) ([]servers.Server, error) {
+func (ex *Executor) listServers(ctx context.Context) ([]servers.Server, error) {
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
 	if !ok {
 		klog.Warningf("list operation can not proceed: cluster/role tags are missing")
 		return nil, fmt.Errorf("list operation can not proceed: cluster/role tags are missing")
 	}
 
-	allServers, err := ex.Compute.ListServers(&servers.ListOpts{})
+	allServers, err := ex.Compute.ListServers(ctx, &servers.ListOpts{})
 	if err != nil {
 		return nil, err
 	}

@@ -59,7 +59,7 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	factory, err := client.NewFactoryFromSecret(req.Secret)
+	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
 	if err != nil {
 		klog.Errorf("failed to construct OpenStack client: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
@@ -110,7 +110,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	factory, err := client.NewFactoryFromSecret(req.Secret)
+	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
 	if err != nil {
 		klog.Errorf("failed to construct OpenStack client: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
@@ -163,7 +163,7 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	factory, err := client.NewFactoryFromSecret(req.Secret)
+	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
 	if err != nil {
 		klog.Errorf("failed to construct OpenStack client: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
