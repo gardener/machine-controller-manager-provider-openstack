@@ -69,7 +69,8 @@ func mapErrorToCode(err error) codes.Code {
 
 func mapErrorMessageToCode(err error) codes.Code {
 	errorMessage := err.Error()
-	if strings.Contains(errorMessage, executor.NoValidHost) {
+	if strings.Contains(errorMessage, executor.NoValidHost) ||
+		strings.Contains(errorMessage, executor.FlavorNotFound) {
 		return codes.ResourceExhausted
 	}
 	return codes.Internal
