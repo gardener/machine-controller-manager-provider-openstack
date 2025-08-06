@@ -1,0 +1,19 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager
+  component_version: v0.59.1
+release_notes:
+- audience: null
+  author: null
+  category: null
+  contents: |
+    # [gardener/machine-controller-manager]
+
+    ## 🏃 Others
+
+    - `[OPERATOR]` `node.gardener.cloud/critical-components-not-ready` taint is added to the node after the successful in-place update to prevent scheduling any workload before critical component pods are ready. by @acumino [#1017]
+
+    ## Container (OCI) Images
+    - machine-controller-manager: `europe-docker.pkg.dev/gardener-project/releases/gardener/machine-controller-manager:v0.59.1`
+  mimetype: text/markdown
+  pullrequest: null
+  type: prerendered

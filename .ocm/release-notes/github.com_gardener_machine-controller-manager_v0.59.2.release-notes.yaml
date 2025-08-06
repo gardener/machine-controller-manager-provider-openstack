@@ -1,0 +1,16 @@
+ocm:
+  component_name: github.com/gardener/machine-controller-manager
+  component_version: v0.59.2
+release_notes:
+- audience: null
+  author: null
+  category: null
+  contents: |-
+    # [gardener/machine-controller-manager]
+
+    ## 🐛 Bug Fixes
+
+    - `[OPERATOR]` Fixed a bug where machines in the `InPlaceUpdating` phase were incorrectly transferred to the new machine set during inplace updates. This caused the machine controller to miss updating the phase to `InPlaceUpdateSuccessful`, resulting in machines getting stuck or marked as `InPlaceUpdateFailed`. by @acumino [#1020]
+  mimetype: text/markdown
+  pullrequest: null
+  type: prerendered
