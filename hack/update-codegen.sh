@@ -13,21 +13,13 @@ source "$GARDENER_HACK_DIR"/vgopath-setup.sh
 
 CODE_GEN_DIR=$(go list -m -f '{{.Dir}}' k8s.io/code-generator)
 
+source "${CODE_GEN_DIR}/kube_codegen.sh"
+
 rm -f $GOPATH/bin/*-gen
 
-bash "${CODE_GEN_DIR}/generate-internal-groups.sh" \
-  deepcopy,defaulter \
-  github.com/gardener/machine-controller-manager-provider-openstack/pkg/client \
-  github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis \
-  github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis \
-  "openstack:v1alpha1" \
-  --go-header-file "${GARDENER_HACK_DIR}/LICENSE_BOILERPLATE.txt"
+CURRENT_DIR=$(dirname $0)
+PROJECT_ROOT="${CURRENT_DIR}"/..
 
-bash "${CODE_GEN_DIR}/generate-internal-groups.sh" \
-  conversion \
-  github.com/gardener/machine-controller-manager-provider-openstack/pkg/client \
-  github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis \
-  github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis \
-  "openstack:v1alpha1" \
-  --extra-peer-dirs=github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack,github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack/v1alpha1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/conversion,k8s.io/apimachinery/pkg/runtime \
-  --go-header-file "${GARDENER_HACK_DIR}/LICENSE_BOILERPLATE.txt"
+kube::codegen::gen_helpers \
+  --boilerplate "${GARDENER_HACK_DIR}/LICENSE_BOILERPLATE.txt" \
+  "${PROJECT_ROOT}/pkg/apis/openstack"

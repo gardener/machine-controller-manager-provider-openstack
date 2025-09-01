@@ -98,6 +98,3 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 	sigs.k8s.io/yaml v1.5.0 // indirect
 )
-
-// temporary workaround while gardener adopts latest client packages
-replace k8s.io/code-generator => k8s.io/code-generator v0.29.0
