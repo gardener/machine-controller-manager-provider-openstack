@@ -75,6 +75,8 @@ var _ = Describe("Executor", func() {
 			networkID   = "networkID"
 			portID      = "portID"
 			podCidr     = "10.0.0.0/16"
+			serverIPv4  = "10.250.0.5"
+			serverIPv6  = "2000:db0::1"
 		)
 		BeforeEach(func() {
 			cfg = &openstack.MachineProviderConfig{
@@ -112,6 +114,14 @@ var _ = Describe("Executor", func() {
 				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
 					ID:     serverID,
 					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private": []any{
+							map[string]any{
+								"addr":    serverIPv4,
+								"version": 4,
+							},
+						},
+					},
 				}, nil))
 			network.EXPECT().ListPorts(ctx, &ports.ListOpts{
 				DeviceID: serverID,
@@ -120,9 +130,10 @@ var _ = Describe("Executor", func() {
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
 
-			providerId, err := ex.CreateMachine(ctx, machineName, nil)
+			server, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
+			Expect(server.InternalIPs).To(HaveLen(1))
+			Expect(server.InternalIPs[0]).To(Equal(serverIPv4))
 		})
 
 		It("should succeed when spec contains subnet", func() {
@@ -152,9 +163,9 @@ var _ = Describe("Executor", func() {
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
 
-			providerId, err := ex.CreateMachine(ctx, machineName, nil)
+			server, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
+			Expect(server.ProviderID).To(Equal(encodeProviderID(region, serverID)))
 		})
 
 		It("should succeed when spec contains rootDisksize", func() {
@@ -193,9 +204,9 @@ var _ = Describe("Executor", func() {
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
 
-			providerId, err := ex.CreateMachine(ctx, machineName, nil)
+			server, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(providerId).To(Equal(encodeProviderID(region, serverID)))
+			Expect(server.ProviderID).To(Equal(encodeProviderID(region, serverID)))
 		})
 
 		It("should delete the server on failure", func() {
@@ -228,6 +239,53 @@ var _ = Describe("Executor", func() {
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).To(HaveOccurred())
+		})
+
+		It("should accept multiple internal IPs", func() {
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
+				ID: serverID,
+			}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusBuild,
+				}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private": []any{
+							map[string]any{
+								"addr":    serverIPv4,
+								"version": 4,
+							},
+							map[string]any{
+								"addr":    serverIPv6,
+								"version": 6,
+							},
+						},
+					},
+				}, nil))
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{
+				DeviceID: serverID,
+			}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+
+			server, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(server.InternalIPs).To(HaveLen(2))
+			Expect(server.InternalIPs).To(ConsistOf(serverIPv4, serverIPv6))
 		})
 	})
 
