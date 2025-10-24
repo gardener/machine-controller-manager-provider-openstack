@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
@@ -71,16 +72,30 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
 	}
 
-	providerID, err := ex.CreateMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
+	server, err := ex.CreateMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
 	if err != nil {
 		klog.Errorf("machine creation for machine %q failed with: %v", req.Machine.Name, err)
 		return nil, status.Error(mapErrorToCode(err), err.Error())
 	}
 
-	return &driver.CreateMachineResponse{
-		ProviderID: providerID,
+	response := driver.CreateMachineResponse{
+		ProviderID: server.ProviderID,
 		NodeName:   req.Machine.Name,
-	}, nil
+	}
+
+	if len(server.InternalIPs) > 0 {
+		addresses := make([]corev1.NodeAddress, 0, len(server.InternalIPs))
+
+		for _, ip := range server.InternalIPs {
+			addresses = append(addresses, corev1.NodeAddress{
+				Type:    corev1.NodeInternalIP,
+				Address: ip,
+			})
+		}
+		response.Addresses = addresses
+	}
+
+	return &response, nil
 }
 
 // InitializeMachine handles VM initialization for openstack VM's. Currently, un-implemented.

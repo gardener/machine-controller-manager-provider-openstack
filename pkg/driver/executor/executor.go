@@ -32,6 +32,11 @@ type Executor struct {
 	Config  *api.MachineProviderConfig
 }
 
+type CreateMachineResult struct {
+	ProviderID  string
+	InternalIPs []string
+}
+
 // NewExecutor returns a new instance of Executor.
 func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*Executor, error) {
 	computeClient, err := factory.Compute(client.WithRegion(config.Spec.Region))
@@ -59,9 +64,41 @@ func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*E
 	return ex, nil
 }
 
+// getServerIPs assumes the server has exactly one network interface
+// and extracts its internal IP addresses.
+func getServerIPs(server *servers.Server) ([]string, error) {
+	ips := make([]string, 0)
+
+	if len(server.Addresses) != 1 {
+		return nil, fmt.Errorf("expected 1 network, but found %d", len(server.Addresses))
+	}
+
+	// Format of the addresses field: https://docs.openstack.org/api-ref/compute/#list-servers-detailed.
+	for _, networkAddresses := range server.Addresses {
+		addrList, ok := networkAddresses.([]any)
+		if !ok {
+			return nil, fmt.Errorf("could not assert network addresses to slice")
+		}
+
+		// Iterate through the addresses (may be IPv4, IPv6).
+		for _, addrData := range addrList {
+			addressMap, ok := addrData.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			if ipAddress, ok := addressMap["addr"].(string); ok {
+				ips = append(ips, ipAddress)
+			}
+		}
+	}
+
+	return ips, nil
+}
+
 // CreateMachine creates a new OpenStack server instance and waits until it reports "ACTIVE".
 // If there is an error during the build process, or if the building phase timeouts, it will delete any artifacts created.
-func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userData []byte) (string, error) {
+func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userData []byte) (*CreateMachineResult, error) {
 	var (
 		server *servers.Server
 		err    error
@@ -79,30 +116,44 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 	if err == nil {
 		klog.Infof("found existing server [Name=%q, ID=%q]", machineName, server.ID)
 	} else if !errors.Is(err, ErrNotFound) {
-		return "", err
+		return nil, err
 	} else {
 		// clean-up function when creation fails in an intermediate step
 		serverNetworks, err := ex.resolveServerNetworks(ctx, machineName)
 		if err != nil {
-			return "", deleteOnFail(fmt.Errorf("failed to resolve server [Name=%q] networks: %w", machineName, err))
+			return nil, deleteOnFail(fmt.Errorf("failed to resolve server [Name=%q] networks: %w", machineName, err))
 		}
 
 		server, err = ex.deployServer(ctx, machineName, userData, serverNetworks)
 		if err != nil {
-			return "", deleteOnFail(fmt.Errorf("failed to deploy server [Name=%q]: %w", machineName, err))
+			return nil, deleteOnFail(fmt.Errorf("failed to deploy server [Name=%q]: %w", machineName, err))
 		}
 	}
 
-	err = ex.waitForServerStatus(ctx, server.ID, []string{client.ServerStatusBuild}, []string{client.ServerStatusActive}, 1200)
+	// The server information when status is ACTIVE has addresses field populated
+	var activeServer *servers.Server
+	activeServer, err = ex.waitForServerStatus(ctx,
+		server.ID,
+		[]string{client.ServerStatusBuild},
+		[]string{client.ServerStatusActive}, 1200)
 	if err != nil {
-		return "", deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %w", server.ID, err))
+		return nil, deleteOnFail(fmt.Errorf("error waiting for server [ID=%q] to reach target status: %w", server.ID, err))
 	}
 
-	if err := ex.patchServerPortsForPodNetwork(ctx, server.ID); err != nil {
-		return "", deleteOnFail(fmt.Errorf("failed to patch server [ID=%q] ports: %s", server.ID, err))
+	if err := ex.patchServerPortsForPodNetwork(ctx, activeServer.ID); err != nil {
+		return nil, deleteOnFail(fmt.Errorf("failed to patch server [ID=%q] ports: %s", server.ID, err))
 	}
 
-	return encodeProviderID(ex.Config.Spec.Region, server.ID), nil
+	var internalIPs []string
+	internalIPs, err = getServerIPs(activeServer)
+	if err != nil {
+		klog.Infof("failed to extract internal IPs [ID=%q] ports: %s", activeServer.ID, err)
+	}
+
+	return &CreateMachineResult{
+		ProviderID:  encodeProviderID(ex.Config.Spec.Region, activeServer.ID),
+		InternalIPs: internalIPs,
+	}, nil
 }
 
 // resolveServerNetworks resolves the network configuration for the server.
@@ -156,10 +207,11 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 	return serverNetworks, nil
 }
 
-// waitForServerStatus blocks until the server with the specified ID reaches one of the target status.
+// waitForServerStatus blocks until the server with the specified ID reaches one of the target status and returns the server after reaching this status.
 // waitForServerStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
-func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pending []string, target []string, secs int) error {
-	return wait.PollUntilContextTimeout(
+func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pending []string, target []string, secs int) (*servers.Server, error) {
+	var server *servers.Server
+	return server, wait.PollUntilContextTimeout(
 		ctx,
 		10*time.Second,
 		time.Duration(secs)*time.Second,
@@ -175,6 +227,7 @@ func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pe
 
 			klog.V(5).Infof("waiting for server [ID=%q] and current status %v, to reach status %v.", serverID, current.Status, target)
 			if strSliceContains(target, current.Status) {
+				server = current
 				return true, nil
 			}
 
@@ -468,7 +521,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 			return err
 		}
 
-		if err = ex.waitForServerStatus(ctx, server.ID, nil, []string{client.ServerStatusDeleted}, 1200); err != nil {
+		if _, err = ex.waitForServerStatus(ctx, server.ID, nil, []string{client.ServerStatusDeleted}, 1200); err != nil {
 			return fmt.Errorf("error while waiting for server [ID=%q] to be deleted: %v", server.ID, err)
 		}
 	} else if !errors.Is(err, ErrNotFound) {
