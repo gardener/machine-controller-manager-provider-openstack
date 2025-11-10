@@ -7,6 +7,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
@@ -145,12 +146,67 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 }
 
 // GetMachineStatus handles a machine get status request
-func (p *OpenstackDriver) GetMachineStatus(_ context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
+func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (response *driver.GetMachineStatusResponse, err error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("GetMachineStatus request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("GetMachineStatus is not implemented")
 
-	return nil, status.Error(codes.Unimplemented, "method not implemented")
+	// Check if incoming provider in the MachineClass is a provider we support
+	if req.MachineClass.Provider != openstackProvider {
+		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	providerSpec, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
+	if err != nil {
+		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := validation.ValidateRequest(providerSpec, req.Secret); err != nil {
+		klog.Errorf("validating request for machine %q failed with: %v", req.Machine.Name, err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
+	if err != nil {
+		klog.Errorf("failed to construct OpenStack client: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
+	}
+
+	ex, err := executor.NewExecutor(factory, providerSpec)
+	if err != nil {
+		klog.Errorf("failed to construct context for the request: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
+	}
+
+	machine, err := ex.GetMachineByID(ctx, req.Machine.Spec.ProviderID)
+	if err != nil {
+		if errors.Is(err, executor.ErrNotFound) {
+			klog.V(2).Infof("Machine status: did not find VM with ProviderID: %q", req.Machine.Spec.ProviderID)
+		} else {
+			klog.Errorf("failed to get machine with ProviderID %q: %v", req.Machine.Spec.ProviderID, err)
+		}
+		return nil, status.Error(mapErrorToCode(err), err.Error())
+	}
+
+	if machine.Hostname == nil {
+		klog.Warningf("Machine with ProviderID %q exists but has a nil hostname", req.Machine.Spec.ProviderID)
+		return nil, status.Error(codes.Internal, "Machine found but its hostname is nil")
+	}
+
+	if *machine.Hostname != req.Machine.Name {
+		klog.Errorf("hostname of server with ProviderID %q (%q) does not match req.Machine.Name %q",
+			req.Machine.Spec.ProviderID, *machine.Hostname, req.Machine.Name)
+		return nil, status.Error(codes.Internal, "Hostname and request machine name mismatch")
+	}
+
+	response = &driver.GetMachineStatusResponse{
+		ProviderID: req.Machine.Spec.ProviderID,
+		NodeName:   *machine.Hostname,
+	}
+
+	klog.V(2).Infof("Machine status: found VM %q for Machine: %q", response.ProviderID, req.Machine.Name)
+	return response, nil
 }
 
 // ListMachines lists all the machines possibly created by a providerSpec
