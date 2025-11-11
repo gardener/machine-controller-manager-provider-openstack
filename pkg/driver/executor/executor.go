@@ -113,7 +113,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return err
 	}
 
-	server, err = ex.getMachineByName(ctx, machineName)
+	server, err = ex.GetMachineByName(ctx, machineName)
 	if err == nil {
 		klog.Infof("found existing server [Name=%q, ID=%q]", machineName, server.ID)
 	} else if !errors.Is(err, ErrNotFound) {
@@ -512,7 +512,7 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	if !isEmptyString(ptr.To(providerID)) {
 		server, err = ex.GetMachineByID(ctx, providerID)
 	} else {
-		server, err = ex.getMachineByName(ctx, machineName)
+		server, err = ex.GetMachineByName(ctx, machineName)
 	}
 
 	if err == nil {
@@ -669,13 +669,13 @@ func (ex *Executor) GetMachineByID(ctx context.Context, providerID string) (*ser
 	return nil, fmt.Errorf("could not find server [ID=%q]: %w", serverID, ErrNotFound)
 }
 
-// getMachineByName returns a server that matches the following criteria:
+// GetMachineByName returns a server that matches the following criteria:
 // a) has the same name as machineName
 // b) has the cluster and role tags as set in the machineClass
 // The current approach is weak because the tags are currently stored as server metadata. Later Nova versions allow
 // to store tags in a respective field and do a server-side filtering. To avoid incompatibility with older versions
 // we will continue making the filtering clientside.
-func (ex *Executor) getMachineByName(ctx context.Context, machineName string) (*servers.Server, error) {
+func (ex *Executor) GetMachineByName(ctx context.Context, machineName string) (*servers.Server, error) {
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
 	if !ok {
 		klog.Warningf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)

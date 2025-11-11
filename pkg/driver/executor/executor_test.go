@@ -326,7 +326,7 @@ var _ = Describe("Executor", func() {
 		})
 	})
 
-	Context("#GetMachineStatus", func() {
+	Context("GetMachineByName", func() {
 		var serverList []servers.Server
 
 		BeforeEach(func() {
@@ -337,32 +337,32 @@ var _ = Describe("Executor", func() {
 					Name:     "foo",
 				},
 				{
-					ID:   "id2",
+					ID:   "id2", // No Match: Name yes, Tags no
 					Name: "foo",
 				},
 				{
-					ID:       "id3",
+					ID:       "id3", // No Match: Name no, Tags yes
 					Name:     "bar",
 					Metadata: tags,
 				},
 				{
-					ID:   "id4",
+					ID:   "id4", // No Match: Name no, Tags no
 					Name: "baz",
 				},
 				{
-					ID:       "id5",
+					ID:       "id5", // Match: Name + Tags
 					Name:     "lorem",
 					Metadata: tags,
 				},
 				{
-					ID:       "id6",
+					ID:       "id6", // Match: Name + Tags
 					Name:     "lorem",
 					Metadata: tags,
 				},
 			}
 		})
 
-		DescribeTable("#Status",
+		DescribeTable("finding by name behavior",
 			func(name string, expectedID string, expectedErr error) {
 				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: name}).Return(serverList, nil)
 				ex := Executor{
@@ -370,8 +370,9 @@ var _ = Describe("Executor", func() {
 					Network: network,
 					Config:  cfg,
 				}
-				server, err := ex.getMachineByName(ctx, name)
+				server, err := ex.GetMachineByName(ctx, name)
 				if expectedErr != nil {
+					Expect(err).To(HaveOccurred())
 					Expect(errors.Is(err, expectedErr)).To(BeTrue())
 				} else {
 					Expect(err).ToNot(HaveOccurred())
@@ -382,6 +383,88 @@ var _ = Describe("Executor", func() {
 			Entry("Should return not found if name not exists", "unknown", "", ErrNotFound),
 			Entry("Should return not found if name exists without matching metadata", "baz", "", ErrNotFound),
 			Entry("Should detect multiple matching servers", "lorem", "", ErrMultipleFound),
+		)
+	})
+
+	Context("GetMachineByID", func() {
+		var (
+			serverID   = "server-id-123"
+			providerID = encodeProviderID(region, serverID)
+		)
+
+		BeforeEach(func() {
+			cfg = &openstack.MachineProviderConfig{
+				Spec: openstack.MachineProviderConfigSpec{
+					Region:         region,
+					SecurityGroups: nil,
+					Tags:           tags,
+					NetworkID:      networkID,
+					RootDiskSize:   0,
+				},
+			}
+		})
+
+		DescribeTable("finding by ID behavior",
+			func(
+				setupMocks func(),
+				expectedErr error,
+			) {
+				ex := Executor{
+					Compute: compute,
+					Network: network,
+					Config:  cfg,
+				}
+
+				setupMocks()
+
+				server, err := ex.GetMachineByID(ctx, providerID)
+				if expectedErr != nil {
+					Expect(err).To(HaveOccurred())
+
+					if errors.Is(err, ErrNotFound) {
+						Expect(errors.Is(err, expectedErr)).To(BeTrue())
+					} else {
+						Expect(err).To(MatchError(expectedErr))
+					}
+				} else {
+					Expect(err).ToNot(HaveOccurred())
+					Expect(server.ID).To(Equal(serverID))
+				}
+			},
+
+			Entry("Should find the server if ID and tags match",
+				func() {
+					compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+						ID:       serverID,
+						Metadata: tags,
+					}, nil)
+				},
+				nil,
+			),
+
+			Entry("Should return ErrNotFound if server is not found via API",
+				func() {
+					compute.EXPECT().GetServer(ctx, serverID).Return(nil, gophercloud.ErrResourceNotFound{})
+				},
+				ErrNotFound,
+			),
+
+			Entry("Should return ErrNotFound if server is found but tags do not match",
+				func() {
+					compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+						ID:       serverID,
+						Metadata: map[string]string{"wrong-tag": "wrong-value"},
+					}, nil)
+				},
+				ErrNotFound,
+			),
+
+			Entry("Should return other API errors",
+				func() {
+					compute.EXPECT().GetServer(ctx, serverID).Return(nil, errors.New("internal compute error"))
+				},
+				errors.New("internal compute error"),
+			),
 		)
 	})
 
@@ -499,5 +582,3 @@ var _ = Describe("Executor", func() {
 		})
 	})
 })
-
-// TODO: GetMachineByID
