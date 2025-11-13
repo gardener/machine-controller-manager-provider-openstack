@@ -639,7 +639,7 @@ func (ex *Executor) deleteVolume(ctx context.Context, machineName string) error 
 	return nil
 }
 
-// getMachineByProviderID fetches the data for a server based on a provider-encoded ID.
+// GetMachineByID fetches the data for a server based on a provider-encoded ID.
 func (ex *Executor) GetMachineByID(ctx context.Context, providerID string) (*servers.Server, error) {
 	klog.V(2).Infof("finding server with [ID=%q]", providerID)
 	serverID := decodeProviderID(providerID)

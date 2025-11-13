@@ -81,6 +81,9 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 	defer klog.V(2).Infof("CreateMachine request has been processed for %q", req.Machine.Name)
 
 	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
+	if err != nil {
+		return nil, err
+	}
 
 	server, err := ex.CreateMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
 	if err != nil {
@@ -120,6 +123,9 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 	defer klog.V(2).Infof("DeleteMachine request has been processed for %q", req.Machine.Name)
 
 	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
+	if err != nil {
+		return nil, err
+	}
 
 	err = ex.DeleteMachine(ctx, req.Machine.Name, req.Machine.Spec.ProviderID)
 	if err != nil {
@@ -135,11 +141,14 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 	defer klog.V(2).Infof("GetMachineStatus request has been processed for: %q", req.Machine.Name)
 
 	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
+	if err != nil {
+		return nil, err
+	}
 
 	var machine *servers.Server
 	// Finding by ProviderID should be the common path, by name fallback for pre-creation
 	if req.Machine.Spec.ProviderID != "" {
-		klog.V(2).Infof("Finding Machine by ProviderID: %q", req.Machine.Spec.ProviderID)
+		klog.V(2).Infof("Finding Machine (%q) by ProviderID: %q", req.Machine.Name, req.Machine.Spec.ProviderID)
 		machine, err = ex.GetMachineByID(ctx, req.Machine.Spec.ProviderID)
 	} else {
 		klog.V(2).Infof("Finding Machine by Tags and Name: %q", req.Machine.Name)
@@ -155,20 +164,15 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 		return nil, status.Error(mapErrorToCode(err), err.Error())
 	}
 
-	if machine.Hostname == nil {
-		klog.Warningf("Machine with ProviderID %q exists but has a nil hostname", req.Machine.Spec.ProviderID)
-		return nil, status.Error(codes.Internal, "Machine found but its hostname is nil")
-	}
-
-	if *machine.Hostname != req.Machine.Name {
-		klog.Errorf("Hostname of server with ProviderID %q (%q) does not match req.Machine.Name %q",
-			req.Machine.Spec.ProviderID, *machine.Hostname, req.Machine.Name)
-		return nil, status.Error(codes.Internal, "Hostname and request machine name mismatch")
+	if machine.Name != req.Machine.Name {
+		klog.Errorf("Name of server with ProviderID %q (%q) does not match req.Machine.Name %q",
+			req.Machine.Spec.ProviderID, machine.Name, req.Machine.Name)
+		return nil, status.Error(codes.Internal, "Name and request machine name mismatch")
 	}
 
 	return &driver.GetMachineStatusResponse{
 		ProviderID: req.Machine.Spec.ProviderID,
-		NodeName:   *machine.Hostname,
+		NodeName:   machine.Name,
 	}, nil
 }
 
@@ -181,6 +185,9 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 	defer klog.V(2).Infof("ListMachines request has been processed for %q", req.MachineClass.Name)
 
 	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
+	if err != nil {
+		return nil, err
+	}
 
 	machines, err := ex.ListMachines(ctx)
 	if err != nil {
