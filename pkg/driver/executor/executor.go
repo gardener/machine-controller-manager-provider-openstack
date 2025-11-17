@@ -32,6 +32,7 @@ type Executor struct {
 	Config  *api.MachineProviderConfig
 }
 
+// CreateMachineResult represents the result of a CreateMachine call (internal IP addresses + provider ID of VM).
 type CreateMachineResult struct {
 	ProviderID  string
 	InternalIPs []string
