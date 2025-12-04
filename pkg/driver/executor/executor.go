@@ -32,6 +32,7 @@ type Executor struct {
 	Config  *api.MachineProviderConfig
 }
 
+// CreateMachineResult is a struct holding the result of a CreateMachine operation.
 type CreateMachineResult struct {
 	ProviderID  string
 	InternalIPs []string
