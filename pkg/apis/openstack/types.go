@@ -39,6 +39,8 @@ type MachineProviderConfigSpec struct {
 	NetworkID string
 	// SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified
 	SubnetID *string
+	// SubnetIDs is a list of IDs of the subnets the instance should belong to.
+	SubnetIDs []string
 	// PodNetworkCidr is the CIDR range for the pods assigned to this instance.
 	// Deprecated - use `PodNetworkCIDRs` instead.
 	PodNetworkCidr string
