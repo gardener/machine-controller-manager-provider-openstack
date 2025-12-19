@@ -209,6 +209,34 @@ var _ = Describe("Executor", func() {
 			Expect(server.ProviderID).To(Equal(encodeProviderID(region, serverID)))
 		})
 
+		It("should raise a ResourceExhausted error when called with a missing flavor", func() {
+			var (
+				flavorName = "notSupportedFlavor"
+			)
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return(nil, ErrFlavorNotFound{Flavor: flavorName})
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
+				ID: serverID,
+			}, nil)
+			gomock.InOrder(
+				// we return an error to avoid waiting for the wait.Poll timeout
+				compute.EXPECT().GetServer(ctx, serverID).Return(nil, fmt.Errorf("error fetching server")),
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{*server}, nil),
+				compute.EXPECT().DeleteServer(ctx, serverID).Return(nil),
+				compute.EXPECT().GetServer(ctx, serverID).Do(func(_ context.Context, _ string) { server.Status = client.ServerStatusDeleted }).Return(server, nil),
+			)
+
+			_, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).To(HaveOccurred())
+		})
+
 		It("should delete the server on failure", func() {
 			ex := &Executor{
 				Compute: compute,

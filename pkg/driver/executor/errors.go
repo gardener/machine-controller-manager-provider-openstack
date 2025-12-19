@@ -24,3 +24,16 @@ var (
 	// OpenStack resources. In case this case, where a unique ID could not be determined an ErrMultipleFound is returned.
 	ErrMultipleFound = fmt.Errorf("multiple resources found")
 )
+
+// ErrFlavorNotFound is returned when there is no flavor can be matched with the specified flavor name.
+// It can happen when certain flavor is not available in specified region and needs to be treated as ResourceExhausted
+// to allow fallback to other flavors.
+type ErrFlavorNotFound struct {
+	gophercloud.BaseError
+	Flavor string
+}
+
+func (e ErrFlavorNotFound) string {
+	e.DefaultErrString = fmt.Sprintf("Unable to find flavor with name %s", e.Flavor)
+	return e.choseErrString()
+}

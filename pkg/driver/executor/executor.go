@@ -276,7 +276,12 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 	}
 	flavorRef, err := ex.Compute.FlavorIDFromName(ctx, flavorName)
 	if err != nil {
-		return nil, fmt.Errorf("error resolving flavor ID from flavor name %q: %v", imageName, err)
+		switch v := err.(type) {
+		case gophercloud.ErrResourceNotFound:
+			return nil, ErrFlavorNotFound{Flavor: flavorName}
+		default:
+			return nil, fmt.Errorf("error resolving flavor ID from flavor name %q: %v", flavorName, err)
+		}
 	}
 
 	createOpts := &servers.CreateOpts{
