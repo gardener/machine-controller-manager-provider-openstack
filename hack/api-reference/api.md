@@ -150,6 +150,17 @@ string
 </tr>
 <tr>
 <td>
+<code>subnetIDs</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>SubnetIDs is a list of IDs of the subnets the instance should belong to.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>podNetworkCidr</code></br>
 <em>
 string
@@ -364,6 +375,17 @@ string
 <td>
 <em>(Optional)</em>
 <p>SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subnetIDs</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>SubnetIDs is a list of IDs of the subnets the instance should belong to.</p>
 </td>
 </tr>
 <tr>
