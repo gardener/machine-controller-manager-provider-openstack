@@ -113,7 +113,7 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return err
 	}
 
-	server, err = ex.getMachineByName(ctx, machineName)
+	server, err = ex.GetMachineByName(ctx, machineName)
 	if err == nil {
 		klog.Infof("found existing server [Name=%q, ID=%q]", machineName, server.ID)
 	} else if !errors.Is(err, ErrNotFound) {
@@ -510,10 +510,9 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	)
 
 	if !isEmptyString(ptr.To(providerID)) {
-		serverID := decodeProviderID(providerID)
-		server, err = ex.getMachineByID(ctx, serverID)
+		server, err = ex.GetMachineByProviderID(ctx, providerID)
 	} else {
-		server, err = ex.getMachineByName(ctx, machineName)
+		server, err = ex.GetMachineByName(ctx, machineName)
 	}
 
 	if err == nil {
@@ -640,9 +639,10 @@ func (ex *Executor) deleteVolume(ctx context.Context, machineName string) error 
 	return nil
 }
 
-// getMachineByProviderID fetches the data for a server based on a provider-encoded ID.
-func (ex *Executor) getMachineByID(ctx context.Context, serverID string) (*servers.Server, error) {
-	klog.V(2).Infof("finding server with [ID=%q]", serverID)
+// GetMachineByProviderID fetches the data for a server based on a provider-encoded ID.
+func (ex *Executor) GetMachineByProviderID(ctx context.Context, providerID string) (*servers.Server, error) {
+	klog.V(2).Infof("finding server with [ID=%q]", providerID)
+	serverID := decodeProviderID(providerID)
 	server, err := ex.Compute.GetServer(ctx, serverID)
 	if err != nil {
 		klog.V(2).Infof("error finding server [ID=%q]: %v", serverID, err)
@@ -669,13 +669,13 @@ func (ex *Executor) getMachineByID(ctx context.Context, serverID string) (*serve
 	return nil, fmt.Errorf("could not find server [ID=%q]: %w", serverID, ErrNotFound)
 }
 
-// getMachineByName returns a server that matches the following criteria:
+// GetMachineByName returns a server that matches the following criteria:
 // a) has the same name as machineName
 // b) has the cluster and role tags as set in the machineClass
 // The current approach is weak because the tags are currently stored as server metadata. Later Nova versions allow
 // to store tags in a respective field and do a server-side filtering. To avoid incompatibility with older versions
 // we will continue making the filtering clientside.
-func (ex *Executor) getMachineByName(ctx context.Context, machineName string) (*servers.Server, error) {
+func (ex *Executor) GetMachineByName(ctx context.Context, machineName string) (*servers.Server, error) {
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
 	if !ok {
 		klog.Warningf("getMachineByName operation can not proceed: cluster/role tags are missing for machine [Name=%q]", machineName)

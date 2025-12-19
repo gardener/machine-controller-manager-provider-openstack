@@ -7,11 +7,14 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/gardener/machine-controller-manager/pkg/apis/machine/v1alpha1"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/driver"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/codes"
 	"github.com/gardener/machine-controller-manager/pkg/util/provider/machinecodes/status"
+	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 
@@ -28,11 +31,44 @@ const (
 // NOTE
 //
 // The basic working of the controller will work with just implementing the CreateMachine() & DeleteMachine() methods.
-// You can first implement these two methods and check the working of the controller.
-// Leaving the other methods to NOT_IMPLEMENTED error status.
-// Once this works you can implement the rest of the methods.
+// The other methods should be implemented according to specs or return the NOT_IMPLEMENTED error status.
 //
-// Also make sure each method return appropriate errors mentioned in `https://github.com/gardener/machine-controller-manager/blob/master/docs/development/machine_error_codes.md`
+// Make sure each method returns the appropriate errors mentioned in
+// `https://github.com/gardener/machine-controller-manager/blob/master/docs/development/machine_error_codes.md`
+
+// setupExecutor handles the common validation and setup, returning a ready-to-use executor.
+func (p *OpenstackDriver) setupExecutor(ctx context.Context, machineClass *v1alpha1.MachineClass, secret *corev1.Secret) (*executor.Executor, error) {
+	// Check if incoming provider in the MachineClass is a provider we support
+	if machineClass.Provider != openstackProvider {
+		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", machineClass.Provider, openstackProvider)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	providerConfig, err := p.decodeProviderSpec(machineClass.ProviderSpec)
+	if err != nil {
+		klog.Errorf("decoding provider spec for machine class %q failed with: %v", machineClass.Name, err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err := validation.ValidateRequest(providerConfig, secret); err != nil {
+		klog.Errorf("validating request failed with: %v", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	factory, err := client.NewFactoryFromSecret(ctx, secret)
+	if err != nil {
+		klog.Errorf("failed to construct OpenStack client: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
+	}
+
+	ex, err := executor.NewExecutor(factory, providerConfig)
+	if err != nil {
+		klog.Errorf("failed to construct context for the request: %v", err)
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
+	}
+
+	return ex, nil
+}
 
 // CreateMachine handles a machine creation request
 //
@@ -44,32 +80,9 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 	klog.V(2).Infof("CreateMachine request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("CreateMachine request has been processed for %q", req.Machine.Name)
 
-	// Check if incoming provider in the MachineClass is a provider we support
-	if req.MachineClass.Provider != openstackProvider {
-		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
+	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
 	if err != nil {
-		klog.Errorf("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
-		klog.Errorf("validating request for machine %q failed with: %v", req.Machine.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
-	if err != nil {
-		klog.Errorf("failed to construct OpenStack client: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
-	}
-
-	ex, err := executor.NewExecutor(factory, providerConfig)
-	if err != nil {
-		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
+		return nil, err
 	}
 
 	server, err := ex.CreateMachine(ctx, req.Machine.Name, req.Secret.Data[cloudprovider.UserData])
@@ -109,32 +122,9 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 	klog.V(2).Infof("DeleteMachine request has been received for %q", req.Machine.Name)
 	defer klog.V(2).Infof("DeleteMachine request has been processed for %q", req.Machine.Name)
 
-	// Check if incoming provider in the MachineClass is a provider we support
-	if req.MachineClass.Provider != openstackProvider {
-		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
+	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
 	if err != nil {
-		klog.V(2).Infof("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
-		klog.V(2).Infof("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
-	if err != nil {
-		klog.Errorf("failed to construct OpenStack client: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
-	}
-
-	ex, err := executor.NewExecutor(factory, providerConfig)
-	if err != nil {
-		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
+		return nil, err
 	}
 
 	err = ex.DeleteMachine(ctx, req.Machine.Name, req.Machine.Spec.ProviderID)
@@ -145,12 +135,45 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 }
 
 // GetMachineStatus handles a machine get status request
-func (p *OpenstackDriver) GetMachineStatus(_ context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
+func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (response *driver.GetMachineStatusResponse, err error) {
 	// Log messages to track start and end of request
 	klog.V(2).Infof("GetMachineStatus request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("GetMachineStatus is not implemented")
+	defer klog.V(2).Infof("GetMachineStatus request has been processed for: %q", req.Machine.Name)
 
-	return nil, status.Error(codes.Unimplemented, "method not implemented")
+	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
+	if err != nil {
+		return nil, err
+	}
+
+	var machine *servers.Server
+	// Finding by ProviderID should be the common path, by name fallback for pre-creation
+	if req.Machine.Spec.ProviderID != "" {
+		klog.V(2).Infof("Finding Machine (%q) by ProviderID: %q", req.Machine.Name, req.Machine.Spec.ProviderID)
+		machine, err = ex.GetMachineByProviderID(ctx, req.Machine.Spec.ProviderID)
+	} else {
+		klog.V(2).Infof("Finding Machine by Tags and Name: %q", req.Machine.Name)
+		machine, err = ex.GetMachineByName(ctx, req.Machine.Name)
+	}
+
+	if err != nil {
+		if errors.Is(err, executor.ErrNotFound) {
+			klog.V(2).Infof("Machine status: did not find Machine: %q", req.Machine.Name)
+		} else {
+			klog.Errorf("Failed to get Machine %q: %v", req.Machine.Name, err)
+		}
+		return nil, status.Error(mapErrorToCode(err), err.Error())
+	}
+
+	if machine.Name != req.Machine.Name {
+		klog.Errorf("Name of server with ProviderID %q (%q) does not match req.Machine.Name %q",
+			req.Machine.Spec.ProviderID, machine.Name, req.Machine.Name)
+		return nil, status.Error(codes.Internal, "Name and request machine name mismatch")
+	}
+
+	return &driver.GetMachineStatusResponse{
+		ProviderID: req.Machine.Spec.ProviderID,
+		NodeName:   machine.Name,
+	}, nil
 }
 
 // ListMachines lists all the machines possibly created by a providerSpec
@@ -161,33 +184,9 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 	klog.V(2).Infof("ListMachines request has been received for %q", req.MachineClass.Name)
 	defer klog.V(2).Infof("ListMachines request has been processed for %q", req.MachineClass.Name)
 
-	// Check if incoming provider in the MachineClass is a provider we support
-	if req.MachineClass.Provider != openstackProvider {
-		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
+	ex, err := p.setupExecutor(ctx, req.MachineClass, req.Secret)
 	if err != nil {
-		klog.Errorf("decoding provider spec for machine class %q failed with: %v", req.MachineClass.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
-		klog.Errorf("validating request for machine class %q failed with: %v", req.MachineClass.Name, err)
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
-	if err != nil {
-		klog.Errorf("failed to construct OpenStack client: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
-	}
-
-	ex, err := executor.NewExecutor(factory, providerConfig)
-	if err != nil {
-		klog.Errorf("failed to construct context for the request: %v", err)
-		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
+		return nil, err
 	}
 
 	machines, err := ex.ListMachines(ctx)
