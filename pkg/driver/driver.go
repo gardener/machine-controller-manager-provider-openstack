@@ -149,7 +149,7 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 	// Finding by ProviderID should be the common path, by name fallback for pre-creation
 	if req.Machine.Spec.ProviderID != "" {
 		klog.V(2).Infof("Finding Machine (%q) by ProviderID: %q", req.Machine.Name, req.Machine.Spec.ProviderID)
-		machine, err = ex.GetMachineByID(ctx, req.Machine.Spec.ProviderID)
+		machine, err = ex.GetMachineByProviderID(ctx, req.Machine.Spec.ProviderID)
 	} else {
 		klog.V(2).Infof("Finding Machine by Tags and Name: %q", req.Machine.Name)
 		machine, err = ex.GetMachineByName(ctx, req.Machine.Name)

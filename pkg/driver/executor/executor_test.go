@@ -417,7 +417,7 @@ var _ = Describe("Executor", func() {
 
 				setupMocks()
 
-				server, err := ex.GetMachineByID(ctx, providerID)
+				server, err := ex.GetMachineByProviderID(ctx, providerID)
 				if expectedErr != nil {
 					Expect(err).To(HaveOccurred())
 
