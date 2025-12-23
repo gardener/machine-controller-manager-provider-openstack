@@ -29,11 +29,9 @@ var (
 // It can happen when certain flavor is not available in specified region and needs to be treated as ResourceExhausted
 // to allow fallback to other flavors.
 type ErrFlavorNotFound struct {
-	gophercloud.BaseError
 	Flavor string
 }
 
-func (e ErrFlavorNotFound) string {
-	e.DefaultErrString = fmt.Sprintf("Unable to find flavor with name %s", e.Flavor)
-	return e.choseErrString()
+func (e ErrFlavorNotFound) Error() string {
+	return fmt.Sprintf("Unable to find flavor with name %s", e.Flavor)
 }

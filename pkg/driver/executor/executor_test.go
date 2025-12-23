@@ -209,10 +209,7 @@ var _ = Describe("Executor", func() {
 			Expect(server.ProviderID).To(Equal(encodeProviderID(region, serverID)))
 		})
 
-		It("should raise a ResourceExhausted error when called with a missing flavor", func() {
-			var (
-				flavorName = "notSupportedFlavor"
-			)
+		It("should raise a ErrResourceNotFound error when called with a missing flavor", func() {
 			ex := &Executor{
 				Compute: compute,
 				Network: network,
@@ -221,17 +218,8 @@ var _ = Describe("Executor", func() {
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
-			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return(nil, ErrFlavorNotFound{Flavor: flavorName})
-			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
-				ID: serverID,
-			}, nil)
-			gomock.InOrder(
-				// we return an error to avoid waiting for the wait.Poll timeout
-				compute.EXPECT().GetServer(ctx, serverID).Return(nil, fmt.Errorf("error fetching server")),
-				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{*server}, nil),
-				compute.EXPECT().DeleteServer(ctx, serverID).Return(nil),
-				compute.EXPECT().GetServer(ctx, serverID).Do(func(_ context.Context, _ string) { server.Status = client.ServerStatusDeleted }).Return(server, nil),
-			)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return(flavorName, gophercloud.ErrResourceNotFound{Name: flavorName, ResourceType: "flavor"})
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).To(HaveOccurred())
