@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - 'master'
-      - 'release-*'
+      - 'rel-*'
   pull_request:
     types:
       - opened
