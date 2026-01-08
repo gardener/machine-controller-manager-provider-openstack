@@ -145,7 +145,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified</p>
+<p>SubnetID is the ID of the subnet the instance should belong to.
+Deprecated - use <code>SubnetIDs</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -156,6 +157,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>SubnetIDs is a list of IDs of the subnets the instance should belong to.</p>
 </td>
 </tr>
@@ -374,7 +376,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified</p>
+<p>SubnetID is the ID of the subnet the instance should belong to.
+Deprecated - use <code>SubnetIDs</code> instead.</p>
 </td>
 </tr>
 <tr>
@@ -385,6 +388,7 @@ string
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>SubnetIDs is a list of IDs of the subnets the instance should belong to.</p>
 </td>
 </tr>
