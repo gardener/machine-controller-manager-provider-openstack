@@ -16,7 +16,7 @@ on:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'pull_request_target' || (github.event_name == 'pull_request_target' && github.event.label.name == 'reviewed/ok-to-test') }}
+    if: ${{ github.event_name != 'pull_request_target' || (github.event_name == 'pull_request_target' && github.event.label.name == 'ok-to-test') }}
     uses: ./.github/workflows/build.yaml
     with:
       mode: snapshot
@@ -27,7 +27,7 @@ jobs:
       id-token: write
 
   component-descriptor:
-    if: ${{ github.event_name != 'pull_request_target' || (github.event_name == 'pull_request_target' && github.event.label.name == 'reviewed/ok-to-test') }}
+    if: ${{ github.event_name != 'pull_request_target' || (github.event_name == 'pull_request_target' && github.event.label.name == 'ok-to-test') }}
     uses: gardener/cc-utils/.github/workflows/post-build.yaml@master
     needs:
       - build
