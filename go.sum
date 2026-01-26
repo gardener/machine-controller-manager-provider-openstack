@@ -35,8 +35,8 @@ github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sa
 github.com/fxamacker/cbor/v2 v2.9.0/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gardener/gardener v1.133.0 h1:c9GU49q5AWKpFEpMMCSGJedP35NH45jbUP2cde4ae0s=
 github.com/gardener/gardener v1.133.0/go.mod h1:/2XiXt5u16zUxHP07jHpy0BVuQYB5EfCS6jqQWB62Tw=
-github.com/gardener/machine-controller-manager v0.61.0 h1:9Q57QKyvkTThXI97jhPRjolbf9X1Gz5JPxylfaX5Iw4=
-github.com/gardener/machine-controller-manager v0.61.0/go.mod h1:8eE1qLztrWIbOM71mHSQGaC6Q+pl5lvOyN08qP39D7o=
+github.com/gardener/machine-controller-manager v0.61.1 h1:Aa7FsFC4AppZ0VWqpNWUKwT25yscO9/9TF4Vsw9Vauc=
+github.com/gardener/machine-controller-manager v0.61.1/go.mod h1:8eE1qLztrWIbOM71mHSQGaC6Q+pl5lvOyN08qP39D7o=
 github.com/gkampitakis/ciinfo v0.3.2 h1:JcuOPk8ZU7nZQjdUhctuhQofk7BGHuIy0c9Ez8BNhXs=
 github.com/gkampitakis/ciinfo v0.3.2/go.mod h1:1NIwaOcFChN4fa/B0hEBdAb6npDlFL8Bwx4dfRLRqAo=
 github.com/gkampitakis/go-diff v1.3.2 h1:Qyn0J9XJSDTgnsgHRdz9Zp24RaJeKMUHg2+PDZZdC4M=
