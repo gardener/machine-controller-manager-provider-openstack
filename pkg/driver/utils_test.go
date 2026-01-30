@@ -16,7 +16,7 @@ import (
 	"github.com/gardener/machine-controller-manager-provider-openstack/pkg/driver/executor"
 )
 
-var _ = Describe("Driver", func() {
+var _ = Describe("Utils", func() {
 
 	Context("mapErrorToCode", func() {
 		It("should map executor.ErrFlavorNotFound error to ResourceExhausted error code", func() {
