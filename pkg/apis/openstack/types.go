@@ -37,8 +37,11 @@ type MachineProviderConfigSpec struct {
 	Tags map[string]string
 	// NetworkID is the ID of the network the instance should belong to.
 	NetworkID string
-	// SubnetID is the ID of the subnet the instance should belong to. If SubnetID is not specified
+	// SubnetID is the ID of the subnet the instance should belong to.
+	// Deprecated - use `SubnetIDs` instead.
 	SubnetID *string
+	// SubnetIDs is a list of IDs of the subnets the instance should belong to.
+	SubnetIDs []string
 	// PodNetworkCidr is the CIDR range for the pods assigned to this instance.
 	// Deprecated - use `PodNetworkCIDRs` instead.
 	PodNetworkCidr string

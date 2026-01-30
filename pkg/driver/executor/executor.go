@@ -574,7 +574,7 @@ func (ex *Executor) getOrCreatePort(ctx context.Context, machineName string) (st
 	port, err := ex.Network.CreatePort(ctx, &ports.CreateOpts{
 		Name:           machineName,
 		NetworkID:      ex.Config.Spec.NetworkID,
-		FixedIPs:       []ports.IP{{SubnetID: *ex.Config.Spec.SubnetID}},
+		FixedIPs:       ex.buildFixedIPs(),
 		SecurityGroups: &securityGroupIDs,
 	})
 	if err != nil {
@@ -594,6 +594,32 @@ func (ex *Executor) getOrCreatePort(ctx context.Context, machineName string) (st
 
 	klog.V(3).Infof("port [Name=%q] successfully created", port.Name)
 	return port.ID, nil
+}
+
+// buildFixedIPs creates a list of FixedIPs from SubnetID and SubnetIDs, avoiding duplicates
+func (ex *Executor) buildFixedIPs() []ports.IP {
+	// Use a set to track unique subnet IDs and avoid duplicates
+	subnetIDSet := sets.NewString()
+
+	// Add the single SubnetID if specified
+	if ex.Config.Spec.SubnetID != nil && *ex.Config.Spec.SubnetID != "" {
+		subnetIDSet.Insert(*ex.Config.Spec.SubnetID)
+	}
+
+	// Add all SubnetIDs if specified
+	for _, subnetID := range ex.Config.Spec.SubnetIDs {
+		if subnetID != "" {
+			subnetIDSet.Insert(subnetID)
+		}
+	}
+
+	// Convert to []ports.IP
+	var fixedIPs []ports.IP
+	for _, subnetID := range subnetIDSet.List() {
+		fixedIPs = append(fixedIPs, ports.IP{SubnetID: subnetID})
+	}
+
+	return fixedIPs
 }
 
 func (ex *Executor) deletePort(ctx context.Context, machineName string) error {
@@ -752,5 +778,9 @@ func (ex *Executor) listServers(ctx context.Context) ([]servers.Server, error) {
 
 // isUserManagedNetwork returns true if the port used by the machine will be created and managed by MCM.
 func (ex *Executor) isUserManagedNetwork() bool {
-	return !isEmptyString(ptr.To(ex.Config.Spec.NetworkID)) && !isEmptyString(ex.Config.Spec.SubnetID)
+	hasNetworkID := !isEmptyString(ptr.To(ex.Config.Spec.NetworkID))
+	hasSubnetID := !isEmptyString(ex.Config.Spec.SubnetID)
+	hasSubnetIDs := len(ex.Config.Spec.SubnetIDs) > 0
+
+	return hasNetworkID && (hasSubnetID || hasSubnetIDs)
 }
