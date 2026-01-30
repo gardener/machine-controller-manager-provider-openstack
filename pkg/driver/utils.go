@@ -63,6 +63,10 @@ func mapErrorToCode(err error) codes.Code {
 		return codes.PermissionDenied
 	}
 
+	if errors.As(err, &executor.ErrFlavorNotFound{}) {
+		return codes.ResourceExhausted
+	}
+
 	return mapErrorMessageToCode(err)
 }
 

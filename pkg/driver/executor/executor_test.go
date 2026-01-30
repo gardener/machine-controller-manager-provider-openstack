@@ -209,6 +209,24 @@ var _ = Describe("Executor", func() {
 			Expect(server.ProviderID).To(Equal(encodeProviderID(region, serverID)))
 		})
 
+		It("should raise a ErrResourceNotFound error when called with a missing flavor", func() {
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return(flavorName, gophercloud.ErrResourceNotFound{Name: flavorName, ResourceType: "flavor"})
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+
+			_, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ErrFlavorNotFound{Flavor: "flavor"})).To(BeTrue())
+			Expect(errors.As(err, &ErrFlavorNotFound{})).To(BeTrue())
+		})
+
 		It("should delete the server on failure", func() {
 			ex := &Executor{
 				Compute: compute,
