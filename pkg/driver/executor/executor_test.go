@@ -223,6 +223,7 @@ var _ = Describe("Executor", func() {
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, ErrFlavorNotFound{Flavor: "flavor"})).To(BeTrue())
 		})
 
 		It("should delete the server on failure", func() {
