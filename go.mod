@@ -5,10 +5,10 @@ go 1.25.0
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/gardener/gardener v1.133.0
-	github.com/gardener/machine-controller-manager v0.61.0
-	github.com/gophercloud/gophercloud/v2 v2.10.0
-	github.com/onsi/ginkgo/v2 v2.27.5
-	github.com/onsi/gomega v1.39.0
+	github.com/gardener/machine-controller-manager v0.61.1
+	github.com/gophercloud/gophercloud/v2 v2.8.0
+	github.com/onsi/ginkgo/v2 v2.27.2
+	github.com/onsi/gomega v1.38.2
 	github.com/prometheus/client_golang v1.23.2
 	github.com/spf13/pflag v1.0.10
 	go.uber.org/mock v0.6.0
