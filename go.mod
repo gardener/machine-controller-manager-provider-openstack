@@ -7,7 +7,6 @@ require (
 	github.com/gardener/gardener v1.135.0
 	github.com/gardener/machine-controller-manager v0.61.0
 	github.com/gophercloud/gophercloud/v2 v2.10.0
-	github.com/ironcore-dev/vgopath v0.1.10
 	github.com/onsi/ginkgo/v2 v2.27.5
 	github.com/onsi/gomega v1.39.0
 	github.com/prometheus/client_golang v1.23.2
