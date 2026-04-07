@@ -19,7 +19,13 @@ updates:
       - "*"
       exclude-patterns:
       - "github.com/gardener*"
+  labels:
+  - area/compliance
+  - kind/enhancement
 - package-ecosystem: "docker"
   directory: "/"
   schedule:
     interval: "weekly"
+  labels:
+  - area/compliance
+  - kind/enhancement
