@@ -170,12 +170,17 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 	klog.V(3).Infof("resolving network setup for machine [Name=%q]", machineName)
 	// If SubnetID is specified in addition to NetworkID, we have to preallocate a Neutron Port to force the VMs to get IP from the subnet's range.
 	if ex.isUserManagedNetwork() {
-		// check if the subnet exists
-		if _, err := ex.Network.GetSubnet(ctx, *subnetID); err != nil {
-			return nil, err
+		// check that all subnets exist upfront
+		if subnetID != nil {
+			if _, err := ex.Network.GetSubnet(ctx, *subnetID); err != nil {
+				return nil, fmt.Errorf("subnet [ID=%q] not found: %w", *subnetID, err)
+			}
 		}
-
-		klog.V(3).Infof("deploying machine [Name=%q] in subnet [ID=%q]", machineName, *subnetID)
+		for _, id := range ex.Config.Spec.SubnetIDs {
+			if _, err := ex.Network.GetSubnet(ctx, id); err != nil {
+				return nil, fmt.Errorf("subnet [ID=%q] from SubnetIDs not found: %w", id, err)
+			}
+		}
 		portID, err := ex.getOrCreatePort(ctx, machineName)
 		if err != nil {
 			return nil, err
