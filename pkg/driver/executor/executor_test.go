@@ -168,6 +168,40 @@ var _ = Describe("Executor", func() {
 			Expect(server.ProviderID).To(Equal(encodeProviderID(region, serverID)))
 		})
 
+		It("should succeed when spec contains SubnetIDs only", func() {
+			subnetID1 := "subnetID1"
+			subnetID2 := "subnetID2"
+
+			cfg.Spec.SubnetIDs = []string{subnetID1, subnetID2}
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			network.EXPECT().GetSubnet(ctx, subnetID1).Return(&subnets.Subnet{}, nil)
+			network.EXPECT().GetSubnet(ctx, subnetID2).Return(&subnets.Subnet{}, nil)
+			network.EXPECT().PortIDFromName(ctx, machineName).Return("", gophercloud.ErrResourceNotFound{})
+			network.EXPECT().CreatePort(ctx, gomock.Any()).Return(&ports.Port{ID: portID, Name: machineName}, nil)
+			network.EXPECT().TagPort(ctx, gomock.Any(), gomock.Any()).Return(nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusActive}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+
+			server, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(server.ProviderID).To(Equal(encodeProviderID(region, serverID)))
+		})
+
 		It("should succeed when spec contains rootDisksize", func() {
 			var (
 				diskType = "standard_hdd"
