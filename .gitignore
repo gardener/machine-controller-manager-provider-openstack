@@ -16,3 +16,8 @@ main
 *coverprofile.out*
 .ci/controllers-test/logs/*
 test/integration/controller/controller.test
+
+# AI coding agents
+# Claude
+.claude/
+/skills-lock.json

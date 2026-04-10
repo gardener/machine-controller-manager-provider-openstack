@@ -19,6 +19,11 @@ updates:
       - "*"
       exclude-patterns:
       - "github.com/gardener*"
+    gardener-dependencies:
+      applies-to: "version-updates"
+      patterns:
+        - "github.com/gardener/gardener"
+        - "github.com/gardener/gardener/*"
   labels:
   - area/compliance
   - kind/enhancement
