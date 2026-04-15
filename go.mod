@@ -7,7 +7,7 @@ require (
 	github.com/gardener/gardener v1.139.1
 	github.com/gardener/gardener/pkg/apis v1.139.1
 	github.com/gardener/machine-controller-manager v0.61.3
-	github.com/gophercloud/gophercloud/v2 v2.11.1
+	github.com/gophercloud/gophercloud/v2 v2.12.0
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/prometheus/client_golang v1.23.2
@@ -17,7 +17,7 @@ require (
 	k8s.io/apimachinery v0.35.3
 	k8s.io/code-generator v0.35.3
 	k8s.io/component-base v0.35.3
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	sigs.k8s.io/controller-runtime v0.23.3
 )
