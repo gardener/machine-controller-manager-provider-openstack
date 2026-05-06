@@ -1,12 +1,12 @@
 module github.com/gardener/machine-controller-manager-provider-openstack
 
-go 1.25.6
+go 1.26.2
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/gardener/gardener v1.139.1
 	github.com/gardener/gardener/pkg/apis v1.139.1
-	github.com/gardener/machine-controller-manager v0.61.3
+	github.com/gardener/machine-controller-manager v0.62.0
 	github.com/gophercloud/gophercloud/v2 v2.11.1
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
