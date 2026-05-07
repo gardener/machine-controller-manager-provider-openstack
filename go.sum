@@ -47,6 +47,8 @@ github.com/gardener/gardener v1.141.1 h1:9jlI9WKx66GFOpG6vhnA4SrwAs2VpiCVcFownQV
 github.com/gardener/gardener v1.141.1/go.mod h1:n+mRxlSNEosLbMShvbQ0J9DWT73VQRFOyFGM6PNYnEY=
 github.com/gardener/gardener/pkg/apis v1.140.0 h1:xAoxwwEMi8YpGfLNcO0qkCfuZ6jjy81NX9tuvWvkUEY=
 github.com/gardener/gardener/pkg/apis v1.140.0/go.mod h1:3Tbqw9dx7KaJ7Fikkna+WVGjRCyTTdlZEAy0GV6u4Gc=
+github.com/gardener/gardener/pkg/apis v1.141.1 h1:yHlOnJ2Lo9i0ZNbhOg5kenXb7Ak6CjnjXDvG+68lM/U=
+github.com/gardener/gardener/pkg/apis v1.141.1/go.mod h1:D/FQAzo7GiD3R7TwuHUweU5FU3VYoD28HlbfGXfDe80=
 github.com/gardener/machine-controller-manager v0.62.0 h1:XZWjAsXlNVj3S7M0AXcLkhNDGRRNm3Tc6ZFlTPPy3sc=
 github.com/gardener/machine-controller-manager v0.62.0/go.mod h1:ICsymXK4VHm7NVr8Mpl6USvYcTZjUNSk6+XaVu/dd74=
 github.com/gkampitakis/ciinfo v0.3.2 h1:JcuOPk8ZU7nZQjdUhctuhQofk7BGHuIy0c9Ez8BNhXs=
