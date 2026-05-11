@@ -17,6 +17,10 @@ const (
 	NoValidHost = "No valid host was found"
 
 	// FlavorNotFound is part of the error message returned when a flavor cannot be resolved.
+	// This string-matching fallback is needed because FlavourIDFromName (from executor.go deployServer)
+	// only wraps the typed ErrFlavorNotFound when the undelying gophercloud error is gophercloud.ErrResourceNotFound.
+	// If gophercloud returns any other error type, the typed-error path in mapErrorToCode will not match, and
+	// we fall back to inspecting the error message here so the failure is still  classified as codes.ResourceExhausted.
 	FlavorNotFound = "error resolving flavor"
 )
 
