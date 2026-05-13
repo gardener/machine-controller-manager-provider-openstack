@@ -9,7 +9,7 @@
 package tools
 
 import (
-	_ "github.com/ahmetb/gen-crd-api-reference-docs"
+	_ "github.com/elastic/crd-ref-docs"
 	_ "github.com/gardener/gardener/hack"
 	_ "github.com/gardener/gardener/hack/.ci"
 	_ "github.com/gardener/gardener/hack/api-reference/template"
