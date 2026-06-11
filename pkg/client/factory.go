@@ -64,8 +64,12 @@ func newAuthenticatedProviderClientFromCredentials(ctx context.Context, credenti
 
 	if credentials.ApplicationCredentialID != "" {
 		authOpts.ApplicationCredentialID = credentials.ApplicationCredentialID
+		authOpts.ApplicationCredentialSecret = credentials.ApplicationCredentialSecret
+	} else if credentials.ApplicationCredentialName != "" {
 		authOpts.ApplicationCredentialName = credentials.ApplicationCredentialName
 		authOpts.ApplicationCredentialSecret = credentials.ApplicationCredentialSecret
+		authOpts.Username = credentials.Username
+		authOpts.DomainName = credentials.DomainName
 	} else {
 		authOpts.Username = credentials.Username
 		authOpts.Password = credentials.Password
