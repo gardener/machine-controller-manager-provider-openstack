@@ -6,7 +6,7 @@ require (
 	github.com/elastic/crd-ref-docs v0.3.0
 	github.com/gardener/gardener v1.142.1
 	github.com/gardener/gardener/pkg/apis v1.142.1
-	github.com/gardener/machine-controller-manager v0.62.0
+	github.com/gardener/machine-controller-manager v0.62.1
 	github.com/gophercloud/gophercloud/v2 v2.12.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
