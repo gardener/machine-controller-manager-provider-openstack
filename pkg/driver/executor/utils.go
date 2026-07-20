@@ -16,8 +16,8 @@ func encodeProviderID(region string, machineID string) string {
 	return fmt.Sprintf("openstack:///%s/%s", region, machineID)
 }
 
-// decodeProviderID decodes a provider-encoded ID into the ID of the server.
-func decodeProviderID(id string) string {
+// DecodeProviderID decodes a provider-encoded ID into the ID of the server.
+func DecodeProviderID(id string) string {
 	splitProviderID := strings.Split(id, "/")
 	return splitProviderID[len(splitProviderID)-1]
 }

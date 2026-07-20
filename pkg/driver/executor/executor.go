@@ -521,8 +521,8 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	)
 
 	if !isEmptyString(ptr.To(providerID)) {
-		serverID := decodeProviderID(providerID)
-		server, err = ex.getMachineByID(ctx, serverID)
+		serverID := DecodeProviderID(providerID)
+		server, err = ex.GetMachineByID(ctx, serverID)
 	} else {
 		server, err = ex.getMachineByName(ctx, machineName)
 	}
@@ -677,8 +677,8 @@ func (ex *Executor) deleteVolume(ctx context.Context, machineName string) error 
 	return nil
 }
 
-// getMachineByProviderID fetches the data for a server based on a provider-encoded ID.
-func (ex *Executor) getMachineByID(ctx context.Context, serverID string) (*servers.Server, error) {
+// GetMachineByID fetches the data for a server based on a provider-encoded ID.
+func (ex *Executor) GetMachineByID(ctx context.Context, serverID string) (*servers.Server, error) {
 	klog.V(2).Infof("finding server with [ID=%q]", serverID)
 	server, err := ex.Compute.GetServer(ctx, serverID)
 	if err != nil {

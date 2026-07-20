@@ -145,12 +145,46 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 }
 
 // GetMachineStatus handles a machine get status request
-func (p *OpenstackDriver) GetMachineStatus(_ context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
-	// Log messages to track start and end of request
+func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetMachineStatusRequest) (*driver.GetMachineStatusResponse, error) {
 	klog.V(2).Infof("GetMachineStatus request has been received for %q", req.Machine.Name)
-	defer klog.V(2).Infof("GetMachineStatus is not implemented")
+	defer klog.V(2).Infof("GetMachineStatus request has been processed for %q", req.Machine.Name)
 
-	return nil, status.Error(codes.Unimplemented, "method not implemented")
+	if req.MachineClass.Provider != openstackProvider {
+		err := fmt.Errorf("requested for Provider '%s', we only support '%s'", req.MachineClass.Provider, openstackProvider)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if req.Machine.Spec.ProviderID == "" {
+		return nil, status.Error(codes.NotFound, fmt.Sprintf("machine %q has no providerID", req.Machine.Name))
+	}
+
+	providerConfig, err := p.decodeProviderSpec(req.MachineClass.ProviderSpec)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	if err := validation.ValidateRequest(providerConfig, req.Secret); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	factory, err := client.NewFactoryFromSecret(ctx, req.Secret)
+	if err != nil {
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
+	}
+
+	ex, err := executor.NewExecutor(factory, providerConfig)
+	if err != nil {
+		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct executor: %v", err))
+	}
+
+	serverID := executor.DecodeProviderID(req.Machine.Spec.ProviderID)
+	if _, err = ex.GetMachineByID(ctx, serverID); err != nil {
+		return nil, status.Error(mapErrorToCode(err), err.Error())
+	}
+
+	return &driver.GetMachineStatusResponse{
+		ProviderID: req.Machine.Spec.ProviderID,
+		NodeName:   req.Machine.Name,
+	}, nil
 }
 
 // ListMachines lists all the machines possibly created by a providerSpec
