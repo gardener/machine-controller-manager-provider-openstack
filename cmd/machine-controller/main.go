@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2014 The Kubernetes Authors.
-// SPDX-FileCopyrightText: modifications Copyright Contributors to the Gardener project
+// SPDX-FileCopyrightText: modifications Contributors to the Gardener project
 //
 // SPDX-License-Identifier: Apache-2.0
 //
