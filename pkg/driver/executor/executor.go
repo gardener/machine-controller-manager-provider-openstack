@@ -292,6 +292,7 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 
 	createOpts := &servers.CreateOpts{
 		Name:             machineName,
+		Hostname:         machineName,
 		FlavorRef:        flavorRef,
 		ImageRef:         imageRef,
 		Networks:         nws,

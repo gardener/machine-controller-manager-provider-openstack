@@ -41,6 +41,14 @@ func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.Endpoi
 		return nil, fmt.Errorf("could not initialize compute client: %v", err)
 	}
 
+	// Require microversion 2.90 so that the `hostname` field in server
+	// create/update requests is honoured by Nova. Without this, Nova derives
+	// the hostname from the display name and appends [api] dhcp_domain
+	// (e.g. ".novalocal"), which can push the OS hostname beyond the
+	// 63-byte RFC 1123 label limit enforced by Kubernetes for the
+	// kubernetes.io/hostname node label.
+	compute.Microversion = "2.90"
+
 	return &novaV2{
 		serviceClient: compute,
 	}, nil
