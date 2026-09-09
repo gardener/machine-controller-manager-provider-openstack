@@ -1,0 +1,17 @@
+// SPDX-FileCopyrightText: Contributors to the Gardener project
+//
+// SPDX-License-Identifier: Apache-2.0
+
+package client
+
+import (
+	"testing"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+)
+
+func TestValidation(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Client Suite")
+}

@@ -1,0 +1,33 @@
+#! /usr/bin/env bash
+
+set -eu
+
+export PATH=/go/bin:/usr/local/go/bin:$PATH
+
+if [ -z "${REPO_DIR:-}" ]; then
+  export REPO_DIR="$(readlink -f "$(dirname "${0}")/..")"
+fi
+
+echo "repo-dir: ${REPO_DIR}"
+
+if [ "${DEPENDENCY_NAME}" != "github.com/gardener/machine-controller-manager" ]; then 
+	echo "error: do not know how to upgrade ${DEPENDENCY_NAME}"
+	exit 1
+fi
+
+if [ -z "${DEPENDENCY_VERSION}" ]; then
+	echo "env var DEPENDENCY_VERSION must be set"
+	exit 1
+fi
+
+# for now, we only know how to upgrade github.com/gardener/machine-controller-manager, as checked above
+
+echo "set dependency-version of ${DEPENDENCY_NAME} to ${DEPENDENCY_VERSION}"
+
+cd ${REPO_DIR}
+old_version=$(cat go.mod | grep "github.com/gardener/machine-controller-manager v" | xargs)
+new_version="github.com/gardener/machine-controller-manager ${DEPENDENCY_VERSION}"
+
+sed -i -- 's#'"${old_version}"'#'"${new_version}"'#g' go.mod
+
+make tidy

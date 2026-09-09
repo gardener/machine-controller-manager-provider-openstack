@@ -1,0 +1,23 @@
+/args
+/bin
+/.kube-secrets
+/tmp/*
+/dev
+/hack/tools/bin
+.env
+.vscode
+.idea
+*.DS_Store
+*amd64
+*.html
+main
+
+# Output of the go coverage tool
+*coverprofile.out*
+.ci/controllers-test/logs/*
+test/integration/controller/controller.test
+
+# AI coding agents
+# Claude
+.claude/
+/skills-lock.json
