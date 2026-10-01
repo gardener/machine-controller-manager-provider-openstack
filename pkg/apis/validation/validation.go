@@ -48,9 +48,6 @@ func validateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 	if providerConfig.Spec.AvailabilityZone == "" {
 		allErrs = append(allErrs, field.Required(fldPath.Child("availabilityZone"), "AvailabilityZone name is required"))
 	}
-	if providerConfig.Spec.KeyName == "" {
-		allErrs = append(allErrs, field.Required(fldPath.Child("keyName"), "KeyName is required"))
-	}
 	if providerConfig.Spec.NetworkID != "" && len(providerConfig.Spec.Networks) > 0 {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("networks"), "\"networks\" list should not be specified along with \"providerConfig.Spec.NetworkID\""))
 	}

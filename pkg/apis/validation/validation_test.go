@@ -58,7 +58,6 @@ var _ = Describe("Validation", func() {
 				spec.Region = ""
 				spec.FlavorName = ""
 				spec.AvailabilityZone = ""
-				spec.KeyName = ""
 				spec.PodNetworkCIDRs = nil
 				err := validateMachineProviderConfig(machineProviderConfig)
 
@@ -74,10 +73,6 @@ var _ = Describe("Validation", func() {
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  BeEquivalentTo("FieldValueRequired"),
 						"Field": Equal("spec.availabilityZone"),
-					})),
-					PointTo(MatchFields(IgnoreExtras, Fields{
-						"Type":  BeEquivalentTo("FieldValueRequired"),
-						"Field": Equal("spec.keyName"),
 					})),
 					PointTo(MatchFields(IgnoreExtras, Fields{
 						"Type":  BeEquivalentTo("FieldValueRequired"),
@@ -156,6 +151,16 @@ var _ = Describe("Validation", func() {
 						"Field": Equal("spec.tags"),
 					})),
 				))
+			})
+		})
+
+		Context("#KeyName", func() {
+			It("should accept an empty value", func() {
+				spec := &machineProviderConfig.Spec
+				spec.KeyName = ""
+
+				err := validateMachineProviderConfig(machineProviderConfig)
+				Expect(err).To(BeEmpty())
 			})
 		})
 	})
