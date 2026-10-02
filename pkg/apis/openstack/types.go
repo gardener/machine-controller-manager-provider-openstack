@@ -51,6 +51,10 @@ type MachineProviderConfigSpec struct {
 	RootDiskSize int
 	// The type of the root disk type used for the instance
 	RootDiskType *string
+	// RootDiskAvailabilityZone is the availability zone of the root disk volume. It is only used if RootDiskType is set.
+	// If unset, the availability zone of the machine is used. If set to the empty string, no availability zone is
+	// passed to Cinder, which then uses its default availability zone.
+	RootDiskAvailabilityZone *string
 	// UseConfigDrive enables the use of configuration drives for the instance.
 	UseConfigDrive *bool
 	// ServerGroupID is the ID of the server group this instance should belong to.

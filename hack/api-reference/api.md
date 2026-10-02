@@ -237,6 +237,18 @@ string
 </tr>
 <tr>
 <td>
+<code>rootDiskAvailabilityZone</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RootDiskAvailabilityZone is the availability zone of the root disk volume. It is only used if RootDiskType is set.<br />If unset, the availability zone of the machine is used. If set to the empty string, no availability zone is<br />passed to Cinder, which then uses its default availability zone. This allows for differing compute and volume<br />availability zones.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>useConfigDrive</code></br>
 <em>
 boolean

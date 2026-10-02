@@ -358,6 +358,16 @@ func (ex *Executor) addBlockDeviceOpts(ctx context.Context, machineName,
 	return createOpts, nil
 }
 
+// rootDiskAvailabilityZone returns the availability zone to create the root disk volume in.
+// It defaults to the availability zone of the machine, but can be overridden (or emptied, to let Cinder choose its
+// default) to support clouds where compute and volume availability zones differ.
+func (ex *Executor) rootDiskAvailabilityZone() string {
+	if az := ex.Config.Spec.RootDiskAvailabilityZone; az != nil {
+		return *az
+	}
+	return ex.Config.Spec.AvailabilityZone
+}
+
 func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string,
 	hintOpts volumes.SchedulerHintOptsBuilder) (string, error) {
 	var (
@@ -376,7 +386,7 @@ func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string,
 			VolumeType:       *ex.Config.Spec.RootDiskType,
 			Size:             ex.Config.Spec.RootDiskSize,
 			ImageID:          imageID,
-			AvailabilityZone: ex.Config.Spec.AvailabilityZone,
+			AvailabilityZone: ex.rootDiskAvailabilityZone(),
 			Metadata:         ex.Config.Spec.Tags,
 		}, hintOpts)
 		if err != nil {

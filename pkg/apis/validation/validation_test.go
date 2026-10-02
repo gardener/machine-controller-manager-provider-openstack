@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 
 	. "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/cloudprovider"
 	api "github.com/gardener/machine-controller-manager-provider-openstack/pkg/apis/openstack"
@@ -45,6 +46,21 @@ var _ = Describe("Validation", func() {
 					Networks:        nil,
 				},
 			}
+		})
+
+		Context("rootDiskAvailabilityZone", func() {
+			It("should fail if set without rootDiskType", func() {
+				machineProviderConfig.Spec.RootDiskAvailabilityZone = ptr.To("nova")
+				err := validateMachineProviderConfig(machineProviderConfig).ToAggregate()
+				Expect(err).To(HaveOccurred())
+			})
+
+			It("should succeed if set together with rootDiskType", func() {
+				machineProviderConfig.Spec.RootDiskAvailabilityZone = ptr.To("nova")
+				machineProviderConfig.Spec.RootDiskType = ptr.To("fast")
+				err := validateMachineProviderConfig(machineProviderConfig).ToAggregate()
+				Expect(err).ToNot(HaveOccurred())
+			})
 		})
 
 		Context("required fields", func() {

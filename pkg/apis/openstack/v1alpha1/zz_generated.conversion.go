@@ -97,6 +97,7 @@ func autoConvert_v1alpha1_MachineProviderConfigSpec_To_openstack_MachineProvider
 	out.PodNetworkCIDRs = *(*[]string)(unsafe.Pointer(&in.PodNetworkCIDRs))
 	out.RootDiskSize = in.RootDiskSize
 	out.RootDiskType = (*string)(unsafe.Pointer(in.RootDiskType))
+	out.RootDiskAvailabilityZone = (*string)(unsafe.Pointer(in.RootDiskAvailabilityZone))
 	out.UseConfigDrive = (*bool)(unsafe.Pointer(in.UseConfigDrive))
 	out.ServerGroupID = (*string)(unsafe.Pointer(in.ServerGroupID))
 	out.Networks = *(*[]openstack.OpenStackNetwork)(unsafe.Pointer(&in.Networks))
@@ -124,6 +125,7 @@ func autoConvert_openstack_MachineProviderConfigSpec_To_v1alpha1_MachineProvider
 	out.PodNetworkCIDRs = *(*[]string)(unsafe.Pointer(&in.PodNetworkCIDRs))
 	out.RootDiskSize = in.RootDiskSize
 	out.RootDiskType = (*string)(unsafe.Pointer(in.RootDiskType))
+	out.RootDiskAvailabilityZone = (*string)(unsafe.Pointer(in.RootDiskAvailabilityZone))
 	out.UseConfigDrive = (*bool)(unsafe.Pointer(in.UseConfigDrive))
 	out.ServerGroupID = (*string)(unsafe.Pointer(in.ServerGroupID))
 	out.Networks = *(*[]OpenStackNetwork)(unsafe.Pointer(&in.Networks))
