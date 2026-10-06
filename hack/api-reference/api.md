@@ -10,6 +10,54 @@
 
 </p>
 
+<h3 id="additionalnetwork">AdditionalNetwork
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#machineproviderconfigspec">MachineProviderConfigSpec</a>)
+</p>
+
+<p>
+AdditionalNetwork describes an additional Neutron port to attach to the instance.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>networkID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>NetworkID is the ID of the OpenStack network.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subnetID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SubnetID is the ID of the subnet within NetworkID.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
 <h3 id="machineproviderconfig">MachineProviderConfig
 </h3>
 
@@ -267,6 +315,18 @@ string
 </td>
 <td>
 <p>Networks is a list of networks the instance should belong to. Networks is mutually exclusive with the NetworkID option<br />and only one should be specified.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalNetworkInterfaces</code></br>
+<em>
+<a href="#additionalnetwork">AdditionalNetwork</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AdditionalNetworkInterfaces is a list of additional network interfaces (extra NICs) to attach to the instance.<br />Each entry creates an additional Neutron port on the specified network/subnet.</p>
 </td>
 </tr>
 

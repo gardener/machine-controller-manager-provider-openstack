@@ -58,6 +58,17 @@ type MachineProviderConfigSpec struct {
 	// Networks is a list of networks the instance should belong to. Networks is mutually exclusive with the NetworkID option
 	// and only one should be specified.
 	Networks []OpenStackNetwork
+	// AdditionalNetworkInterfaces is a list of additional network interfaces (extra NICs) to attach to the instance.
+	// Each entry creates an additional Neutron port on the specified network/subnet.
+	AdditionalNetworkInterfaces []AdditionalNetwork
+}
+
+// AdditionalNetwork describes an additional Neutron port to attach to the instance.
+type AdditionalNetwork struct {
+	// NetworkID is the ID of the OpenStack network.
+	NetworkID string
+	// SubnetID is the ID of the subnet within NetworkID.
+	SubnetID string
 }
 
 // OpenStackNetwork describes a network this instance should belong to.
