@@ -142,5 +142,5 @@ docker-login:
 
 .PHONY: docker-push
 docker-push:
-	@if ! docker images $(IMAGE_NAME) | awk '{ print $$2 }' | grep -q -F $(VERSION); then echo "$(IMAGE_NAME)/$(VERSION) is not yet built. Please run 'make docker-images'"; false; fi
+	@if ! docker images $(IMAGE_NAME) | awk '{ print $$2 }' | grep -q -F $(VERSION); then echo "$(IMAGE_NAME):$(VERSION) is not yet built. Please run 'make docker-image'"; false; fi
 	@docker image push $(IMAGE_NAME):$(VERSION)
