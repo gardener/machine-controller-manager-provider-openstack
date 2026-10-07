@@ -9,12 +9,6 @@
 package tools
 
 import (
-	_ "github.com/elastic/crd-ref-docs"
-	_ "github.com/gardener/gardener/hack"
-	_ "github.com/gardener/gardener/hack/.ci"
-	_ "github.com/gardener/gardener/pkg/apis"
-	_ "github.com/onsi/ginkgo/v2"
-	_ "github.com/onsi/gomega"
-	_ "k8s.io/code-generator"
-	_ "sigs.k8s.io/controller-runtime" // Needed to work around strange behaviour in check-generate. Without this explicit dependenc this package will always fail the check, either needing to be removed or added (depending on whether it is already present or not).
+	_ "github.com/gardener/gardener/hack/generators/extension-generator"
+	_ "github.com/gardener/gardener/hack/tools"
 )
