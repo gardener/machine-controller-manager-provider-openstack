@@ -70,6 +70,10 @@ func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*E
 func getServerIPs(server *servers.Server) ([]string, error) {
 	ips := make([]string, 0)
 
+	if len(server.Addresses) == 0 {
+		return nil, fmt.Errorf("expected at least 1 network, but found 0")
+	}
+
 	// Format of the addresses field: https://docs.openstack.org/api-ref/compute/#list-servers-detailed.
 	for _, networkAddresses := range server.Addresses {
 		addrList, ok := networkAddresses.([]any)
