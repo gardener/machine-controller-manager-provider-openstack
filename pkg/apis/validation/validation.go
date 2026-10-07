@@ -65,6 +65,7 @@ func validateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 	}
 
 	allErrs = append(allErrs, validateNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, providerConfig.Spec.PodNetworkCIDRs, field.NewPath("spec.networks"))...)
+	allErrs = append(allErrs, validateAdditionalNetworkInterfaces(providerConfig.Spec.AdditionalNetworkInterfaces, field.NewPath("spec.additionalNetworkInterfaces"))...)
 	allErrs = append(allErrs, validateClassSpecTags(providerConfig.Spec.Tags, field.NewPath("spec.tags"))...)
 
 	return allErrs
@@ -84,6 +85,29 @@ func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr stri
 		if len(podNetworkCIDRs) == 0 && len(podNetworkCidr) == 0 && network.PodNetwork {
 			allErrs = append(allErrs, field.Required(fldPath.Child("podNetwork"), "\"podNetwork\" switch should not be used in absence of \"spec.podNetworkCidr\""))
 		}
+	}
+
+	return allErrs
+}
+
+func validateAdditionalNetworkInterfaces(ifaces []openstack.AdditionalNetwork, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	seenSubnetIDs := make(map[string]int)
+	for index, iface := range ifaces {
+		fldPath := fldPath.Index(index)
+		if iface.NetworkID == "" {
+			allErrs = append(allErrs, field.Required(fldPath.Child("networkID"), "networkID is required"))
+		}
+		if iface.SubnetID == "" {
+			allErrs = append(allErrs, field.Required(fldPath.Child("subnetID"), "subnetID is required"))
+			continue
+		}
+		if firstIndex, ok := seenSubnetIDs[iface.SubnetID]; ok {
+			allErrs = append(allErrs, field.Duplicate(fldPath.Child("subnetID"), fmt.Sprintf("subnetID %q is already used by additionalNetworkInterfaces[%d]", iface.SubnetID, firstIndex)))
+			continue
+		}
+		seenSubnetIDs[iface.SubnetID] = index
 	}
 
 	return allErrs
