@@ -74,6 +74,11 @@ func (in *MachineProviderConfigSpec) DeepCopyInto(out *MachineProviderConfigSpec
 		*out = new(string)
 		**out = **in
 	}
+	if in.RootDiskAvailabilityZone != nil {
+		in, out := &in.RootDiskAvailabilityZone, &out.RootDiskAvailabilityZone
+		*out = new(string)
+		**out = **in
+	}
 	if in.UseConfigDrive != nil {
 		in, out := &in.UseConfigDrive, &out.UseConfigDrive
 		*out = new(bool)

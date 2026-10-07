@@ -58,6 +58,12 @@ type MachineProviderConfigSpec struct {
 	// The type of the root disk used for the instance.
 	// +optional
 	RootDiskType *string `json:"rootDiskType,omitempty"`
+	// RootDiskAvailabilityZone is the availability zone of the root disk volume. It is only used if RootDiskType is set.
+	// If unset, the availability zone of the machine is used. If set to the empty string, no availability zone is
+	// passed to Cinder, which then uses its default availability zone. This allows for differing compute and volume
+	// availability zones.
+	// +optional
+	RootDiskAvailabilityZone *string `json:"rootDiskAvailabilityZone,omitempty"`
 	// UseConfigDrive enables the use of configuration drives for the instance.
 	UseConfigDrive *bool `json:"useConfigDrive,omitempty"`
 	// ServerGroupID is the ID of the server group this instance should belong to.

@@ -60,6 +60,9 @@ func validateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 	if providerConfig.Spec.RootDiskSize < 0 {
 		allErrs = append(allErrs, field.Required(fldPath.Child("rootDiskSize"), "RootDiskSize can not be negative"))
 	}
+	if providerConfig.Spec.RootDiskAvailabilityZone != nil && providerConfig.Spec.RootDiskType == nil {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("rootDiskAvailabilityZone"), "\"rootDiskAvailabilityZone\" can only be set together with \"rootDiskType\""))
+	}
 
 	allErrs = append(allErrs, validateNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, providerConfig.Spec.PodNetworkCIDRs, field.NewPath("spec.networks"))...)
 	allErrs = append(allErrs, validateClassSpecTags(providerConfig.Spec.Tags, field.NewPath("spec.tags"))...)

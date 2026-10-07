@@ -550,4 +550,18 @@ var _ = Describe("Executor", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
+
+	Context("rootDiskAvailabilityZone", func() {
+		DescribeTable("should select the availability zone for the root disk volume",
+			func(rootDiskAZ *string, expected string) {
+				cfg.Spec.AvailabilityZone = "AZ1"
+				cfg.Spec.RootDiskAvailabilityZone = rootDiskAZ
+				ex := &Executor{Config: cfg}
+				Expect(ex.rootDiskAvailabilityZone()).To(Equal(expected))
+			},
+			Entry("defaults to the machine availability zone", nil, "AZ1"),
+			Entry("uses the configured volume availability zone", ptr.To("nova"), "nova"),
+			Entry("omits the availability zone if empty", ptr.To(""), ""),
+		)
+	})
 })
