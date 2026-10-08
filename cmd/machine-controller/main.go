@@ -40,6 +40,9 @@ func main() {
 
 	provider := driver.NewOpenstackDriver(serializer.NewCodecFactory(scheme, serializer.EnableStrict).UniversalDecoder())
 
+	// The following call will currently never return anything but an error, it simply panics in any other case.
+	// Since it formally might, and the behaviour may change in future, we just tell the linter to ignore it for now.
+	// nolint:staticcheck
 	if err := app.Run(s, provider); err != nil {
 		klog.Fatalf("failed to run application: %v", err)
 	}
