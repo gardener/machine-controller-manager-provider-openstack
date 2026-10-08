@@ -162,13 +162,13 @@ func WithRegion(region string) Option {
 }
 
 // Compute returns a client for OpenStack's Nova service.
-func (f *Factory) Compute(opts ...Option) (Compute, error) {
+func (f *Factory) Compute(ctx context.Context, opts ...Option) (Compute, error) {
 	eo := gophercloud.EndpointOpts{}
 	for _, opt := range opts {
 		eo = opt(eo)
 	}
 
-	return newNovaV2(f.providerClient, eo)
+	return newNovaV2(ctx, f.providerClient, eo)
 }
 
 // Network returns a client for OpenStack's Neutron service.

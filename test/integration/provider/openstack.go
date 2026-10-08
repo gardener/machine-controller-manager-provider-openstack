@@ -19,7 +19,7 @@ import (
 )
 
 func getOrphanedInstances(ctx context.Context, factory *client.Factory) ([]string, error) {
-	compute, err := factory.Compute()
+	compute, err := factory.Compute(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func getMachines(machineClass *v1alpha1.MachineClass, factory *client.Factory) (
 	if err != nil {
 		return nil, err
 	}
-	ex, err := executor.NewExecutor(factory, providerConfig)
+	ex, err := executor.NewExecutor(context.Background(), factory, providerConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +121,7 @@ func cleanOrphanResources(ctx context.Context, orphanVms []string,
 	}
 
 	if len(orphanVms) != 0 {
-		compute, err := factory.Compute()
+		compute, err := factory.Compute(ctx)
 		if err == nil {
 			for _, instanceID := range orphanVms {
 				if err := compute.DeleteServer(ctx, instanceID); err != nil {

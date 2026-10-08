@@ -66,7 +66,7 @@ func (p *OpenstackDriver) CreateMachine(ctx context.Context, req *driver.CreateM
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, providerConfig)
+	ex, err := executor.NewExecutor(ctx, factory, providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
@@ -131,7 +131,7 @@ func (p *OpenstackDriver) DeleteMachine(ctx context.Context, req *driver.DeleteM
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, providerConfig)
+	ex, err := executor.NewExecutor(ctx, factory, providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))
@@ -171,7 +171,7 @@ func (p *OpenstackDriver) GetMachineStatus(ctx context.Context, req *driver.GetM
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, providerConfig)
+	ex, err := executor.NewExecutor(ctx, factory, providerConfig)
 	if err != nil {
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct executor: %v", err))
 	}
@@ -218,7 +218,7 @@ func (p *OpenstackDriver) ListMachines(ctx context.Context, req *driver.ListMach
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct OpenStack client: %v", err))
 	}
 
-	ex, err := executor.NewExecutor(factory, providerConfig)
+	ex, err := executor.NewExecutor(ctx, factory, providerConfig)
 	if err != nil {
 		klog.Errorf("failed to construct context for the request: %v", err)
 		return nil, status.Error(mapErrorToCode(err), fmt.Sprintf("failed to construct context for the request: %v", err))

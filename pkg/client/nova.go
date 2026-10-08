@@ -13,6 +13,8 @@ import (
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/v2/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/v2/openstack/image/v2/images"
+	"github.com/gophercloud/gophercloud/v2/openstack/utils"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -32,18 +34,42 @@ var _ Compute = &novaV2{}
 
 // novaV2 is a NovaV2 client implementing the Compute interface.
 type novaV2 struct {
-	serviceClient *gophercloud.ServiceClient
+	serviceClient            *gophercloud.ServiceClient
+	supportsHostnameOverride bool
 }
 
-func newNovaV2(providerClient *gophercloud.ProviderClient, eo gophercloud.EndpointOpts) (*novaV2, error) {
+func newNovaV2(ctx context.Context, providerClient *gophercloud.ProviderClient, eo gophercloud.EndpointOpts) (*novaV2, error) {
 	compute, err := openstack.NewComputeV2(providerClient, eo)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize compute client: %v", err)
 	}
 
+	// Pin microversion 2.90 so that the `hostname` field in server
+	// create requests is honoured by Nova. Without this, Nova derives
+	// the hostname from the display name and appends [api] dhcp_domain
+	// (e.g. ".novalocal"), which can push the OS hostname beyond the
+	// 63-byte RFC 1123 label limit enforced by Kubernetes for the
+	// kubernetes.io/hostname node label.
+	// Fall back gracefully if the Nova deployment does not support 2.90.
+	supported, err := utils.GetSupportedMicroversions(ctx, compute)
+	if err != nil {
+		klog.Warningf("failed to determine Nova microversion support: %v", err)
+	} else if ok, err := supported.IsSupported("2.90"); err != nil {
+		klog.Warningf("failed to check Nova microversion 2.90 support: %v", err)
+	} else if ok {
+		compute.Microversion = "2.90"
+	}
+
 	return &novaV2{
-		serviceClient: compute,
+		serviceClient:            compute,
+		supportsHostnameOverride: compute.Microversion == "2.90",
 	}, nil
+}
+
+// SupportsHostnameOverride reports whether the Nova service supports
+// microversion 2.90+, allowing the hostname field to be set explicitly.
+func (c *novaV2) SupportsHostnameOverride() bool {
+	return c.supportsHostnameOverride
 }
 
 // CreateServer creates a server.
