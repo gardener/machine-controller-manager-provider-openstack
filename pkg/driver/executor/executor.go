@@ -209,7 +209,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 
 	// Attach extra NICs for each AdditionalNetworkInterface entry.
 	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
-		extraPortID, err := ex.getOrCreateExtraPort(ctx, machineName, iface.NetworkID, iface.SubnetID)
+		extraPortID, err := ex.getOrCreateExtraPort(ctx, machineName, iface)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create extra port for network [ID=%q] subnet [ID=%q]: %w", iface.NetworkID, iface.SubnetID, err)
 		}
@@ -494,24 +494,29 @@ func (ex *Executor) resolveNetworkIDsForPodNetwork(ctx context.Context) (sets.Se
 
 	if !isEmptyString(ptr.To(networkID)) {
 		podNetworkIDs.Insert(networkID)
-		return podNetworkIDs, nil
+	} else {
+		for _, network := range networks {
+			var (
+				resolvedNetworkID string
+				err               error
+			)
+			if isEmptyString(ptr.To(network.Id)) {
+				resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				resolvedNetworkID = network.Id
+			}
+			if network.PodNetwork {
+				podNetworkIDs.Insert(resolvedNetworkID)
+			}
+		}
 	}
 
-	for _, network := range networks {
-		var (
-			resolvedNetworkID string
-			err               error
-		)
-		if isEmptyString(ptr.To(network.Id)) {
-			resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			resolvedNetworkID = network.Id
-		}
-		if network.PodNetwork {
-			podNetworkIDs.Insert(resolvedNetworkID)
+	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
+		if iface.PodNetwork {
+			podNetworkIDs.Insert(iface.NetworkID)
 		}
 	}
 	return podNetworkIDs, nil
@@ -614,8 +619,10 @@ func (ex *Executor) getOrCreatePort(ctx context.Context, machineName string) (st
 
 // getOrCreateExtraPort allocates a Neutron port on the given network/subnet for an additional NIC.
 // The port is named "<machineName>-<subnetID>" to allow idempotent lookup on retry.
-func (ex *Executor) getOrCreateExtraPort(ctx context.Context, machineName, networkID, subnetID string) (string, error) {
-	portName := machineName + "-" + subnetID
+// Node security groups are deliberately not applied; only the security groups configured on the
+// AdditionalNetwork itself (if any) are associated with the port.
+func (ex *Executor) getOrCreateExtraPort(ctx context.Context, machineName string, iface api.AdditionalNetwork) (string, error) {
+	portName := machineName + "-" + iface.SubnetID
 
 	portID, err := ex.Network.PortIDFromName(ctx, portName)
 	if err == nil {
@@ -626,11 +633,21 @@ func (ex *Executor) getOrCreateExtraPort(ctx context.Context, machineName, netwo
 		return "", fmt.Errorf("error fetching extra port [Name=%q]: %w", portName, err)
 	}
 
-	klog.V(3).Infof("creating extra port [Name=%q] on network [ID=%q] subnet [ID=%q]", portName, networkID, subnetID)
+	securityGroupIDs := make([]string, 0, len(iface.SecurityGroups))
+	for _, securityGroup := range iface.SecurityGroups {
+		securityGroupID, err := ex.Network.GroupIDFromName(ctx, securityGroup)
+		if err != nil {
+			return "", err
+		}
+		securityGroupIDs = append(securityGroupIDs, securityGroupID)
+	}
+
+	klog.V(3).Infof("creating extra port [Name=%q] on network [ID=%q] subnet [ID=%q]", portName, iface.NetworkID, iface.SubnetID)
 	port, err := ex.Network.CreatePort(ctx, &ports.CreateOpts{
-		Name:      portName,
-		NetworkID: networkID,
-		FixedIPs:  []ports.IP{{SubnetID: subnetID}},
+		Name:           portName,
+		NetworkID:      iface.NetworkID,
+		FixedIPs:       []ports.IP{{SubnetID: iface.SubnetID}},
+		SecurityGroups: &securityGroupIDs,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to create extra port [Name=%q]: %w", portName, err)

@@ -70,6 +70,8 @@ func RegisterConversions(s *runtime.Scheme) error {
 func autoConvert_v1alpha1_AdditionalNetwork_To_openstack_AdditionalNetwork(in *AdditionalNetwork, out *openstack.AdditionalNetwork, s conversion.Scope) error {
 	out.NetworkID = in.NetworkID
 	out.SubnetID = in.SubnetID
+	out.PodNetwork = in.PodNetwork
+	out.SecurityGroups = *(*[]string)(unsafe.Pointer(&in.SecurityGroups))
 	return nil
 }
 
@@ -81,6 +83,8 @@ func Convert_v1alpha1_AdditionalNetwork_To_openstack_AdditionalNetwork(in *Addit
 func autoConvert_openstack_AdditionalNetwork_To_v1alpha1_AdditionalNetwork(in *openstack.AdditionalNetwork, out *AdditionalNetwork, s conversion.Scope) error {
 	out.NetworkID = in.NetworkID
 	out.SubnetID = in.SubnetID
+	out.PodNetwork = in.PodNetwork
+	out.SecurityGroups = *(*[]string)(unsafe.Pointer(&in.SecurityGroups))
 	return nil
 }
 

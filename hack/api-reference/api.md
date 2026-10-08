@@ -53,6 +53,28 @@ string
 <p>SubnetID is the ID of the subnet within NetworkID.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>podNetwork</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<p>PodNetwork specifies whether this additional network carries pod traffic. Defaults to false, meaning the extra<br />NIC is not part of the pod network (e.g. a dedicated storage NIC). If true, the pod network CIDR range is<br />whitelisted on the port's allowed address pairs so pod traffic may egress/ingress over this interface.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityGroups</code></br>
+<em>
+string array
+</em>
+</td>
+<td>
+<p>SecurityGroups is a list of security group names to associate with the additional NIC's port. If empty, no<br />security groups are applied (the port is created without any, rather than inheriting Neutron's default).</p>
+</td>
+</tr>
 
 </tbody>
 </table>

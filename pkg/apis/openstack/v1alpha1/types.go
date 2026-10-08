@@ -78,6 +78,13 @@ type AdditionalNetwork struct {
 	NetworkID string `json:"networkID"`
 	// SubnetID is the ID of the subnet within NetworkID.
 	SubnetID string `json:"subnetID"`
+	// PodNetwork specifies whether this additional network carries pod traffic. Defaults to false, meaning the extra
+	// NIC is not part of the pod network (e.g. a dedicated storage NIC). If true, the pod network CIDR range is
+	// whitelisted on the port's allowed address pairs so pod traffic may egress/ingress over this interface.
+	PodNetwork bool `json:"podNetwork,omitempty"`
+	// SecurityGroups is a list of security group names to associate with the additional NIC's port. If empty, no
+	// security groups are applied (the port is created without any, rather than inheriting Neutron's default).
+	SecurityGroups []string `json:"securityGroups,omitempty"`
 }
 
 // OpenStackNetwork describes a network this instance should belong to.
