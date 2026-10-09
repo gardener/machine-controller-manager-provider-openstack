@@ -151,6 +151,65 @@ var _ = Describe("Validation", func() {
 			})
 		})
 
+		Context("#AdditionalNetworkInterfaces", func() {
+			It("should fail if networkID is empty", func() {
+				spec := &machineProviderConfig.Spec
+				spec.AdditionalNetworkInterfaces = []api.AdditionalNetwork{
+					{NetworkID: "", SubnetID: "subnet-1"},
+				}
+
+				err := validateMachineProviderConfig(machineProviderConfig)
+				Expect(err).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  BeEquivalentTo("FieldValueRequired"),
+						"Field": Equal("spec.additionalNetworkInterfaces[0].networkID"),
+					})),
+				))
+			})
+
+			It("should fail if subnetID is empty", func() {
+				spec := &machineProviderConfig.Spec
+				spec.AdditionalNetworkInterfaces = []api.AdditionalNetwork{
+					{NetworkID: "network-1", SubnetID: ""},
+				}
+
+				err := validateMachineProviderConfig(machineProviderConfig)
+				Expect(err).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  BeEquivalentTo("FieldValueRequired"),
+						"Field": Equal("spec.additionalNetworkInterfaces[0].subnetID"),
+					})),
+				))
+			})
+
+			It("should fail if the same subnetID is used twice", func() {
+				spec := &machineProviderConfig.Spec
+				spec.AdditionalNetworkInterfaces = []api.AdditionalNetwork{
+					{NetworkID: "network-1", SubnetID: "subnet-1"},
+					{NetworkID: "network-2", SubnetID: "subnet-1"},
+				}
+
+				err := validateMachineProviderConfig(machineProviderConfig)
+				Expect(err).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  BeEquivalentTo("FieldValueDuplicate"),
+						"Field": Equal("spec.additionalNetworkInterfaces[1].subnetID"),
+					})),
+				))
+			})
+
+			It("should succeed with distinct, fully-specified interfaces", func() {
+				spec := &machineProviderConfig.Spec
+				spec.AdditionalNetworkInterfaces = []api.AdditionalNetwork{
+					{NetworkID: "network-1", SubnetID: "subnet-1"},
+					{NetworkID: "network-2", SubnetID: "subnet-2"},
+				}
+
+				err := validateMachineProviderConfig(machineProviderConfig)
+				Expect(err).To(BeEmpty())
+			})
+		})
+
 		Context("#Tags", func() {
 			It("should return an error if the cluster tags are missing", func() {
 				spec := &machineProviderConfig.Spec

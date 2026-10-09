@@ -10,6 +10,76 @@
 
 </p>
 
+<h3 id="additionalnetwork">AdditionalNetwork
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#machineproviderconfigspec">MachineProviderConfigSpec</a>)
+</p>
+
+<p>
+AdditionalNetwork describes an additional Neutron port to attach to the instance.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>networkID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>NetworkID is the ID of the OpenStack network.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subnetID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SubnetID is the ID of the subnet within NetworkID.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podNetwork</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<p>PodNetwork specifies whether this additional network carries pod traffic. Defaults to false, meaning the extra<br />NIC is not part of the pod network (e.g. a dedicated storage NIC). If true, the pod network CIDR range is<br />whitelisted on the port's allowed address pairs so pod traffic may egress/ingress over this interface.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityGroups</code></br>
+<em>
+string array
+</em>
+</td>
+<td>
+<p>SecurityGroups is a list of security group names to associate with the additional NIC's port. If empty, no<br />security groups are applied (the port is created without any, rather than inheriting Neutron's default).</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
 <h3 id="machineproviderconfig">MachineProviderConfig
 </h3>
 
@@ -279,6 +349,18 @@ string
 </td>
 <td>
 <p>Networks is a list of networks the instance should belong to. Networks is mutually exclusive with the NetworkID option<br />and only one should be specified.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>additionalNetworkInterfaces</code></br>
+<em>
+<a href="#additionalnetwork">AdditionalNetwork</a> array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AdditionalNetworkInterfaces is a list of additional network interfaces (extra NICs) to attach to the instance.<br />Each entry creates an additional Neutron port on the specified network/subnet.</p>
 </td>
 </tr>
 
