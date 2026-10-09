@@ -139,6 +139,20 @@ func (mr *MockComputeMockRecorder) ListServers(ctx, opts any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListServers", reflect.TypeOf((*MockCompute)(nil).ListServers), ctx, opts)
 }
 
+// SupportsHostnameOverride mocks base method.
+func (m *MockCompute) SupportsHostnameOverride() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SupportsHostnameOverride")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SupportsHostnameOverride indicates an expected call of SupportsHostnameOverride.
+func (mr *MockComputeMockRecorder) SupportsHostnameOverride() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SupportsHostnameOverride", reflect.TypeOf((*MockCompute)(nil).SupportsHostnameOverride))
+}
+
 // MockNetwork is a mock of Network interface.
 type MockNetwork struct {
 	ctrl     *gomock.Controller

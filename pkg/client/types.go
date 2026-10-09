@@ -29,6 +29,10 @@ type Compute interface {
 	FlavorIDFromName(ctx context.Context, name string) (string, error)
 	// ImageIDFromName resolves the given image name to a unique ID.
 	ImageIDFromName(ctx context.Context, name string) (images.Image, error)
+	// SupportsHostnameOverride reports whether the Nova service supports
+	// microversion 2.90+, which allows setting the hostname field explicitly
+	// in server create requests.
+	SupportsHostnameOverride() bool
 }
 
 // Network is an interface for communication with Neutron service.

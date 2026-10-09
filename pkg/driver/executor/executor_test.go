@@ -103,6 +103,7 @@ var _ = Describe("Executor", func() {
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
 				ID: serverID,
 			}, nil)
@@ -153,6 +154,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().TagPort(ctx, gomock.Any(), gomock.Any()).Return(nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
 				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
@@ -187,6 +189,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().TagPort(ctx, gomock.Any(), gomock.Any()).Return(nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
 				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
@@ -226,6 +229,7 @@ var _ = Describe("Executor", func() {
 				storage.EXPECT().GetVolume(ctx, volumeID).Return(&volumes.Volume{ID: volumeID, Status: client.VolumeStatusAvailable}, nil),
 			)
 			storage.EXPECT().CreateVolume(ctx, gomock.Any(), gomock.Any()).Return(&volumes.Volume{ID: volumeID}, nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
 				ID: serverID,
 			}, nil)
@@ -277,6 +281,7 @@ var _ = Describe("Executor", func() {
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
 				ID: serverID,
 			}, nil)
@@ -303,6 +308,7 @@ var _ = Describe("Executor", func() {
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
 				ID: serverID,
 			}, nil)
@@ -338,6 +344,50 @@ var _ = Describe("Executor", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(server.InternalIPs).To(HaveLen(2))
 			Expect(server.InternalIPs).To(ConsistOf(serverIPv4, serverIPv6))
+		})
+
+		It("should succeed when SupportsHostnameOverride returns false", func() {
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(false)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{
+				ID: serverID,
+			}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusBuild,
+				}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private": []any{
+							map[string]any{
+								"addr":    serverIPv4,
+								"version": 4,
+							},
+						},
+					},
+				}, nil))
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{
+				DeviceID: serverID,
+			}).Return([]ports.Port{{NetworkID: networkID, ID: portID}}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+
+			server, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(server.InternalIPs).To(HaveLen(1))
+			Expect(server.InternalIPs[0]).To(Equal(serverIPv4))
 		})
 	})
 

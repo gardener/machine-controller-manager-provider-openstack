@@ -40,8 +40,8 @@ type CreateMachineResult struct {
 }
 
 // NewExecutor returns a new instance of Executor.
-func NewExecutor(factory *client.Factory, config *api.MachineProviderConfig) (*Executor, error) {
-	computeClient, err := factory.Compute(client.WithRegion(config.Spec.Region))
+func NewExecutor(ctx context.Context, factory *client.Factory, config *api.MachineProviderConfig) (*Executor, error) {
+	computeClient, err := factory.Compute(ctx, client.WithRegion(config.Spec.Region))
 	if err != nil {
 		klog.Errorf("failed to create compute client for executor: %v", err)
 		return nil, err
@@ -300,6 +300,10 @@ func (ex *Executor) deployServer(ctx context.Context, machineName string, userDa
 		UserData:         userData,
 		AvailabilityZone: availabilityZone,
 		ConfigDrive:      useConfigDrive,
+	}
+
+	if ex.Compute.SupportsHostnameOverride() {
+		createOpts.Hostname = machineName
 	}
 
 	if ex.Config.Spec.ServerGroupID != nil {
