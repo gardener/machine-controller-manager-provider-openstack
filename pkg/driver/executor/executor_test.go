@@ -150,6 +150,7 @@ var _ = Describe("Executor", func() {
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
 				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
@@ -198,6 +199,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
 				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
@@ -247,6 +249,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
 				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
@@ -301,6 +304,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
 			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
 			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
 			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
 			gomock.InOrder(
 				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
@@ -824,11 +828,11 @@ var _ = Describe("Executor", func() {
 
 		It("should delete primary port and extra NIC ports when network is user-managed", func() {
 			var (
-				machineName  = "foo"
-				subnetID     = "subnet-primary"
-				primaryPort  = "primary-port"
-				extraSubnet  = "subnet-extra-1"
-				extraPortID  = "extra-port-1"
+				machineName = "foo"
+				subnetID    = "subnet-primary"
+				primaryPort = "primary-port"
+				extraSubnet = "subnet-extra-1"
+				extraPortID = "extra-port-1"
 			)
 
 			cfg.Spec.SubnetID = ptr.To(subnetID)
