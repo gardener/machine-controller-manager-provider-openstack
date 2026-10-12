@@ -464,35 +464,45 @@ func (ex *Executor) patchServerPortsForPodNetwork(ctx context.Context, serverID 
 		return fmt.Errorf("failed to resolve network IDs for the pod network %v", err)
 	}
 
-	// coalesce all pod network CIDRs into a single slice.
+	// coalesce all pod network CIDRs into a single set.
 	podCIDRs := sets.NewString(ex.Config.Spec.PodNetworkCIDRs...)
 	if ex.Config.Spec.PodNetworkCidr != "" {
 		podCIDRs.Insert(ex.Config.Spec.PodNetworkCidr)
 	}
 
 	for _, port := range allPorts {
-		// if the port is not part of the networks we care about, continue.
 		if !podNetworkIDs.Has(port.NetworkID) {
 			continue
 		}
 
+		// Build the merged allowed address pairs: start with existing pairs,
+		// then add any pod CIDRs not already present. A single UpdatePort call
+		// is required because Neutron replaces the entire list on each call.
+		existing := sets.NewString()
+		mergedPairs := make([]ports.AddressPair, 0, len(port.AllowedAddressPairs)+podCIDRs.Len())
+		for _, pair := range port.AllowedAddressPairs {
+			existing.Insert(pair.IPAddress)
+			mergedPairs = append(mergedPairs, pair)
+		}
+
+		needsUpdate := false
 		for _, cidr := range podCIDRs.List() {
-			if err := func() error {
-				for _, pair := range port.AllowedAddressPairs {
-					if pair.IPAddress == cidr {
-						klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
-						return nil
-					}
-				}
-				if err := ex.Network.UpdatePort(ctx, port.ID, ports.UpdateOpts{
-					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: cidr}},
-				}); err != nil {
-					return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
-				}
-				return nil
-			}(); err != nil {
-				return err
+			if existing.Has(cidr) {
+				klog.V(3).Infof("port [ID=%q] already allows pod network CIDR %q. Skipping...", port.ID, cidr)
+				continue
 			}
+			mergedPairs = append(mergedPairs, ports.AddressPair{IPAddress: cidr})
+			needsUpdate = true
+		}
+
+		if !needsUpdate {
+			continue
+		}
+
+		if err := ex.Network.UpdatePort(ctx, port.ID, ports.UpdateOpts{
+			AllowedAddressPairs: &mergedPairs,
+		}); err != nil {
+			return fmt.Errorf("failed to update allowed address pairs for port [ID=%q]: %v", port.ID, err)
 		}
 	}
 	return nil

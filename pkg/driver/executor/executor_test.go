@@ -137,6 +137,45 @@ var _ = Describe("Executor", func() {
 			Expect(server.InternalIPs[0]).To(Equal(serverIPv4))
 		})
 
+		It("should issue a single UpdatePort with all pod CIDRs for dual-stack", func() {
+			const podCidrV6 = "fd00::/112"
+			cfg.Spec.PodNetworkCIDRs = []string{podCidr, podCidrV6}
+			cfg.Spec.PodNetworkCidr = ""
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private": []any{map[string]any{"addr": serverIPv4, "version": 4}},
+					},
+				}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{
+				{NetworkID: networkID, ID: portID},
+			}, nil)
+			// Both CIDRs must be present in a single UpdatePort call — not two separate calls.
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{
+					{IPAddress: podCidr},
+					{IPAddress: podCidrV6},
+				},
+			}).Return(nil)
+
+			_, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
 		It("should whitelist the pod CIDR on an additional NIC flagged as pod network", func() {
 			var (
 				extraNetworkID = "extraNetworkID"
