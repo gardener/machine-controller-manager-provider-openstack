@@ -180,7 +180,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 				return nil, fmt.Errorf("subnet [ID=%q] from SubnetIDs not found: %w", id, err)
 			}
 		}
-		portID, err := ex.getOrCreatePort(ctx, machineName)
+		portID, err := ex.getOrCreatePort(ctx, machineName, ex.Config.Spec.NetworkID, ex.buildFixedIPs(), ex.Config.Spec.SecurityGroups)
 		if err != nil {
 			return nil, err
 		}
@@ -209,7 +209,7 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 
 	// Attach extra NICs for each AdditionalNetworkInterface entry.
 	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
-		extraPortID, err := ex.getOrCreateExtraPort(ctx, machineName, iface)
+		extraPortID, err := ex.getOrCreatePort(ctx, machineName+"-"+iface.SubnetID, iface.NetworkID, []ports.IP{{SubnetID: iface.SubnetID}}, iface.SecurityGroups)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create extra port for network [ID=%q] subnet [ID=%q]: %w", iface.NetworkID, iface.SubnetID, err)
 		}
@@ -578,77 +578,20 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	return nil
 }
 
-func (ex *Executor) getOrCreatePort(ctx context.Context, machineName string) (string, error) {
-	var (
-		err              error
-		securityGroupIDs []string
-	)
-
-	portID, err := ex.Network.PortIDFromName(ctx, machineName)
-	if err == nil {
-		klog.V(2).Infof("found port [Name=%q, ID=%q]... skipping creation", machineName, portID)
-		return portID, nil
-	}
-
-	if !client.IsNotFoundError(err) {
-		klog.V(5).Infof("error fetching port [Name=%q]: %s", machineName, err)
-		return "", fmt.Errorf("error fetching port [Name=%q]: %s", machineName, err)
-	}
-
-	klog.V(5).Infof("port [Name=%q] does not exist", machineName)
-	klog.V(3).Infof("creating port [Name=%q]... ", machineName)
-
-	for _, securityGroup := range ex.Config.Spec.SecurityGroups {
-		securityGroupID, err := ex.Network.GroupIDFromName(ctx, securityGroup)
-		if err != nil {
-			return "", err
-		}
-		securityGroupIDs = append(securityGroupIDs, securityGroupID)
-	}
-
-	port, err := ex.Network.CreatePort(ctx, &ports.CreateOpts{
-		Name:           machineName,
-		NetworkID:      ex.Config.Spec.NetworkID,
-		FixedIPs:       ex.buildFixedIPs(),
-		SecurityGroups: &securityGroupIDs,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
-	if !ok {
-		klog.Warningf("operation can not proceed: cluster/role tags are missing")
-		return "", fmt.Errorf("operation can not proceed: cluster/role tags are missing")
-	}
-
-	portTags := []string{searchClusterName, searchNodeRole}
-	if err := ex.Network.TagPort(ctx, port.ID, portTags); err != nil {
-		return "", err
-	}
-
-	klog.V(3).Infof("port [Name=%q] successfully created", port.Name)
-	return port.ID, nil
-}
-
-// getOrCreateExtraPort allocates a Neutron port on the given network/subnet for an additional NIC.
-// The port is named "<machineName>-<subnetID>" to allow idempotent lookup on retry.
-// Node security groups are deliberately not applied; only the security groups configured on the
-// AdditionalNetwork itself (if any) are associated with the port.
-func (ex *Executor) getOrCreateExtraPort(ctx context.Context, machineName string, iface api.AdditionalNetwork) (string, error) {
-	portName := machineName + "-" + iface.SubnetID
-
+// getOrCreatePort looks up a Neutron port by name and creates it if it does not exist.
+// The port is tagged with the cluster/role tags derived from the machine's spec tags.
+func (ex *Executor) getOrCreatePort(ctx context.Context, portName, networkID string, fixedIPs []ports.IP, securityGroupNames []string) (string, error) {
 	portID, err := ex.Network.PortIDFromName(ctx, portName)
 	if err == nil {
-		klog.V(2).Infof("found extra port [Name=%q, ID=%q]... skipping creation", portName, portID)
+		klog.V(2).Infof("found port [Name=%q, ID=%q]... skipping creation", portName, portID)
 		return portID, nil
 	}
 	if !client.IsNotFoundError(err) {
-		return "", fmt.Errorf("error fetching extra port [Name=%q]: %w", portName, err)
+		return "", fmt.Errorf("error fetching port [Name=%q]: %w", portName, err)
 	}
 
-	securityGroupIDs := make([]string, 0, len(iface.SecurityGroups))
-	for _, securityGroup := range iface.SecurityGroups {
+	securityGroupIDs := make([]string, 0, len(securityGroupNames))
+	for _, securityGroup := range securityGroupNames {
 		securityGroupID, err := ex.Network.GroupIDFromName(ctx, securityGroup)
 		if err != nil {
 			return "", err
@@ -656,15 +599,15 @@ func (ex *Executor) getOrCreateExtraPort(ctx context.Context, machineName string
 		securityGroupIDs = append(securityGroupIDs, securityGroupID)
 	}
 
-	klog.V(3).Infof("creating extra port [Name=%q] on network [ID=%q] subnet [ID=%q]", portName, iface.NetworkID, iface.SubnetID)
+	klog.V(3).Infof("creating port [Name=%q] on network [ID=%q]", portName, networkID)
 	port, err := ex.Network.CreatePort(ctx, &ports.CreateOpts{
 		Name:           portName,
-		NetworkID:      iface.NetworkID,
-		FixedIPs:       []ports.IP{{SubnetID: iface.SubnetID}},
+		NetworkID:      networkID,
+		FixedIPs:       fixedIPs,
 		SecurityGroups: &securityGroupIDs,
 	})
 	if err != nil {
-		return "", fmt.Errorf("failed to create extra port [Name=%q]: %w", portName, err)
+		return "", fmt.Errorf("failed to create port [Name=%q]: %w", portName, err)
 	}
 
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
@@ -672,10 +615,10 @@ func (ex *Executor) getOrCreateExtraPort(ctx context.Context, machineName string
 		return "", fmt.Errorf("operation can not proceed: cluster/role tags are missing")
 	}
 	if err := ex.Network.TagPort(ctx, port.ID, []string{searchClusterName, searchNodeRole}); err != nil {
-		return "", fmt.Errorf("failed to tag extra port [ID=%q]: %w", port.ID, err)
+		return "", fmt.Errorf("failed to tag port [ID=%q]: %w", port.ID, err)
 	}
 
-	klog.V(3).Infof("extra port [Name=%q, ID=%q] successfully created", port.Name, port.ID)
+	klog.V(3).Infof("port [Name=%q, ID=%q] successfully created", port.Name, port.ID)
 	return port.ID, nil
 }
 
