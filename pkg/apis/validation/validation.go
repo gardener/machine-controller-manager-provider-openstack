@@ -65,7 +65,7 @@ func validateMachineProviderConfig(providerConfig *openstack.MachineProviderConf
 	}
 
 	allErrs = append(allErrs, validateNetworks(providerConfig.Spec.Networks, providerConfig.Spec.PodNetworkCidr, providerConfig.Spec.PodNetworkCIDRs, field.NewPath("spec.networks"))...)
-	allErrs = append(allErrs, validateAdditionalNetworkInterfaces(providerConfig.Spec.AdditionalNetworkInterfaces, field.NewPath("spec.additionalNetworkInterfaces"))...)
+	allErrs = append(allErrs, validateAdditionalNetworkInterfaces(providerConfig.Spec.AdditionalNetworkInterfaces, providerConfig.Spec.SubnetID, providerConfig.Spec.SubnetIDs, field.NewPath("spec.additionalNetworkInterfaces"))...)
 	allErrs = append(allErrs, validateClassSpecTags(providerConfig.Spec.Tags, field.NewPath("spec.tags"))...)
 
 	return allErrs
@@ -90,8 +90,16 @@ func validateNetworks(networks []openstack.OpenStackNetwork, podNetworkCidr stri
 	return allErrs
 }
 
-func validateAdditionalNetworkInterfaces(ifaces []openstack.AdditionalNetwork, fldPath *field.Path) field.ErrorList {
+func validateAdditionalNetworkInterfaces(ifaces []openstack.AdditionalNetwork, primarySubnetID *string, primarySubnetIDs []string, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
+
+	primarySubnets := make(map[string]struct{})
+	if primarySubnetID != nil && *primarySubnetID != "" {
+		primarySubnets[*primarySubnetID] = struct{}{}
+	}
+	for _, id := range primarySubnetIDs {
+		primarySubnets[id] = struct{}{}
+	}
 
 	seenSubnetIDs := make(map[string]int)
 	for index, iface := range ifaces {
@@ -101,6 +109,10 @@ func validateAdditionalNetworkInterfaces(ifaces []openstack.AdditionalNetwork, f
 		}
 		if iface.SubnetID == "" {
 			allErrs = append(allErrs, field.Required(fldPath.Child("subnetID"), "subnetID is required"))
+			continue
+		}
+		if _, ok := primarySubnets[iface.SubnetID]; ok {
+			allErrs = append(allErrs, field.Duplicate(fldPath.Child("subnetID"), fmt.Sprintf("subnetID %q is already used by the primary network", iface.SubnetID)))
 			continue
 		}
 		if firstIndex, ok := seenSubnetIDs[iface.SubnetID]; ok {

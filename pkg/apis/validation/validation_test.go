@@ -208,6 +208,39 @@ var _ = Describe("Validation", func() {
 				err := validateMachineProviderConfig(machineProviderConfig)
 				Expect(err).To(BeEmpty())
 			})
+
+			It("should fail if subnetID conflicts with spec.SubnetID", func() {
+				spec := &machineProviderConfig.Spec
+				subnetID := "subnet-1"
+				spec.SubnetID = &subnetID
+				spec.AdditionalNetworkInterfaces = []api.AdditionalNetwork{
+					{NetworkID: "network-1", SubnetID: "subnet-1"},
+				}
+
+				err := validateMachineProviderConfig(machineProviderConfig)
+				Expect(err).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  BeEquivalentTo("FieldValueDuplicate"),
+						"Field": Equal("spec.additionalNetworkInterfaces[0].subnetID"),
+					})),
+				))
+			})
+
+			It("should fail if subnetID conflicts with spec.SubnetIDs", func() {
+				spec := &machineProviderConfig.Spec
+				spec.SubnetIDs = []string{"subnet-1", "subnet-2"}
+				spec.AdditionalNetworkInterfaces = []api.AdditionalNetwork{
+					{NetworkID: "network-1", SubnetID: "subnet-2"},
+				}
+
+				err := validateMachineProviderConfig(machineProviderConfig)
+				Expect(err).To(ConsistOf(
+					PointTo(MatchFields(IgnoreExtras, Fields{
+						"Type":  BeEquivalentTo("FieldValueDuplicate"),
+						"Field": Equal("spec.additionalNetworkInterfaces[0].subnetID"),
+					})),
+				))
+			})
 		})
 
 		Context("#Tags", func() {
