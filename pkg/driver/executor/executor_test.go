@@ -786,6 +786,74 @@ var _ = Describe("Executor", func() {
 			err := ex.DeleteMachine(ctx, machineName, "")
 			Expect(err).ToNot(HaveOccurred())
 		})
+
+		It("should delete extra NIC ports but not primary port when network is not user-managed", func() {
+			var (
+				machineName  = "foo"
+				extraSubnet1 = "subnet-extra-1"
+				extraSubnet2 = "subnet-extra-2"
+				extraPortID1 = "extra-port-1"
+				extraPortID2 = "extra-port-2"
+			)
+
+			// No SubnetID/SubnetIDs set → isUserManagedNetwork() == false
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: "net-1", SubnetID: extraSubnet1},
+				{NetworkID: "net-2", SubnetID: extraSubnet2},
+			}
+
+			gomock.InOrder(
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return(serverList, nil),
+				compute.EXPECT().DeleteServer(ctx, "id1").Return(nil),
+				compute.EXPECT().GetServer(ctx, "id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
+			)
+			// Only extra NIC ports should be listed and deleted — no ListPorts for machineName itself.
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName + "-" + extraSubnet1}).Return([]ports.Port{{ID: extraPortID1}}, nil)
+			network.EXPECT().DeletePort(ctx, extraPortID1).Return(nil)
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName + "-" + extraSubnet2}).Return([]ports.Port{{ID: extraPortID2}}, nil)
+			network.EXPECT().DeletePort(ctx, extraPortID2).Return(nil)
+
+			ex := Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+			err := ex.DeleteMachine(ctx, machineName, "")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should delete primary port and extra NIC ports when network is user-managed", func() {
+			var (
+				machineName  = "foo"
+				subnetID     = "subnet-primary"
+				primaryPort  = "primary-port"
+				extraSubnet  = "subnet-extra-1"
+				extraPortID  = "extra-port-1"
+			)
+
+			cfg.Spec.SubnetID = ptr.To(subnetID)
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: "net-1", SubnetID: extraSubnet},
+			}
+
+			gomock.InOrder(
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return(serverList, nil),
+				compute.EXPECT().DeleteServer(ctx, "id1").Return(nil),
+				compute.EXPECT().GetServer(ctx, "id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: primaryPort}}, nil)
+			network.EXPECT().DeletePort(ctx, primaryPort).Return(nil)
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName + "-" + extraSubnet}).Return([]ports.Port{{ID: extraPortID}}, nil)
+			network.EXPECT().DeletePort(ctx, extraPortID).Return(nil)
+
+			ex := Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+			err := ex.DeleteMachine(ctx, machineName, "")
+			Expect(err).ToNot(HaveOccurred())
+		})
 	})
 
 	Context("rootDiskAvailabilityZone", func() {

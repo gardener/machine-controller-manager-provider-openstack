@@ -574,9 +574,15 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 		return err
 	}
 
-	if ex.isUserManagedNetwork() || len(ex.Config.Spec.AdditionalNetworkInterfaces) > 0 {
-		err := ex.deletePort(ctx, machineName)
-		if err != nil {
+	var portNames []string
+	if ex.isUserManagedNetwork() {
+		portNames = append(portNames, machineName)
+	}
+	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
+		portNames = append(portNames, machineName+"-"+iface.SubnetID)
+	}
+	if len(portNames) > 0 {
+		if err := ex.deletePorts(ctx, portNames); err != nil {
 			return err
 		}
 	}
@@ -658,13 +664,7 @@ func (ex *Executor) buildFixedIPs() []ports.IP {
 	return fixedIPs
 }
 
-func (ex *Executor) deletePort(ctx context.Context, machineName string) error {
-	// Collect all port names to delete: the primary port plus extra NIC ports.
-	portNames := []string{machineName}
-	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
-		portNames = append(portNames, machineName+"-"+iface.SubnetID)
-	}
-
+func (ex *Executor) deletePorts(ctx context.Context, portNames []string) error {
 	var errs []error
 	for _, name := range portNames {
 		portList, err := ex.Network.ListPorts(ctx, ports.ListOpts{
