@@ -665,12 +665,14 @@ func (ex *Executor) deletePort(ctx context.Context, machineName string) error {
 		portNames = append(portNames, machineName+"-"+iface.SubnetID)
 	}
 
+	var errs []error
 	for _, name := range portNames {
 		portList, err := ex.Network.ListPorts(ctx, ports.ListOpts{
 			Name: name,
 		})
 		if err != nil {
-			return fmt.Errorf("error listing ports [Name=%q]: %s", name, err)
+			errs = append(errs, fmt.Errorf("error listing ports [Name=%q]: %s", name, err))
+			continue
 		}
 		if len(portList) == 0 {
 			klog.V(2).Infof("port [Name=%q] was not found", name)
@@ -682,13 +684,14 @@ func (ex *Executor) deletePort(ctx context.Context, machineName string) error {
 			klog.V(2).Infof("deleting port [ID=%q]", p.ID)
 			if err := ex.Network.DeletePort(ctx, p.ID); err != nil {
 				klog.Errorf("failed to delete port [ID=%q]: %s", p.ID, err)
-				return err
+				errs = append(errs, err)
+				continue
 			}
 			klog.V(3).Infof("deleted port [ID=%q]", p.ID)
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (ex *Executor) deleteVolume(ctx context.Context, machineName string) error {
