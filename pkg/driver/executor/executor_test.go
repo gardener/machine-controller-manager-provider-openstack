@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
@@ -95,9 +96,10 @@ var _ = Describe("Executor", func() {
 
 		It("should take the happy path", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -142,9 +144,10 @@ var _ = Describe("Executor", func() {
 			cfg.Spec.PodNetworkCIDRs = []string{podCidr, podCidrV6}
 			cfg.Spec.PodNetworkCidr = ""
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -188,9 +191,10 @@ var _ = Describe("Executor", func() {
 				{NetworkID: extraNetworkID, SubnetID: extraSubnetID, PodNetwork: true},
 			}
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -239,9 +243,10 @@ var _ = Describe("Executor", func() {
 				{NetworkID: extraNetworkID, SubnetID: extraSubnetID},
 			}
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -289,9 +294,10 @@ var _ = Describe("Executor", func() {
 				{NetworkID: extraNetworkID, SubnetID: extraSubnetID, SecurityGroups: []string{sgName}},
 			}
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -343,9 +349,10 @@ var _ = Describe("Executor", func() {
 				{NetworkID: extraNetworkID, SubnetID: extraSubnetID},
 			}
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -387,9 +394,10 @@ var _ = Describe("Executor", func() {
 
 			cfg.Spec.SubnetID = &subnetID
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -421,9 +429,10 @@ var _ = Describe("Executor", func() {
 
 			cfg.Spec.SubnetIDs = []string{subnetID1, subnetID2}
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -459,10 +468,11 @@ var _ = Describe("Executor", func() {
 			cfg.Spec.RootDiskType = &diskType
 			cfg.Spec.RootDiskSize = diskSize
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Storage: storage,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Storage:      storage,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -494,9 +504,10 @@ var _ = Describe("Executor", func() {
 
 		It("should raise a ErrResourceNotFound error when called with a missing flavor", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -512,9 +523,10 @@ var _ = Describe("Executor", func() {
 
 		It("should delete the server on failure", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			server := &servers.Server{
@@ -545,9 +557,10 @@ var _ = Describe("Executor", func() {
 
 		It("should accept multiple internal IPs", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -593,9 +606,10 @@ var _ = Describe("Executor", func() {
 
 		It("should succeed when SupportsHostnameOverride returns false", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)

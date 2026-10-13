@@ -31,7 +31,11 @@ type Executor struct {
 	Network client.Network
 	Storage client.Storage
 	Config  *api.MachineProviderConfig
+	// PollInterval is the interval between server status polls. If zero, defaultPollInterval is used.
+	PollInterval time.Duration
 }
+
+const defaultPollInterval = 10 * time.Second
 
 // CreateMachineResult represents the result of a CreateMachine call (internal IP addresses + provider ID of VM).
 type CreateMachineResult struct {
@@ -239,10 +243,14 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 // waitForServerStatus blocks until the server with the specified ID reaches one of the target status and returns the server after reaching this status.
 // waitForServerStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
 func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pending []string, target []string, secs int) (*servers.Server, error) {
+	pollInterval := ex.PollInterval
+	if pollInterval == 0 {
+		pollInterval = defaultPollInterval
+	}
 	var server *servers.Server
 	return server, wait.PollUntilContextTimeout(
 		ctx,
-		10*time.Second,
+		pollInterval,
 		time.Duration(secs)*time.Second,
 		true,
 		func(_ context.Context) (done bool, err error) {
@@ -431,9 +439,13 @@ func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string,
 }
 
 func (ex *Executor) waitForVolumeStatus(ctx context.Context, volumeID string, pending, target []string, secs int) error {
+	pollInterval := ex.PollInterval
+	if pollInterval == 0 {
+		pollInterval = defaultPollInterval
+	}
 	return wait.PollUntilContextTimeout(
 		ctx,
-		10*time.Second,
+		pollInterval,
 		time.Duration(secs)*time.Second,
 		true,
 		func(_ context.Context) (done bool, err error) {
