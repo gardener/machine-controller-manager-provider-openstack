@@ -362,8 +362,8 @@ var _ = Describe("Executor", func() {
 					ID:     serverID,
 					Status: client.ServerStatusActive,
 					Addresses: map[string]any{
-						"private":    []any{map[string]any{"addr": serverIPv4, "version": 4}},
-						"extra-net":  []any{map[string]any{"addr": extraIP, "version": 4}},
+						"private":   []any{map[string]any{"addr": serverIPv4, "version": 4}},
+						"extra-net": []any{map[string]any{"addr": extraIP, "version": 4}},
 					},
 				}, nil),
 			)
