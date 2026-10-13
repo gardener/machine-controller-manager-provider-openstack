@@ -66,8 +66,10 @@ func NewExecutor(ctx context.Context, factory *client.Factory, config *api.Machi
 	return ex, nil
 }
 
-// getServerIPs extracts all internal IP addresses from a server's network interfaces.
-func getServerIPs(server *servers.Server) ([]string, error) {
+// getServerIPs extracts internal IP addresses from a server's network interfaces.
+// When primaryNetworks is non-empty, only addresses on those networks are returned,
+// excluding additional NIC networks so that MCM reports only the primary node IPs.
+func getServerIPs(server *servers.Server, primaryNetworks sets.Set[string]) ([]string, error) {
 	ips := make([]string, 0)
 
 	if len(server.Addresses) == 0 {
@@ -75,7 +77,11 @@ func getServerIPs(server *servers.Server) ([]string, error) {
 	}
 
 	// Format of the addresses field: https://docs.openstack.org/api-ref/compute/#list-servers-detailed.
-	for _, networkAddresses := range server.Addresses {
+	for networkName, networkAddresses := range server.Addresses {
+		if primaryNetworks.Len() > 0 && !primaryNetworks.Has(networkName) {
+			continue
+		}
+
 		addrList, ok := networkAddresses.([]any)
 		if !ok {
 			return nil, fmt.Errorf("could not assert network addresses to slice")
@@ -145,10 +151,21 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return nil, deleteOnFail(fmt.Errorf("failed to patch server [ID=%q] ports: %s", server.ID, err))
 	}
 
+	// Only resolve primary network names when additional NICs are configured — avoids
+	// an extra API call in the common case. An empty set means "return all addresses".
+	primaryNetworks := sets.New[string]()
+	if len(ex.Config.Spec.AdditionalNetworkInterfaces) > 0 {
+		primaryNetworks, err = ex.resolvePrimaryNetworkNames(ctx)
+		if err != nil {
+			klog.Warningf("failed to resolve primary network names for server [ID=%q]: %v — reporting all IPs", activeServer.ID, err)
+			primaryNetworks = sets.New[string]()
+		}
+	}
+
 	var internalIPs []string
-	internalIPs, err = getServerIPs(activeServer)
+	internalIPs, err = getServerIPs(activeServer, primaryNetworks)
 	if err != nil {
-		klog.Infof("failed to extract internal IPs [ID=%q] ports: %s", activeServer.ID, err)
+		klog.Infof("failed to extract internal IPs [ID=%q]: %s", activeServer.ID, err)
 	}
 
 	return &CreateMachineResult{
@@ -544,6 +561,39 @@ func (ex *Executor) resolveNetworkIDsForPodNetwork(ctx context.Context) (sets.Se
 		}
 	}
 	return podNetworkIDs, nil
+}
+
+// resolvePrimaryNetworkNames returns the names of the primary networks (excludes AdditionalNetworkInterfaces).
+// For the Networks list case, names are read directly from the config (zero API calls).
+// For the NetworkID case, one GetNetworkName call is made — this is only invoked when
+// AdditionalNetworkInterfaces is non-empty, so the common single-NIC path pays nothing.
+func (ex *Executor) resolvePrimaryNetworkNames(ctx context.Context) (sets.Set[string], error) {
+	names := sets.New[string]()
+
+	networkID := ex.Config.Spec.NetworkID
+	networks := ex.Config.Spec.Networks
+
+	if !isEmptyString(ptr.To(networkID)) {
+		name, err := ex.Network.GetNetworkName(ctx, networkID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve primary network name [ID=%q]: %w", networkID, err)
+		}
+		names.Insert(name)
+	} else {
+		for _, network := range networks {
+			if !isEmptyString(ptr.To(network.Name)) {
+				names.Insert(network.Name)
+			} else if !isEmptyString(ptr.To(network.Id)) {
+				name, err := ex.Network.GetNetworkName(ctx, network.Id)
+				if err != nil {
+					return nil, fmt.Errorf("failed to resolve primary network name [ID=%q]: %w", network.Id, err)
+				}
+				names.Insert(name)
+			}
+		}
+	}
+
+	return names, nil
 }
 
 // DeleteMachine deletes a server based on the supplied machineName. If a providerID is supplied it is used instead of the

@@ -222,6 +222,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().UpdatePort(ctx, extraPortID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
+			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).ToNot(HaveOccurred())
@@ -269,6 +270,7 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
+			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).ToNot(HaveOccurred())
@@ -323,9 +325,61 @@ var _ = Describe("Executor", func() {
 			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)
+			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
 
 			_, err := ex.CreateMachine(ctx, machineName, nil)
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return only primary network IPs when an additional NIC is configured", func() {
+			var (
+				extraNetworkID = "extraNetworkID"
+				extraSubnetID  = "extraSubnetID"
+				extraPortID    = "extraPortID"
+				extraPortName  = machineName + "-" + extraSubnetID
+				extraIP        = "192.168.1.5"
+			)
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: extraNetworkID, SubnetID: extraSubnetID},
+			}
+			ex := &Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			network.EXPECT().PortIDFromName(ctx, extraPortName).Return("", gophercloud.ErrResourceNotFound{})
+			network.EXPECT().CreatePort(ctx, gomock.Any()).Return(&ports.Port{ID: extraPortID, Name: extraPortName}, nil)
+			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private":    []any{map[string]any{"addr": serverIPv4, "version": 4}},
+						"extra-net":  []any{map[string]any{"addr": extraIP, "version": 4}},
+					},
+				}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{
+				{NetworkID: networkID, ID: portID},
+				{NetworkID: extraNetworkID, ID: extraPortID},
+			}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
+
+			server, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+			// Only the primary network IP should be reported — not the extra NIC's IP.
+			Expect(server.InternalIPs).To(ConsistOf(serverIPv4))
 		})
 
 		It("should succeed when spec contains subnet", func() {
