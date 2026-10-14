@@ -567,11 +567,6 @@ func (ex *Executor) resolveNetworkIDsForPodNetwork(ctx context.Context) (sets.Se
 		}
 	}
 
-	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
-		if iface.PodNetwork {
-			podNetworkIDs.Insert(iface.NetworkID)
-		}
-	}
 	return podNetworkIDs, nil
 }
 

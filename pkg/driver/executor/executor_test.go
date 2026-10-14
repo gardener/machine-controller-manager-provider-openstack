@@ -180,59 +180,7 @@ var _ = Describe("Executor", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should whitelist the pod CIDR on an additional NIC flagged as pod network", func() {
-			var (
-				extraNetworkID = "extraNetworkID"
-				extraSubnetID  = "extraSubnetID"
-				extraPortID    = "extraPortID"
-				extraPortName  = machineName + "-" + extraSubnetID
-			)
-			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
-				{NetworkID: extraNetworkID, SubnetID: extraSubnetID, PodNetwork: true},
-			}
-			ex := &Executor{
-				Compute:      compute,
-				Network:      network,
-				Config:       cfg,
-				PollInterval: time.Millisecond,
-			}
-
-			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
-			network.EXPECT().PortIDFromName(ctx, extraPortName).Return("", gophercloud.ErrResourceNotFound{})
-			network.EXPECT().CreatePort(ctx, gomock.Any()).Return(&ports.Port{ID: extraPortID, Name: extraPortName}, nil)
-			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
-			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
-			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
-			compute.EXPECT().SupportsHostnameOverride().Return(true)
-			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
-			gomock.InOrder(
-				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
-				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
-					ID:     serverID,
-					Status: client.ServerStatusActive,
-					Addresses: map[string]any{
-						"private": []any{map[string]any{"addr": serverIPv4, "version": 4}},
-					},
-				}, nil),
-			)
-			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{
-				{NetworkID: networkID, ID: portID},
-				{NetworkID: extraNetworkID, ID: extraPortID},
-			}, nil)
-			// Both the primary port and the pod-network-flagged extra NIC port must be whitelisted.
-			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
-				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
-			}).Return(nil)
-			network.EXPECT().UpdatePort(ctx, extraPortID, ports.UpdateOpts{
-				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
-			}).Return(nil)
-			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
-
-			_, err := ex.CreateMachine(ctx, machineName, nil)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("should not whitelist the pod CIDR on an additional NIC without the pod network flag", func() {
+		It("should not whitelist the pod CIDR on an additional NIC port", func() {
 			var (
 				extraNetworkID = "extraNetworkID"
 				extraSubnetID  = "extraSubnetID"
@@ -271,7 +219,7 @@ var _ = Describe("Executor", func() {
 				{NetworkID: networkID, ID: portID},
 				{NetworkID: extraNetworkID, ID: extraPortID},
 			}, nil)
-			// Only the primary port is whitelisted; the extra NIC port is left untouched.
+			// Only the primary port is whitelisted; additional NIC ports are never patched.
 			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
 				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
 			}).Return(nil)

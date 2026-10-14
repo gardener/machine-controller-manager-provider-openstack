@@ -55,17 +55,6 @@ string
 </tr>
 <tr>
 <td>
-<code>podNetwork</code></br>
-<em>
-boolean
-</em>
-</td>
-<td>
-<p>PodNetwork specifies whether this additional network carries pod traffic. Defaults to false, meaning the extra<br />NIC is not part of the pod network (e.g. a dedicated storage NIC). If true, the pod network CIDR range is<br />whitelisted on the port's allowed address pairs so pod traffic may egress/ingress over this interface.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>securityGroups</code></br>
 <em>
 string array
