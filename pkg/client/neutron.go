@@ -123,6 +123,17 @@ func (n *neutronV2) NetworkIDFromName(ctx context.Context, name string) (string,
 	return network.ID, err
 }
 
+// GetNetworkName resolves the given network ID to its name.
+func (n *neutronV2) GetNetworkName(ctx context.Context, id string) (string, error) {
+	network, err := networks.Get(ctx, n.serviceClient, id).Extract()
+	onCall("neutron")
+	if err != nil {
+		onFailure("neutron")
+		return "", fmt.Errorf("failed to get network [ID=%q]: %w", id, err)
+	}
+	return network.Name, nil
+}
+
 // GroupIDFromName resolves the given security group name to a unique ID.
 func (n *neutronV2) GroupIDFromName(ctx context.Context, name string) (string, error) {
 	listOpts := groups.ListOpts{

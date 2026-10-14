@@ -51,6 +51,8 @@ type Network interface {
 
 	// NetworkIDFromName resolves the given network name to a unique ID.
 	NetworkIDFromName(ctx context.Context, name string) (string, error)
+	// GetNetworkName resolves the given network ID to its name.
+	GetNetworkName(ctx context.Context, id string) (string, error)
 	// GroupIDFromName resolves the given security group name to a unique ID.
 	GroupIDFromName(ctx context.Context, name string) (string, error)
 	// PortIDFromName resolves the given port name to a unique ID.
