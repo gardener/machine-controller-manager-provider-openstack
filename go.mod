@@ -5,7 +5,7 @@ go 1.26.8
 require (
 	github.com/gardener/gardener v1.152.0
 	github.com/gardener/gardener/hack/tools v1.152.0
-	github.com/gardener/machine-controller-manager v0.63.0
+	github.com/gardener/machine-controller-manager v0.63.1
 	github.com/gophercloud/gophercloud/v2 v2.15.0
 	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/onsi/gomega v1.44.0
