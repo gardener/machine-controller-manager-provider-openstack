@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/gophercloud/gophercloud/v2"
 	"github.com/gophercloud/gophercloud/v2/openstack/blockstorage/v3/volumes"
@@ -95,9 +96,10 @@ var _ = Describe("Executor", func() {
 
 		It("should take the happy path", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -137,14 +139,213 @@ var _ = Describe("Executor", func() {
 			Expect(server.InternalIPs[0]).To(Equal(serverIPv4))
 		})
 
+		It("should issue a single UpdatePort with all pod CIDRs for dual-stack", func() {
+			const podCidrV6 = "fd00::/112"
+			cfg.Spec.PodNetworkCIDRs = []string{podCidr, podCidrV6}
+			cfg.Spec.PodNetworkCidr = ""
+			ex := &Executor{
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private": []any{map[string]any{"addr": serverIPv4, "version": 4}},
+					},
+				}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{
+				{NetworkID: networkID, ID: portID},
+			}, nil)
+			// Both CIDRs must be present in a single UpdatePort call — not two separate calls.
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{
+					{IPAddress: podCidr},
+					{IPAddress: podCidrV6},
+				},
+			}).Return(nil)
+
+			_, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should not whitelist the pod CIDR on an additional NIC port", func() {
+			var (
+				extraNetworkID = "extraNetworkID"
+				extraSubnetID  = "extraSubnetID"
+				extraPortID    = "extraPortID"
+				extraPortName  = machineName + "-" + extraSubnetID
+			)
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: extraNetworkID, SubnetID: extraSubnetID},
+			}
+			ex := &Executor{
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			network.EXPECT().PortIDFromName(ctx, extraPortName).Return("", gophercloud.ErrResourceNotFound{})
+			network.EXPECT().CreatePort(ctx, gomock.Any()).Return(&ports.Port{ID: extraPortID, Name: extraPortName}, nil)
+			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private": []any{map[string]any{"addr": serverIPv4, "version": 4}},
+					},
+				}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{
+				{NetworkID: networkID, ID: portID},
+				{NetworkID: extraNetworkID, ID: extraPortID},
+			}, nil)
+			// Only the primary port is whitelisted; additional NIC ports are never patched.
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
+
+			_, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should associate resolved security groups with an additional NIC port", func() {
+			var (
+				extraNetworkID = "extraNetworkID"
+				extraSubnetID  = "extraSubnetID"
+				extraPortID    = "extraPortID"
+				extraPortName  = machineName + "-" + extraSubnetID
+				sgName         = "storage-sg"
+				sgID           = "storage-sg-id"
+			)
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: extraNetworkID, SubnetID: extraSubnetID, SecurityGroups: []string{sgName}},
+			}
+			ex := &Executor{
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			network.EXPECT().PortIDFromName(ctx, extraPortName).Return("", gophercloud.ErrResourceNotFound{})
+			network.EXPECT().GroupIDFromName(ctx, sgName).Return(sgID, nil)
+			network.EXPECT().CreatePort(ctx, &ports.CreateOpts{
+				Name:           extraPortName,
+				NetworkID:      extraNetworkID,
+				FixedIPs:       []ports.IP{{SubnetID: extraSubnetID}},
+				SecurityGroups: &[]string{sgID},
+			}).Return(&ports.Port{ID: extraPortID, Name: extraPortName}, nil)
+			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private": []any{map[string]any{"addr": serverIPv4, "version": 4}},
+					},
+				}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{
+				{NetworkID: networkID, ID: portID},
+				{NetworkID: extraNetworkID, ID: extraPortID},
+			}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
+
+			_, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should return only primary network IPs when an additional NIC is configured", func() {
+			var (
+				extraNetworkID = "extraNetworkID"
+				extraSubnetID  = "extraSubnetID"
+				extraPortID    = "extraPortID"
+				extraPortName  = machineName + "-" + extraSubnetID
+				extraIP        = "192.168.1.5"
+			)
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: extraNetworkID, SubnetID: extraSubnetID},
+			}
+			ex := &Executor{
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
+			}
+
+			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
+			network.EXPECT().PortIDFromName(ctx, extraPortName).Return("", gophercloud.ErrResourceNotFound{})
+			network.EXPECT().CreatePort(ctx, gomock.Any()).Return(&ports.Port{ID: extraPortID, Name: extraPortName}, nil)
+			network.EXPECT().TagPort(ctx, extraPortID, gomock.Any()).Return(nil)
+			compute.EXPECT().ImageIDFromName(ctx, imageName).Return(images.Image{ID: "imageID"}, nil)
+			compute.EXPECT().FlavorIDFromName(ctx, flavorName).Return("flavorID", nil)
+			compute.EXPECT().SupportsHostnameOverride().Return(true)
+			compute.EXPECT().CreateServer(ctx, gomock.Any(), gomock.Any()).Return(&servers.Server{ID: serverID}, nil)
+			gomock.InOrder(
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{ID: serverID, Status: client.ServerStatusBuild}, nil),
+				compute.EXPECT().GetServer(ctx, serverID).Return(&servers.Server{
+					ID:     serverID,
+					Status: client.ServerStatusActive,
+					Addresses: map[string]any{
+						"private":   []any{map[string]any{"addr": serverIPv4, "version": 4}},
+						"extra-net": []any{map[string]any{"addr": extraIP, "version": 4}},
+					},
+				}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, &ports.ListOpts{DeviceID: serverID}).Return([]ports.Port{
+				{NetworkID: networkID, ID: portID},
+				{NetworkID: extraNetworkID, ID: extraPortID},
+			}, nil)
+			network.EXPECT().UpdatePort(ctx, portID, ports.UpdateOpts{
+				AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: podCidr}},
+			}).Return(nil)
+			network.EXPECT().GetNetworkName(ctx, networkID).Return("private", nil)
+
+			server, err := ex.CreateMachine(ctx, machineName, nil)
+			Expect(err).ToNot(HaveOccurred())
+			// Only the primary network IP should be reported — not the extra NIC's IP.
+			Expect(server.InternalIPs).To(ConsistOf(serverIPv4))
+		})
+
 		It("should succeed when spec contains subnet", func() {
 			subnetID := "subnetID"
 
 			cfg.Spec.SubnetID = &subnetID
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -176,9 +377,10 @@ var _ = Describe("Executor", func() {
 
 			cfg.Spec.SubnetIDs = []string{subnetID1, subnetID2}
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -214,10 +416,11 @@ var _ = Describe("Executor", func() {
 			cfg.Spec.RootDiskType = &diskType
 			cfg.Spec.RootDiskSize = diskSize
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Storage: storage,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Storage:      storage,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -249,9 +452,10 @@ var _ = Describe("Executor", func() {
 
 		It("should raise a ErrResourceNotFound error when called with a missing flavor", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -267,9 +471,10 @@ var _ = Describe("Executor", func() {
 
 		It("should delete the server on failure", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			server := &servers.Server{
@@ -300,9 +505,10 @@ var _ = Describe("Executor", func() {
 
 		It("should accept multiple internal IPs", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -348,9 +554,10 @@ var _ = Describe("Executor", func() {
 
 		It("should succeed when SupportsHostnameOverride returns false", func() {
 			ex := &Executor{
-				Compute: compute,
-				Network: network,
-				Config:  cfg,
+				Compute:      compute,
+				Network:      network,
+				Config:       cfg,
+				PollInterval: time.Millisecond,
 			}
 
 			compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return([]servers.Server{}, nil)
@@ -590,6 +797,74 @@ var _ = Describe("Executor", func() {
 				network.EXPECT().DeletePort(ctx, portID1).Return(nil),
 				network.EXPECT().DeletePort(ctx, portID2).Return(nil),
 			)
+
+			ex := Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+			err := ex.DeleteMachine(ctx, machineName, "")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should delete extra NIC ports but not primary port when network is not user-managed", func() {
+			var (
+				machineName  = "foo"
+				extraSubnet1 = "subnet-extra-1"
+				extraSubnet2 = "subnet-extra-2"
+				extraPortID1 = "extra-port-1"
+				extraPortID2 = "extra-port-2"
+			)
+
+			// No SubnetID/SubnetIDs set → isUserManagedNetwork() == false
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: "net-1", SubnetID: extraSubnet1},
+				{NetworkID: "net-2", SubnetID: extraSubnet2},
+			}
+
+			gomock.InOrder(
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return(serverList, nil),
+				compute.EXPECT().DeleteServer(ctx, "id1").Return(nil),
+				compute.EXPECT().GetServer(ctx, "id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
+			)
+			// Only extra NIC ports should be listed and deleted — no ListPorts for machineName itself.
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName + "-" + extraSubnet1}).Return([]ports.Port{{ID: extraPortID1}}, nil)
+			network.EXPECT().DeletePort(ctx, extraPortID1).Return(nil)
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName + "-" + extraSubnet2}).Return([]ports.Port{{ID: extraPortID2}}, nil)
+			network.EXPECT().DeletePort(ctx, extraPortID2).Return(nil)
+
+			ex := Executor{
+				Compute: compute,
+				Network: network,
+				Config:  cfg,
+			}
+			err := ex.DeleteMachine(ctx, machineName, "")
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("should delete primary port and extra NIC ports when network is user-managed", func() {
+			var (
+				machineName = "foo"
+				subnetID    = "subnet-primary"
+				primaryPort = "primary-port"
+				extraSubnet = "subnet-extra-1"
+				extraPortID = "extra-port-1"
+			)
+
+			cfg.Spec.SubnetID = ptr.To(subnetID)
+			cfg.Spec.AdditionalNetworkInterfaces = []openstack.AdditionalNetwork{
+				{NetworkID: "net-1", SubnetID: extraSubnet},
+			}
+
+			gomock.InOrder(
+				compute.EXPECT().ListServers(ctx, &servers.ListOpts{Name: machineName}).Return(serverList, nil),
+				compute.EXPECT().DeleteServer(ctx, "id1").Return(nil),
+				compute.EXPECT().GetServer(ctx, "id1").Return(&servers.Server{Status: client.ServerStatusDeleted}, nil),
+			)
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName}).Return([]ports.Port{{ID: primaryPort}}, nil)
+			network.EXPECT().DeletePort(ctx, primaryPort).Return(nil)
+			network.EXPECT().ListPorts(ctx, ports.ListOpts{Name: machineName + "-" + extraSubnet}).Return([]ports.Port{{ID: extraPortID}}, nil)
+			network.EXPECT().DeletePort(ctx, extraPortID).Return(nil)
 
 			ex := Executor{
 				Compute: compute,

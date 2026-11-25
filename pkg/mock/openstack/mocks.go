@@ -206,6 +206,21 @@ func (mr *MockNetworkMockRecorder) DeletePort(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePort", reflect.TypeOf((*MockNetwork)(nil).DeletePort), ctx, id)
 }
 
+// GetNetworkName mocks base method.
+func (m *MockNetwork) GetNetworkName(ctx context.Context, id string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNetworkName", ctx, id)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNetworkName indicates an expected call of GetNetworkName.
+func (mr *MockNetworkMockRecorder) GetNetworkName(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNetworkName", reflect.TypeOf((*MockNetwork)(nil).GetNetworkName), ctx, id)
+}
+
 // GetSubnet mocks base method.
 func (m *MockNetwork) GetSubnet(ctx context.Context, id string) (*subnets.Subnet, error) {
 	m.ctrl.T.Helper()

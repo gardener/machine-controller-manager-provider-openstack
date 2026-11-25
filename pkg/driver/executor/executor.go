@@ -31,7 +31,11 @@ type Executor struct {
 	Network client.Network
 	Storage client.Storage
 	Config  *api.MachineProviderConfig
+	// PollInterval is the interval between server status polls. If zero, defaultPollInterval is used.
+	PollInterval time.Duration
 }
+
+const defaultPollInterval = 10 * time.Second
 
 // CreateMachineResult represents the result of a CreateMachine call (internal IP addresses + provider ID of VM).
 type CreateMachineResult struct {
@@ -66,17 +70,22 @@ func NewExecutor(ctx context.Context, factory *client.Factory, config *api.Machi
 	return ex, nil
 }
 
-// getServerIPs assumes the server has exactly one network interface
-// and extracts its internal IP addresses.
-func getServerIPs(server *servers.Server) ([]string, error) {
+// getServerIPs extracts internal IP addresses from a server's network interfaces.
+// When primaryNetworks is non-empty, only addresses on those networks are returned,
+// excluding additional NIC networks so that MCM reports only the primary node IPs.
+func getServerIPs(server *servers.Server, primaryNetworks sets.Set[string]) ([]string, error) {
 	ips := make([]string, 0)
 
-	if len(server.Addresses) != 1 {
-		return nil, fmt.Errorf("expected 1 network, but found %d", len(server.Addresses))
+	if len(server.Addresses) == 0 {
+		return nil, fmt.Errorf("expected at least 1 network, but found 0")
 	}
 
 	// Format of the addresses field: https://docs.openstack.org/api-ref/compute/#list-servers-detailed.
-	for _, networkAddresses := range server.Addresses {
+	for networkName, networkAddresses := range server.Addresses {
+		if primaryNetworks.Len() > 0 && !primaryNetworks.Has(networkName) {
+			continue
+		}
+
 		addrList, ok := networkAddresses.([]any)
 		if !ok {
 			return nil, fmt.Errorf("could not assert network addresses to slice")
@@ -146,10 +155,21 @@ func (ex *Executor) CreateMachine(ctx context.Context, machineName string, userD
 		return nil, deleteOnFail(fmt.Errorf("failed to patch server [ID=%q] ports: %s", server.ID, err))
 	}
 
+	// Only resolve primary network names when additional NICs are configured — avoids
+	// an extra API call in the common case. An empty set means "return all addresses".
+	primaryNetworks := sets.New[string]()
+	if len(ex.Config.Spec.AdditionalNetworkInterfaces) > 0 {
+		primaryNetworks, err = ex.resolvePrimaryNetworkNames(ctx)
+		if err != nil {
+			klog.Warningf("failed to resolve primary network names for server [ID=%q]: %v — reporting all IPs", activeServer.ID, err)
+			primaryNetworks = sets.New[string]()
+		}
+	}
+
 	var internalIPs []string
-	internalIPs, err = getServerIPs(activeServer)
+	internalIPs, err = getServerIPs(activeServer, primaryNetworks)
 	if err != nil {
-		klog.Infof("failed to extract internal IPs [ID=%q] ports: %s", activeServer.ID, err)
+		klog.Infof("failed to extract internal IPs [ID=%q]: %s", activeServer.ID, err)
 	}
 
 	return &CreateMachineResult{
@@ -181,46 +201,56 @@ func (ex *Executor) resolveServerNetworks(ctx context.Context, machineName strin
 				return nil, fmt.Errorf("subnet [ID=%q] from SubnetIDs not found: %w", id, err)
 			}
 		}
-		portID, err := ex.getOrCreatePort(ctx, machineName)
+		portID, err := ex.getOrCreatePort(ctx, machineName, ex.Config.Spec.NetworkID, ex.buildFixedIPs(), ex.Config.Spec.SecurityGroups)
 		if err != nil {
 			return nil, err
 		}
 
 		serverNetworks = append(serverNetworks, servers.Network{UUID: ex.Config.Spec.NetworkID, Port: portID})
-		return serverNetworks, nil
-	}
-
-	if !isEmptyString(ptr.To(networkID)) {
+	} else if !isEmptyString(ptr.To(networkID)) {
 		klog.V(3).Infof("deploying in network [ID=%q]", networkID)
 		serverNetworks = append(serverNetworks, servers.Network{UUID: ex.Config.Spec.NetworkID})
-		return serverNetworks, nil
+	} else {
+		for _, network := range networks {
+			var (
+				resolvedNetworkID string
+				err               error
+			)
+			if isEmptyString(ptr.To(network.Id)) {
+				resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				resolvedNetworkID = network.Id
+			}
+			serverNetworks = append(serverNetworks, servers.Network{UUID: resolvedNetworkID})
+		}
 	}
 
-	for _, network := range networks {
-		var (
-			resolvedNetworkID string
-			err               error
-		)
-		if isEmptyString(ptr.To(network.Id)) {
-			resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			resolvedNetworkID = network.Id
+	// Attach extra NICs for each AdditionalNetworkInterface entry.
+	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
+		extraPortID, err := ex.getOrCreatePort(ctx, machineName+"-"+iface.SubnetID, iface.NetworkID, []ports.IP{{SubnetID: iface.SubnetID}}, iface.SecurityGroups)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create extra port for network [ID=%q] subnet [ID=%q]: %w", iface.NetworkID, iface.SubnetID, err)
 		}
-		serverNetworks = append(serverNetworks, servers.Network{UUID: resolvedNetworkID})
+		serverNetworks = append(serverNetworks, servers.Network{UUID: iface.NetworkID, Port: extraPortID})
 	}
+
 	return serverNetworks, nil
 }
 
 // waitForServerStatus blocks until the server with the specified ID reaches one of the target status and returns the server after reaching this status.
 // waitForServerStatus will fail if an error occurs, the operation it timeouts after the specified time, or the server status is not in the pending list.
 func (ex *Executor) waitForServerStatus(ctx context.Context, serverID string, pending []string, target []string, secs int) (*servers.Server, error) {
+	pollInterval := ex.PollInterval
+	if pollInterval == 0 {
+		pollInterval = defaultPollInterval
+	}
 	var server *servers.Server
 	return server, wait.PollUntilContextTimeout(
 		ctx,
-		10*time.Second,
+		pollInterval,
 		time.Duration(secs)*time.Second,
 		true,
 		func(_ context.Context) (done bool, err error) {
@@ -409,9 +439,13 @@ func (ex *Executor) ensureVolume(ctx context.Context, name, imageID string,
 }
 
 func (ex *Executor) waitForVolumeStatus(ctx context.Context, volumeID string, pending, target []string, secs int) error {
+	pollInterval := ex.PollInterval
+	if pollInterval == 0 {
+		pollInterval = defaultPollInterval
+	}
 	return wait.PollUntilContextTimeout(
 		ctx,
-		10*time.Second,
+		pollInterval,
 		time.Duration(secs)*time.Second,
 		true,
 		func(_ context.Context) (done bool, err error) {
@@ -459,35 +493,45 @@ func (ex *Executor) patchServerPortsForPodNetwork(ctx context.Context, serverID 
 		return fmt.Errorf("failed to resolve network IDs for the pod network %v", err)
 	}
 
-	// coalesce all pod network CIDRs into a single slice.
+	// coalesce all pod network CIDRs into a single set.
 	podCIDRs := sets.NewString(ex.Config.Spec.PodNetworkCIDRs...)
 	if ex.Config.Spec.PodNetworkCidr != "" {
 		podCIDRs.Insert(ex.Config.Spec.PodNetworkCidr)
 	}
 
 	for _, port := range allPorts {
-		// if the port is not part of the networks we care about, continue.
 		if !podNetworkIDs.Has(port.NetworkID) {
 			continue
 		}
 
+		// Build the merged allowed address pairs: start with existing pairs,
+		// then add any pod CIDRs not already present. A single UpdatePort call
+		// is required because Neutron replaces the entire list on each call.
+		existing := sets.NewString()
+		mergedPairs := make([]ports.AddressPair, 0, len(port.AllowedAddressPairs)+podCIDRs.Len())
+		for _, pair := range port.AllowedAddressPairs {
+			existing.Insert(pair.IPAddress)
+			mergedPairs = append(mergedPairs, pair)
+		}
+
+		needsUpdate := false
 		for _, cidr := range podCIDRs.List() {
-			if err := func() error {
-				for _, pair := range port.AllowedAddressPairs {
-					if pair.IPAddress == cidr {
-						klog.V(3).Infof("port [ID=%q] already allows pod network CIDR range. Skipping update...", port.ID)
-						return nil
-					}
-				}
-				if err := ex.Network.UpdatePort(ctx, port.ID, ports.UpdateOpts{
-					AllowedAddressPairs: &[]ports.AddressPair{{IPAddress: cidr}},
-				}); err != nil {
-					return fmt.Errorf("failed to update allowed address pair for port [ID=%q]: %v", port.ID, err)
-				}
-				return nil
-			}(); err != nil {
-				return err
+			if existing.Has(cidr) {
+				klog.V(3).Infof("port [ID=%q] already allows pod network CIDR %q. Skipping...", port.ID, cidr)
+				continue
 			}
+			mergedPairs = append(mergedPairs, ports.AddressPair{IPAddress: cidr})
+			needsUpdate = true
+		}
+
+		if !needsUpdate {
+			continue
+		}
+
+		if err := ex.Network.UpdatePort(ctx, port.ID, ports.UpdateOpts{
+			AllowedAddressPairs: &mergedPairs,
+		}); err != nil {
+			return fmt.Errorf("failed to update allowed address pairs for port [ID=%q]: %v", port.ID, err)
 		}
 	}
 	return nil
@@ -503,27 +547,60 @@ func (ex *Executor) resolveNetworkIDsForPodNetwork(ctx context.Context) (sets.Se
 
 	if !isEmptyString(ptr.To(networkID)) {
 		podNetworkIDs.Insert(networkID)
-		return podNetworkIDs, nil
+	} else {
+		for _, network := range networks {
+			var (
+				resolvedNetworkID string
+				err               error
+			)
+			if isEmptyString(ptr.To(network.Id)) {
+				resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				resolvedNetworkID = network.Id
+			}
+			if network.PodNetwork {
+				podNetworkIDs.Insert(resolvedNetworkID)
+			}
+		}
 	}
 
-	for _, network := range networks {
-		var (
-			resolvedNetworkID string
-			err               error
-		)
-		if isEmptyString(ptr.To(network.Id)) {
-			resolvedNetworkID, err = ex.Network.NetworkIDFromName(ctx, network.Name)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			resolvedNetworkID = network.Id
+	return podNetworkIDs, nil
+}
+
+// resolvePrimaryNetworkNames returns the names of the primary networks (excludes AdditionalNetworkInterfaces).
+// For the Networks list case, names are read directly from the config (zero API calls).
+// For the NetworkID case, one GetNetworkName call is made — this is only invoked when
+// AdditionalNetworkInterfaces is non-empty, so the common single-NIC path pays nothing.
+func (ex *Executor) resolvePrimaryNetworkNames(ctx context.Context) (sets.Set[string], error) {
+	names := sets.New[string]()
+
+	networkID := ex.Config.Spec.NetworkID
+	networks := ex.Config.Spec.Networks
+
+	if !isEmptyString(ptr.To(networkID)) {
+		name, err := ex.Network.GetNetworkName(ctx, networkID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve primary network name [ID=%q]: %w", networkID, err)
 		}
-		if network.PodNetwork {
-			podNetworkIDs.Insert(resolvedNetworkID)
+		names.Insert(name)
+	} else {
+		for _, network := range networks {
+			if !isEmptyString(ptr.To(network.Name)) {
+				names.Insert(network.Name)
+			} else if !isEmptyString(ptr.To(network.Id)) {
+				name, err := ex.Network.GetNetworkName(ctx, network.Id)
+				if err != nil {
+					return nil, fmt.Errorf("failed to resolve primary network name [ID=%q]: %w", network.Id, err)
+				}
+				names.Insert(name)
+			}
 		}
 	}
-	return podNetworkIDs, nil
+
+	return names, nil
 }
 
 // DeleteMachine deletes a server based on the supplied machineName. If a providerID is supplied it is used instead of the
@@ -554,9 +631,15 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 		return err
 	}
 
+	var portNames []string
 	if ex.isUserManagedNetwork() {
-		err := ex.deletePort(ctx, machineName)
-		if err != nil {
+		portNames = append(portNames, machineName)
+	}
+	for _, iface := range ex.Config.Spec.AdditionalNetworkInterfaces {
+		portNames = append(portNames, machineName+"-"+iface.SubnetID)
+	}
+	if len(portNames) > 0 {
+		if err := ex.deletePorts(ctx, portNames); err != nil {
 			return err
 		}
 	}
@@ -568,27 +651,20 @@ func (ex *Executor) DeleteMachine(ctx context.Context, machineName, providerID s
 	return nil
 }
 
-func (ex *Executor) getOrCreatePort(ctx context.Context, machineName string) (string, error) {
-	var (
-		err              error
-		securityGroupIDs []string
-	)
-
-	portID, err := ex.Network.PortIDFromName(ctx, machineName)
+// getOrCreatePort looks up a Neutron port by name and creates it if it does not exist.
+// The port is tagged with the cluster/role tags derived from the machine's spec tags.
+func (ex *Executor) getOrCreatePort(ctx context.Context, portName, networkID string, fixedIPs []ports.IP, securityGroupNames []string) (string, error) {
+	portID, err := ex.Network.PortIDFromName(ctx, portName)
 	if err == nil {
-		klog.V(2).Infof("found port [Name=%q, ID=%q]... skipping creation", machineName, portID)
+		klog.V(2).Infof("found port [Name=%q, ID=%q]... skipping creation", portName, portID)
 		return portID, nil
 	}
-
 	if !client.IsNotFoundError(err) {
-		klog.V(5).Infof("error fetching port [Name=%q]: %s", machineName, err)
-		return "", fmt.Errorf("error fetching port [Name=%q]: %s", machineName, err)
+		return "", fmt.Errorf("error fetching port [Name=%q]: %w", portName, err)
 	}
 
-	klog.V(5).Infof("port [Name=%q] does not exist", machineName)
-	klog.V(3).Infof("creating port [Name=%q]... ", machineName)
-
-	for _, securityGroup := range ex.Config.Spec.SecurityGroups {
+	securityGroupIDs := make([]string, 0, len(securityGroupNames))
+	for _, securityGroup := range securityGroupNames {
 		securityGroupID, err := ex.Network.GroupIDFromName(ctx, securityGroup)
 		if err != nil {
 			return "", err
@@ -596,28 +672,26 @@ func (ex *Executor) getOrCreatePort(ctx context.Context, machineName string) (st
 		securityGroupIDs = append(securityGroupIDs, securityGroupID)
 	}
 
+	klog.V(3).Infof("creating port [Name=%q] on network [ID=%q]", portName, networkID)
 	port, err := ex.Network.CreatePort(ctx, &ports.CreateOpts{
-		Name:           machineName,
-		NetworkID:      ex.Config.Spec.NetworkID,
-		FixedIPs:       ex.buildFixedIPs(),
+		Name:           portName,
+		NetworkID:      networkID,
+		FixedIPs:       fixedIPs,
 		SecurityGroups: &securityGroupIDs,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create port [Name=%q]: %w", portName, err)
 	}
 
 	searchClusterName, searchNodeRole, ok := findMandatoryTags(ex.Config.Spec.Tags)
 	if !ok {
-		klog.Warningf("operation can not proceed: cluster/role tags are missing")
 		return "", fmt.Errorf("operation can not proceed: cluster/role tags are missing")
 	}
-
-	portTags := []string{searchClusterName, searchNodeRole}
-	if err := ex.Network.TagPort(ctx, port.ID, portTags); err != nil {
-		return "", err
+	if err := ex.Network.TagPort(ctx, port.ID, []string{searchClusterName, searchNodeRole}); err != nil {
+		return "", fmt.Errorf("failed to tag port [ID=%q]: %w", port.ID, err)
 	}
 
-	klog.V(3).Infof("port [Name=%q] successfully created", port.Name)
+	klog.V(3).Infof("port [Name=%q, ID=%q] successfully created", port.Name, port.ID)
 	return port.ID, nil
 }
 
@@ -647,30 +721,34 @@ func (ex *Executor) buildFixedIPs() []ports.IP {
 	return fixedIPs
 }
 
-func (ex *Executor) deletePort(ctx context.Context, machineName string) error {
-	portList, err := ex.Network.ListPorts(ctx, ports.ListOpts{
-		Name: machineName,
-	})
-	if err != nil {
-		return fmt.Errorf("error deleting port [Name=%q]: %s", machineName, err)
-	}
-	if len(portList) == 0 {
-		klog.V(2).Infof("port [Name=%q] was not found", machineName)
-		return nil
-	}
-
-	klog.V(2).Infof("deleting ports for machine [Name=%q]", machineName)
-	for _, p := range portList {
-		klog.V(2).Infof("deleting port [ID=%q]", p.ID)
-		err = ex.Network.DeletePort(ctx, p.ID)
+func (ex *Executor) deletePorts(ctx context.Context, portNames []string) error {
+	var errs []error
+	for _, name := range portNames {
+		portList, err := ex.Network.ListPorts(ctx, ports.ListOpts{
+			Name: name,
+		})
 		if err != nil {
-			klog.Errorf("failed to delete port [ID=%q]: %s", p.ID, err)
-			return err
+			errs = append(errs, fmt.Errorf("error listing ports [Name=%q]: %s", name, err))
+			continue
 		}
-		klog.V(3).Infof("deleted port [ID=%q]", p.ID)
+		if len(portList) == 0 {
+			klog.V(2).Infof("port [Name=%q] was not found", name)
+			continue
+		}
+
+		klog.V(2).Infof("deleting ports for machine [Name=%q]", name)
+		for _, p := range portList {
+			klog.V(2).Infof("deleting port [ID=%q]", p.ID)
+			if err := ex.Network.DeletePort(ctx, p.ID); err != nil {
+				klog.Errorf("failed to delete port [ID=%q]: %s", p.ID, err)
+				errs = append(errs, err)
+				continue
+			}
+			klog.V(3).Infof("deleted port [ID=%q]", p.ID)
+		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func (ex *Executor) deleteVolume(ctx context.Context, machineName string) error {
