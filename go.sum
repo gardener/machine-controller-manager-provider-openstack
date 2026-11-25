@@ -27,8 +27,8 @@ github.com/gardener/gardener/hack/tools v1.152.0 h1:M5h6DNXCdDqk2O6ims/6cZwWSNsD
 github.com/gardener/gardener/hack/tools v1.152.0/go.mod h1:Hxa9V6uHZkX4D2saNvTAp5/8eYjgUEW88AsrosXo7+Y=
 github.com/gardener/gardener/pkg/apis v1.149.0 h1:qGxrTLfO8g9bQFL/XzAcmhIbjW09XBShHkrdThu/Z64=
 github.com/gardener/gardener/pkg/apis v1.149.0/go.mod h1:jWVcJcOtKb9TynpN+Fc1hRfBmwBAPOgwzmhlt8ub2l8=
-github.com/gardener/machine-controller-manager v0.63.0 h1:0mfZiop6jStdfQhsMYyTdRxyfx3rJBsXYifFZlxw6wM=
-github.com/gardener/machine-controller-manager v0.63.0/go.mod h1:MU2Cyrwvh+jYYvRUGxUMx8LNmFUvGog01YHlpsCiRrM=
+github.com/gardener/machine-controller-manager v0.63.1 h1:OUlDDARMAqwIH2zyEvMmGTFqc/VgFc0bH1LskhLoGk8=
+github.com/gardener/machine-controller-manager v0.63.1/go.mod h1:MU2Cyrwvh+jYYvRUGxUMx8LNmFUvGog01YHlpsCiRrM=
 github.com/gkampitakis/ciinfo v0.3.2 h1:JcuOPk8ZU7nZQjdUhctuhQofk7BGHuIy0c9Ez8BNhXs=
 github.com/gkampitakis/ciinfo v0.3.2/go.mod h1:1NIwaOcFChN4fa/B0hEBdAb6npDlFL8Bwx4dfRLRqAo=
 github.com/gkampitakis/go-diff v1.3.2 h1:Qyn0J9XJSDTgnsgHRdz9Zp24RaJeKMUHg2+PDZZdC4M=
